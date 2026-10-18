@@ -17,7 +17,7 @@
  * Authentication, Submit Feedback, Inline Validation) + design-system (token, bukan warna mentah).
  */
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AlertCircle, Check, Circle, Eye, EyeOff, Loader2, Lock, LogOut, User } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
@@ -339,15 +339,39 @@ const LayarKerja: React.FC = () => (
       <Route index element={<HalamanBeranda />} />
       <Route path="lkk" element={<HalamanLkk />} />
       <Route path="akun" element={<HalamanAkun />} />
-      <Route path="*" element={<Navigate to="/tera" replace />} />
+      <Route path="*" element={<Navigate to="/tera/" replace />} />
     </Route>
   </Routes>
 );
+
+/* ---------- PWA: kartu identitas + penjaga gudang (Tahap 1.5a) ---------- */
+
+/**
+ * Biasanya sudah dipasang oleh skrip di index.html saat halaman /tera… dibuka.
+ * Fungsi ini menjaga kasus teknisi masuk lewat /admin/login lalu dialihkan ke /tera/
+ * tanpa memuat ulang halaman.
+ */
+function pasangPwaTera(): void {
+  try {
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = '/tera/manifest.webmanifest';
+      document.head.appendChild(link);
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/tera/sw.js', { scope: '/tera/' }).catch(() => {});
+    }
+  } catch {
+    /* PWA hanya tambahan: aplikasi tetap jalan tanpa ini */
+  }
+}
 
 /* ---------- Pintu masuk ---------- */
 
 const TeraApp: React.FC = () => {
   const { user, loading } = useAuth();
+  const lokasi = useLocation();
   // Layar "Memeriksa akun…" hanya saat aplikasi pertama dibuka. Saat tombol Masuk
   // ditekan, form tetap tampil agar isian tidak hilang bila login gagal.
   const [pemeriksaanAwal, setPemeriksaanAwal] = useState(true);
@@ -360,6 +384,11 @@ const TeraApp: React.FC = () => {
     document.documentElement.classList.add('tera-aktif');
     return () => document.documentElement.classList.remove('tera-aktif');
   }, []);
+
+  useEffect(() => { pasangPwaTera(); }, []);
+
+  // Wilayah PWA adalah "/tera/" (bergaris miring). "/tera" dibelokkan agar tetap di dalam wilayah.
+  if (lokasi.pathname === '/tera') return <Navigate to={`/tera/${lokasi.search}${lokasi.hash}`} replace />;
 
   if (loading && pemeriksaanAwal) return <LayarMemuat pesan="Memeriksa akun…" />;
   if (!user) return <LoginTera />;

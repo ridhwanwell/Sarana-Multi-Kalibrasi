@@ -30,14 +30,14 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   );
   if (!user) return <Navigate to="/admin/login" replace />;
   // Teknisi hanya boleh di Tera SMK
-  if (user.role === 'teknisi') return <Navigate to="/tera" replace />;
+  if (user.role === 'teknisi') return <Navigate to="/tera/" replace />;
   return <>{children}</>;
 };
 
-/** Penjaga pintu Manajemen Aset: akun teknisi dialihkan ke /tera. */
+/** Penjaga pintu Manajemen Aset: akun teknisi dialihkan ke /tera/. */
 const KantorOnly = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
-  if (user?.role === 'teknisi') return <Navigate to="/tera" replace />;
+  if (user?.role === 'teknisi') return <Navigate to="/tera/" replace />;
   return <>{children}</>;
 };
 

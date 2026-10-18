@@ -32,7 +32,7 @@ const LOGO_EMBLEM = '/tera/tera-emblem-256.webp';
 const JUMLAH_DI_PERANGKAT = 0;
 
 const MENU = [
-  { ke: '/tera', label: 'Beranda', ikon: LayoutDashboard, persis: true },
+  { ke: '/tera/', label: 'Beranda', ikon: LayoutDashboard, persis: true },
   { ke: '/tera/lkk', label: 'LKK', ikon: ClipboardCheck, persis: false },
   { ke: '/tera/akun', label: 'Akun', ikon: User, persis: false }
 ] as const;
