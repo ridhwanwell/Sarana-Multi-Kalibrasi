@@ -11,7 +11,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test:tera": "tsx tests/tera/segel.test.mts",
-    "test:tera:sinkron": "tsx tests/tera/mesinKirim.uji.mts"
+    "test:tera:sinkron": "tsx tests/tera/mesinKirim.uji.mts",
+    "test:tera:penyimpanan": "tsx tests/tera/penyimpanan.uji.mts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

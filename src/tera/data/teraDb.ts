@@ -124,7 +124,12 @@ async function tx<T>(
     const stores: Record<string, IDBObjectStore> = {};
     for (const n of laci) stores[n] = t.objectStore(n);
     let hasil: T;
-    Promise.resolve(kerja(stores)).then((h) => { hasil = h; }, (e) => { try { t.abort(); } catch { /* sudah selesai */ } reject(e); });
+    // Galat dari isi kerja (termasuk memori penuh yang langsung terlempar) dibuat berpesan jelas
+    const gagal = (e: any) => {
+      try { t.abort(); } catch { /* sudah selesai */ }
+      reject(e?.name === 'QuotaExceededError' ? new TeraDbError(pesanIdb(e)) : e);
+    };
+    try { Promise.resolve(kerja(stores)).then((h) => { hasil = h; }, gagal); } catch (e) { gagal(e); }
     t.oncomplete = () => resolve(hasil);
     t.onabort = () => reject(new TeraDbError(pesanIdb(t.error)));
     t.onerror = () => { /* ditangani onabort */ };
