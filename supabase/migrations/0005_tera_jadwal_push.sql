@@ -2,7 +2,13 @@
 -- MIGRASI 0005 — "FOTOKOPI JADWAL" UNTUK TERA SMK (TAHAP 3: PUSH JADWAL)
 -- Supabase : qr-label-kalibrasi (PRODUKSI)
 -- Dibuat   : 19 Oktober 2026 (Tahap 3.1 Tera SMK)
--- Status   : DRAF — BELUM DIJALANKAN. Menunggu "lanjutkan" Ridhwan setelah penjelasan awam.
+-- Disetujui: Ridhwan ("lanjutkan" setelah penjelasan awam, 19 Okt 2026 05.16 WIB)
+-- Dijalankan: 19 Okt 2026 ±05.18 WIB oleh Claude lewat sambungan Supabase (apply_migration
+--             "tera_0005_jadwal_push", blok 2 tanpa begin/commit karena dibungkus otomatis).
+--             CEK 9/9 true (jadwal_kalibrasi = 32 kolom, tidak berubah; angka 33 di draf awal salah hitung).
+--             Uji perilaku (dibatalkan otomatis, tabel kembali kosong) 8/8: push v1 · push ulang v2 tetap 1 baris ·
+--             cabut v3 · cabut dua kali = tidak_ada_yang_dicabut · push setelah cabut aktif lagi v4 ·
+--             BO 999 tanpa is_test ditolak · label beda BO ditolak · cadangan setengah terisi ditolak · tanpa teknisi ditolak.
 --
 -- Isi (SEMUA BARU, tidak ada tabel lama yang disentuh — jadwal_kalibrasi TIDAK diubah):
 --   1. tera_jadwal_push            : fotokopi jadwal yang di-"Push ke Tera SMK"
@@ -191,8 +197,8 @@ union all
 select 'indeks pencarian teknisi ada',
        exists (select 1 from pg_indexes where schemaname='public' and indexname='tera_jadwal_push_teknisi_gin')
 union all
-select 'tabel lama tidak berubah (jadwal_kalibrasi masih punya kolom lama saja)',
-       (select count(*) from information_schema.columns where table_schema='public' and table_name='jadwal_kalibrasi') = 33;
+select 'tabel lama tidak berubah (jadwal_kalibrasi masih 32 kolom lama)',
+       (select count(*) from information_schema.columns where table_schema='public' and table_name='jadwal_kalibrasi') = 32;
 
 
 -- =====================================================================
