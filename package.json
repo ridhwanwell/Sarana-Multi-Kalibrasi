@@ -13,7 +13,8 @@
     "test:tera": "tsx tests/tera/segel.test.mts",
     "test:tera:sinkron": "tsx tests/tera/mesinKirim.uji.mts",
     "test:tera:penyimpanan": "tsx tests/tera/penyimpanan.uji.mts",
-    "test:tera:jadwal": "tsx tests/tera/jadwal.test.mts"
+    "test:tera:jadwal": "tsx tests/tera/jadwal.test.mts",
+    "test:tera:jadwal-lokal": "tsx tests/tera/jadwalLokal.uji.mts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -17,6 +17,7 @@ import {
   type LkkLokal, type Ringkasan
 } from './data/teraDb';
 import { mintaPenyimpananPermanen, mulaiMesinKirim, pengirimApi, type MesinKirim } from './data/mesinKirim';
+import { daftarJadwalAktif, tarikJadwal, type JadwalLokal } from './data/jadwalLokal';
 
 const KOSONG: Ringkasan = {
   draft: 0, tersimpan: 0, mengirim: 0, diterima: 0, ditolak: 0, belumHijau: 0, draftBelumTercadang: 0
@@ -29,6 +30,10 @@ export interface KeadaanSinkron {
   siap: boolean;
   ringkasan: Ringkasan;
   daftar: LkkLokal[];
+  /** Jadwal RS aktif di perangkat (yang dicabut kantor sudah disembunyikan). */
+  jadwal: JadwalLokal[];
+  /** Status tarik jadwal terakhir: 'belum' | 'ok' | 'gagal' (gagal = jadwal lama tetap dipakai). */
+  statusJadwal: { keadaan: 'belum' | 'menarik' | 'ok' | 'gagal'; pesan: string | null; waktu: string | null };
   /** Pesan bila penyimpanan di perangkat tidak bisa dibuka (mis. mode privat). */
   gagalPenyimpanan: string | null;
   /** true = browser menjamin data tidak dihapus saat memori penuh. null = belum diperiksa. */
@@ -38,6 +43,8 @@ export interface KeadaanSinkron {
   /** Waktu cadangan draft terakhir yang berhasil (ISO), atau null. */
   cadanganTerakhir: string | null;
   dorong: () => void;
+  /** Tarik jadwal sekarang (juga berjalan otomatis). */
+  tarikJadwalSekarang: () => void;
   /** Cadangkan draft lalu cek; jika masih ada yang belum hijau, Keluar ditolak. */
   keluarAman: () => Promise<HasilKeluar>;
   unduhCadangan: () => Promise<{ jumlah: number; namaFile: string }>;
@@ -70,6 +77,8 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [siap, setSiap] = useState(false);
   const [ringkasan, setRingkasan] = useState<Ringkasan>(KOSONG);
   const [daftar, setDaftar] = useState<LkkLokal[]>([]);
+  const [jadwal, setJadwal] = useState<JadwalLokal[]>([]);
+  const [statusJadwal, setStatusJadwal] = useState<KeadaanSinkron['statusJadwal']>({ keadaan: 'belum', pesan: null, waktu: null });
   const [gagalPenyimpanan, setGagalPenyimpanan] = useState<string | null>(null);
   const [izinPermanen, setIzinPermanen] = useState<boolean | null>(null);
   const [terpasang, setTerpasang] = useState<boolean>(() => sedangTerpasang());
@@ -88,10 +97,11 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       do {
         adaMuatLagi.current = false;
-        const [r, d] = await Promise.all([bacaRingkasan(pemilik), daftarLkk(pemilik)]);
+        const [r, d, j] = await Promise.all([bacaRingkasan(pemilik), daftarLkk(pemilik), daftarJadwalAktif(pemilik)]);
         if (!hidup.current) return;
         setRingkasan(r);
         setDaftar(d);
+        setJadwal((lama) => (JSON.stringify(lama) === JSON.stringify(j) ? lama : j));
         setSiap(true);
         setGagalPenyimpanan(null);
       } while (adaMuatLagi.current);
@@ -105,6 +115,29 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, [pemilik]);
 
+  // Tarik jadwal dari server. Gagal = diam-diam pakai jadwal lama (offline-first), tidak pernah mengunci layar.
+  const sedangTarik = useRef(false);
+  const tarik = useCallback(async () => {
+    if (!pemilik || sedangTarik.current) return;
+    sedangTarik.current = true;
+    setStatusJadwal((s) => ({ ...s, keadaan: 'menarik' }));
+    try {
+      const h = await tarikJadwal(pemilik, (signal) =>
+        apiFetch('/api/tera/jadwal', { method: 'GET', retries: 0, timeoutMs: 15000, signal }));
+      if (!hidup.current) return;
+      if (h.ok) {
+        setStatusJadwal({ keadaan: 'ok', pesan: null, waktu: new Date().toISOString() });
+        if (h.berubah > 0) void muat();
+      } else {
+        setStatusJadwal((s) => ({ keadaan: 'gagal', pesan: h.alasan, waktu: s.waktu }));
+      }
+    } catch (e: any) {
+      if (hidup.current) setStatusJadwal((s) => ({ keadaan: 'gagal', pesan: String(e?.message || 'Jadwal belum bisa ditarik.'), waktu: s.waktu }));
+    } finally {
+      sedangTarik.current = false;
+    }
+  }, [pemilik, muat]);
+
   // Pasang kurir saat teknisi masuk; bongkar saat keluar / ganti akun.
   useEffect(() => {
     if (!pemilik) return;
@@ -112,6 +145,8 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSiap(false);
     setRingkasan(KOSONG);
     setDaftar([]);
+    setJadwal([]);
+    setStatusJadwal({ keadaan: 'belum', pesan: null, waktu: null });
 
     const m = mulaiMesinKirim({
       pemilik,
@@ -135,23 +170,30 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
     mesin.current = m;
     void muat();
+    void tarik();
 
     // Penyimpanan permanen (CLAUDE.md 5.7)
     void mintaPenyimpananPermanen().then((ok) => { if (hidup.current) setIzinPermanen(ok); });
 
     // Cerminan perubahan dari tab lain / sesudah kembali ke aplikasi
-    const saatTampil = () => { if (document.visibilityState === 'visible') { setTerpasang(sedangTerpasang()); void muat(); } };
+    const saatTampil = () => { if (document.visibilityState === 'visible') { setTerpasang(sedangTerpasang()); void muat(); void tarik(); } };
+    const saatOnline = () => { void tarik(); };
+    window.addEventListener('online', saatOnline);
+    // Berkala selama aplikasi terbuka: tiap 5 menit
+    const tarikBerkala = window.setInterval(() => { if (document.visibilityState === 'visible') void tarik(); }, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', saatTampil);
     const ulang = window.setInterval(() => { if (document.visibilityState === 'visible') void muat(); }, 5000);
 
     return () => {
       hidup.current = false;
       document.removeEventListener('visibilitychange', saatTampil);
+      window.removeEventListener('online', saatOnline);
+      window.clearInterval(tarikBerkala);
       window.clearInterval(ulang);
       m.berhenti();
       mesin.current = null;
     };
-  }, [pemilik, muat]);
+  }, [pemilik, muat, tarik]);
 
   // Tombol "Pasang" Chrome Android
   useEffect(() => {
@@ -166,6 +208,7 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const dorong = useCallback(() => { mesin.current?.dorong(); void muat(); }, [muat]);
+  const tarikJadwalSekarang = useCallback(() => { void tarik(); }, [tarik]);
 
   const keluarAman = useCallback(async (): Promise<HasilKeluar> => {
     // Draft dicadangkan dulu supaya tidak ada yang tertinggal hanya di HP ini.
@@ -212,10 +255,10 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [daftar]);
 
   const nilai = useMemo<KeadaanSinkron>(() => ({
-    siap, ringkasan, daftar, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
-    dorong, keluarAman, unduhCadangan, pasangKeLayarUtama
-  }), [siap, ringkasan, daftar, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
-       dorong, keluarAman, unduhCadangan, pasangKeLayarUtama]);
+    siap, ringkasan, daftar, jadwal, statusJadwal, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
+    dorong, tarikJadwalSekarang, keluarAman, unduhCadangan, pasangKeLayarUtama
+  }), [siap, ringkasan, daftar, jadwal, statusJadwal, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
+       dorong, tarikJadwalSekarang, keluarAman, unduhCadangan, pasangKeLayarUtama]);
 
   return <Konteks.Provider value={nilai}>{children}</Konteks.Provider>;
 };
