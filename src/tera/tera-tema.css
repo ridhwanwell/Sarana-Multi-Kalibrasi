@@ -1,0 +1,487 @@
+/* =====================================================================
+   TERA SMK — TEMA "OCEAN" (CLAUDE.md bagian 13)
+   Perumpamaan: tabel koreksi kalibrator. Komponen tidak menulis angka warna;
+   mereka hanya menyebut nama ("warna utama", "latar kartu"), angkanya dibaca
+   dari tabel di bawah ini. Mengganti warna = ubah satu baris di sini.
+
+   - Hanya berlaku di dalam area /tera (kelas .tera-root). Modul Manajemen Aset,
+     halaman publik scan QR, dan label TIDAK tersentuh.
+   - Mode gelap mengikuti pengaturan HP (prefers-color-scheme).
+   - Kontras semua pasangan teks/latar sudah dihitung >= AA (4.5:1 teks, 3:1 garis kotak).
+   - Hanya transform & opacity yang dianimasikan; reduced-motion dihormati.
+   ===================================================================== */
+
+.tera-root,
+html.tera-aktif {
+  /* Latar & permukaan */
+  --t-bg: #EEF6FB;
+  --t-surface: #FFFFFF;
+  --t-border: #D5DEE7;
+  --t-input-border: #7D8DA1;
+  /* Teks */
+  --t-text: #1E293B;
+  --t-text-2: #5B6B80;
+  /* Warna utama */
+  --t-primary: #0B6FB3;
+  --t-primary-pressed: #095C95;
+  --t-on-primary: #FFFFFF;
+  --t-accent: #29C5F6;            /* dekorasi saja, BUKAN teks */
+  --t-focus-glow: rgba(41, 197, 246, 0.28);
+  /* Header */
+  --t-header: #0B6FB3;
+  --t-on-header: #FFFFFF;
+  --t-on-header-muted: #E6F3FC;
+  /* Status (CLAUDE.md 13.4) */
+  --t-danger-bg: #FEE2E2;
+  --t-danger-text: #991B1B;
+  --t-danger-line: #DC2626;
+  --t-ok-bg: #DCFCE7;
+  --t-ok-text: #166534;
+  --t-silver: #B8C2CC;
+  --t-wait-bg: #FEF3C7;           /* Tersimpan di perangkat */
+  --t-wait-text: #92400E;
+  --t-send-bg: #DBEAFE;           /* Sedang dikirim */
+  --t-send-text: #1E40AF;
+  /* Navigasi & chip di header */
+  --t-nav-aktif-bg: #E6F3FC;
+  --t-nav-aktif-text: #095C95;
+  --t-chip-header-bg: #095C95;
+  /* Bentuk & gerak */
+  --t-radius-card: 14px;
+  --t-radius-ctl: 12px;
+  --t-shadow-card: 0 1px 2px rgba(15, 40, 70, 0.06), 0 8px 24px -12px rgba(15, 40, 70, 0.18);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tera-root,
+  html.tera-aktif {
+    --t-bg: #0B1220;
+    --t-surface: #152033;
+    --t-border: #2A3A52;
+    --t-input-border: #6B7F99;
+    --t-text: #E6EEF5;
+    --t-text-2: #94A3B8;
+    --t-primary: #3FA9F5;
+    --t-primary-pressed: #6BBBF7;
+    --t-on-primary: #0B1220;
+    --t-focus-glow: rgba(41, 197, 246, 0.32);
+    --t-header: #0F2742;
+    --t-on-header: #E6EEF5;
+    --t-on-header-muted: #B6C7DA;
+    --t-danger-bg: #3B1215;
+    --t-danger-text: #FCA5A5;
+    --t-danger-line: #F87171;
+    --t-ok-bg: #0F2A1A;
+    --t-ok-text: #86EFAC;
+    --t-silver: #4A5B74;
+    --t-wait-bg: #3A2A0B;
+    --t-wait-text: #FCD34D;
+    --t-send-bg: #12264A;
+    --t-send-text: #93C5FD;
+    --t-nav-aktif-bg: #1B3350;
+    --t-nav-aktif-text: #3FA9F5;
+    --t-chip-header-bg: #17365A;
+    --t-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -14px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+
+/* Latar penuh (termasuk area tarik-lewat di iPhone) selama Tera SMK terbuka */
+html.tera-aktif,
+html.tera-aktif body {
+  background: var(--t-bg);
+}
+
+.tera-root {
+  min-height: 100dvh;
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tera-root .tabular { font-variant-numeric: tabular-nums; }
+
+/* ---------- Kerangka layar masuk (login & ganti sandi) ---------- */
+
+.t-hero {
+  position: relative;
+  background: var(--t-header);
+  color: var(--t-on-header);
+  padding: max(24px, env(safe-area-inset-top)) 24px 88px;
+  border-bottom: 4px solid var(--t-accent);
+  overflow: hidden;
+}
+
+/* Skala penggaris sebagai hiasan di dasar header (motif metrologi) */
+.t-hero-skala {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  opacity: 0.28;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--t-on-header) 0 1.5px, transparent 1.5px 12px),
+    repeating-linear-gradient(90deg, var(--t-on-header) 0 1.5px, transparent 1.5px 60px);
+  background-size: 100% 9px, 100% 18px;
+  background-position: left bottom, left bottom;
+  background-repeat: no-repeat;
+}
+
+.t-lencana {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: #FFFFFF;           /* logo selalu di atas putih agar warnanya terbaca di mode gelap */
+  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.45);
+}
+
+.t-kartu-layar {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  margin: -64px auto 0;
+  padding: 24px;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-card);
+  box-shadow: var(--t-shadow-card);
+}
+
+.t-isi-bawah {
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+}
+
+/* ---------- Tipografi (CLAUDE.md 13.2) ---------- */
+
+.t-judul-layar { font-size: 22px; font-weight: 600; line-height: 1.3; color: var(--t-text); }
+.t-teks-2 { color: var(--t-text-2); }
+.t-ket { font-size: 13px; line-height: 1.5; color: var(--t-text-2); }
+.t-label { display: block; font-size: 14px; font-weight: 500; color: var(--t-text); }
+
+/* ---------- Kotak isian ---------- */
+
+.t-kotak {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  background: var(--t-surface);
+  border: 1.5px solid var(--t-input-border);
+  border-radius: var(--t-radius-ctl);
+  transition: box-shadow 120ms ease, border-color 120ms ease;
+}
+.t-kotak:focus-within {
+  border-color: var(--t-primary);
+  box-shadow: 0 0 0 2px var(--t-primary), 0 0 0 6px var(--t-focus-glow);
+}
+.t-kotak[data-error="true"] { border-color: var(--t-danger-line); }
+.t-kotak input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--t-text);
+  font-size: 16px;               /* >= 16px: mencegah zoom otomatis di iPhone */
+  outline: none;
+  border-radius: var(--t-radius-ctl);
+}
+.t-kotak input::placeholder { color: var(--t-text-2); opacity: 0.85; }
+.t-ikon-kotak { flex-shrink: 0; margin-left: 12px; color: var(--t-text-2); }
+.t-akhiran { flex-shrink: 0; padding-right: 12px; font-size: 15px; color: var(--t-text-2); }
+
+.t-tombol-ikon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  color: var(--t-text-2);
+  border-radius: var(--t-radius-ctl);
+  cursor: pointer;
+}
+
+.t-pesan-error {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t-danger-text);
+}
+
+/* ---------- Tombol ---------- */
+
+.t-tombol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--t-radius-ctl);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 100ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+.t-tombol:active { transform: scale(0.97); }
+.t-tombol-utama { background: var(--t-primary); color: var(--t-on-primary); }
+.t-tombol-utama:hover { background: var(--t-primary-pressed); }
+.t-tombol-utama:disabled { opacity: 0.7; cursor: progress; }
+.t-tombol-kedua {
+  background: transparent;
+  color: var(--t-text);
+  border: 1.5px solid var(--t-border);
+  font-weight: 500;
+}
+.t-tombol-kedua:hover { background: var(--t-bg); }
+
+/* Fokus keyboard / pembaca layar: terlihat jelas di terang & gelap */
+/* Ketukan langsung terasa (tanpa jeda zoom ketuk-dua) dan tanpa kotak abu-abu bawaan Android */
+.tera-root :where(button, a, input, [role="button"]) {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tera-root :where(button, a, [role="button"]):focus-visible {
+  outline: 3px solid var(--t-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Kotak peringatan (warna + ikon + tulisan) ---------- */
+
+.t-peringatan {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--t-radius-ctl);
+  border-left: 3px solid var(--t-danger-line);
+  background: var(--t-danger-bg);
+  color: var(--t-danger-text);
+  font-size: 14px;
+}
+
+/* ---------- Daftar syarat kata sandi ---------- */
+
+.t-syarat { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; }
+.t-syarat li { display: flex; align-items: center; gap: 8px; color: var(--t-text-2); }
+.t-syarat li[data-ok="true"] { color: var(--t-ok-text); font-weight: 500; }
+
+/* ---------- Animasi masuk (fade + geser 12 px, 280 ms) ---------- */
+
+@keyframes t-masuk {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.t-animasi-masuk { animation: t-masuk 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.t-animasi-masuk-2 { animation: t-masuk 280ms cubic-bezier(0.2, 0.7, 0.2, 1) 60ms both; }
+
+@keyframes t-putar { to { transform: rotate(360deg); } }
+.t-putar { animation: t-putar 800ms linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .t-animasi-masuk, .t-animasi-masuk-2 { animation: none; }
+  .t-putar { animation: none; }
+  .t-tombol, .t-kotak { transition: none; }
+  .t-tombol:active { transform: none; }
+}
+
+/* =====================================================================
+   KERANGKA APLIKASI (Tahap 1.4b)
+   HP & tablet portrait : header di atas, tab bawah (Beranda · LKK · Akun)
+   Tablet landscape/laptop: menu samping kiri, header tipis, isi di kanan
+   ===================================================================== */
+
+.t-app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "bar" "main";
+  grid-template-rows: auto 1fr;
+}
+.t-bar  { grid-area: bar; }
+.t-main { grid-area: main; }
+.t-nav  { grid-area: nav; }
+
+/* ----- Header ----- */
+.t-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--t-header);
+  color: var(--t-on-header);
+  border-bottom: 3px solid var(--t-accent);
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left));
+}
+.t-bar-baris { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.t-bar-lencana {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 44px; height: 44px; border-radius: 9999px; background: #FFFFFF;
+}
+.t-bar-teks { min-width: 0; flex: 1; }
+.t-bar-salam { font-size: 13px; line-height: 1.3; color: var(--t-on-header-muted); }
+.t-bar-nama { font-size: 17px; font-weight: 600; line-height: 1.3; }
+.t-bar-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+.t-chip-header {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  padding: 4px 10px; border-radius: 9999px;
+  background: var(--t-chip-header-bg); color: var(--t-on-header);
+  font-size: 13px; font-weight: 500; line-height: 1.4; white-space: nowrap;
+}
+.t-chip-header svg { flex-shrink: 0; }
+.t-chip-header > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ----- Isi ----- */
+.t-main {
+  min-width: 0;
+  padding: 16px max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.t-halaman { max-width: 1080px; margin: 0 auto; }
+.t-judul-bagian { font-size: 17px; font-weight: 600; line-height: 1.4; color: var(--t-text); }
+
+/* ----- Tab bawah (HP & tablet portrait) ----- */
+.t-nav {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 30;
+  display: flex;
+  background: var(--t-surface);
+  border-top: 1px solid var(--t-border);
+  padding: 4px max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+}
+.t-nav-brand { display: none; }
+.t-nav-daftar { display: flex; flex: 1; gap: 4px; min-width: 0; }
+.t-nav-item {
+  position: relative;
+  display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-width: 0; min-height: 56px; padding: 6px 4px;
+  border-radius: var(--t-radius-ctl);
+  color: var(--t-text-2);
+  font-size: 12px; font-weight: 500; line-height: 1.2;
+  transition: background-color 120ms ease, transform 100ms ease;
+}
+.t-nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-nav-item:active { transform: scale(0.97); }
+.t-nav-item[aria-current="page"] {
+  background: var(--t-nav-aktif-bg);
+  color: var(--t-nav-aktif-text);
+  font-weight: 600;
+}
+.t-nav-item[aria-current="page"]::before {
+  content: ""; position: absolute; top: 0; left: 50%;
+  width: 24px; height: 3px; margin-left: -12px;
+  border-radius: 0 0 3px 3px; background: var(--t-nav-aktif-text);
+}
+.t-nav-akun { display: none; }
+
+/* ----- Kartu & keadaan kosong ----- */
+.t-kartu {
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-card);
+  padding: 16px;
+}
+.t-kosong {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 32px 16px; text-align: center;
+}
+.t-kosong-ikon {
+  display: grid; place-items: center; width: 56px; height: 56px; border-radius: 9999px;
+  background: var(--t-nav-aktif-bg); color: var(--t-nav-aktif-text);
+}
+.t-kosong h2 { font-size: 17px; font-weight: 600; line-height: 1.4; }
+.t-kosong p { max-width: 36ch; font-size: 15px; color: var(--t-text-2); }
+
+/* ----- Tiga kotak status LKK ----- */
+.t-statistik { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.t-stat {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+  padding: 12px; border-radius: var(--t-radius-card);
+}
+.t-stat-angka { font-size: 22px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.t-stat-label { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
+.t-stat[data-jenis="wait"] { background: var(--t-wait-bg); color: var(--t-wait-text); }
+.t-stat[data-jenis="send"] { background: var(--t-send-bg); color: var(--t-send-text); }
+.t-stat[data-jenis="ok"]   { background: var(--t-ok-bg);   color: var(--t-ok-text); }
+
+/* ----- Dua kolom (tablet landscape): daftar ±42% + ringkasan ----- */
+.t-belah { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+.t-ringkasan { display: none; }
+
+/* ----- Halaman Akun ----- */
+.t-avatar {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 56px; height: 56px; border-radius: 9999px;
+  background: var(--t-primary); color: var(--t-on-primary);
+  font-size: 22px; font-weight: 600;
+}
+/* Profil: avatar di kiri; bila ruang sempit (HP kecil / huruf diperbesar) teks turun
+   ke bawah avatar, bukan dipotong per suku kata (Tahap 1.6, uji break-ui). */
+.t-profil { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; }
+.t-profil-teks { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.t-info {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 12px; border-radius: var(--t-radius-ctl);
+  background: var(--t-wait-bg); color: var(--t-wait-text);
+  border-left: 3px solid var(--t-wait-text);
+  font-size: 14px;
+}
+
+/* ----- Animasi pindah halaman (masuk 200 ms) ----- */
+@keyframes t-halaman-masuk { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.t-halaman-masuk { animation: t-halaman-masuk 200ms ease-out both; }
+.t-item-masuk { animation: t-halaman-masuk 240ms ease-out both; }
+
+/* ----- Tablet landscape & laptop: menu samping kiri ----- */
+@media (min-width: 768px) and (orientation: landscape), (min-width: 1024px) {
+  .t-app {
+    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-areas: "nav bar" "nav main";
+  }
+  .t-nav {
+    position: sticky; top: 0; left: auto; right: auto; bottom: auto;
+    height: 100dvh; flex-direction: column; justify-content: space-between;
+    border-top: 0; border-right: 1px solid var(--t-border);
+    padding: max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .t-nav-brand { display: flex; align-items: center; gap: 12px; padding: 4px 8px 16px; }
+  .t-nav-brand strong { display: block; font-size: 17px; font-weight: 600; line-height: 1.2; color: var(--t-text); }
+  .t-nav-brand span.t-ket { display: block; }
+  .t-nav-daftar { flex: 0 0 auto; flex-direction: column; gap: 4px; }
+  .t-nav-item { flex: none; flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 48px; padding: 0 12px; font-size: 15px; }
+  .t-nav-item[aria-current="page"]::before { top: 50%; left: 0; width: 3px; height: 24px; margin: -12px 0 0; border-radius: 0 3px 3px 0; }
+  .t-nav-akun { display: block; margin-top: auto; padding: 12px 8px 0; }
+  .t-bar { padding-left: 24px; padding-right: 24px; }
+  .t-bar .t-bar-lencana { display: none; }
+  .t-main { padding: 24px 24px 32px; }
+  .t-belah { grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); }
+  .t-ringkasan { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-halaman-masuk, .t-item-masuk { animation: none; }
+  .t-nav-item { transition: none; }
+  .t-nav-item:active { transform: none; }
+}
+
+/* ---------- Layar kecil sekali (320 px) & huruf diperbesar ---------- */
+
+@media (max-width: 359px) {
+  .t-kartu-layar { padding: 16px; }
+  .t-hero { padding-left: 16px; padding-right: 16px; }
+}

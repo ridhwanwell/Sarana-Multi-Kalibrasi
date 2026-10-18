@@ -18,6 +18,7 @@ import AdminGenerate from './pages/AdminGenerate';
 import AdminTemplates from './pages/AdminTemplates';
 import AdminLayout from './components/AdminLayout';
 import AsetPortalApp from './pages/AsetPortalApp';
+import TeraApp from './tera/TeraApp';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -28,6 +29,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     </div>
   );
   if (!user) return <Navigate to="/admin/login" replace />;
+  // Teknisi hanya boleh di Tera SMK
+  if (user.role === 'teknisi') return <Navigate to="/tera/" replace />;
+  return <>{children}</>;
+};
+
+/** Penjaga pintu Manajemen Aset: akun teknisi dialihkan ke /tera/. */
+const KantorOnly = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
+  if (user?.role === 'teknisi') return <Navigate to="/tera/" replace />;
   return <>{children}</>;
 };
 
@@ -64,7 +74,7 @@ const ScanOrRedirect = () => {
     return <PublicScanPage />;
   }
 
-  return <AsetPortalApp />;
+  return <KantorOnly><AsetPortalApp /></KantorOnly>;
 };
 
 export default function App() {
@@ -106,7 +116,10 @@ export default function App() {
           </Route>
 
           {/* Direct route to Manajemen Aset standalone portal */}
-          <Route path="/portal-aset" element={<AsetPortalApp />} />
+          <Route path="/portal-aset" element={<KantorOnly><AsetPortalApp /></KantorOnly>} />
+
+          {/* Tera SMK (teknisi) — sebelum catch-all agar /tera tidak dibaca sebagai nomor label */}
+          <Route path="/tera/*" element={<TeraApp />} />
 
           {/* Catch-all sends to PublicScanPage so custom or bare label paths (e.g. /002.0020) work */}
           <Route path="*" element={<PublicScanPage />} />

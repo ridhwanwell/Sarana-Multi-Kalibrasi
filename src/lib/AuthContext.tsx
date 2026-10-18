@@ -3,14 +3,34 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import { apiFetch } from './apiClient';
 
-export type UserRole = 'admin_utama' | 'admin_teknik' | 'admin_keuangan' | 'hanya_sph';
+export type UserRole = 'admin_utama' | 'admin_teknik' | 'admin_keuangan' | 'hanya_sph' | 'teknisi';
 
+/** Semua role yang diakui (kantor + teknisi). Teknisi hanya boleh masuk Tera SMK (/tera). */
 export const OFFICIAL_ROLES: readonly UserRole[] = [
+  'admin_utama',
+  'admin_teknik',
+  'admin_keuangan',
+  'hanya_sph',
+  'teknisi'
+] as const;
+
+/** Role kantor (Manajemen Aset SMK). */
+export const ROLE_KANTOR: readonly UserRole[] = [
   'admin_utama',
   'admin_teknik',
   'admin_keuangan',
   'hanya_sph'
 ] as const;
+
+function labelRole(role: UserRole): string {
+  switch (role) {
+    case 'admin_utama': return 'Admin Utama';
+    case 'admin_keuangan': return 'Admin Keuangan';
+    case 'admin_teknik': return 'Admin Teknik';
+    case 'teknisi': return 'Teknisi';
+    default: return 'Hanya SPH';
+  }
+}
 
 export interface AppUser {
   id: string;
@@ -22,6 +42,8 @@ export interface AppUser {
   displayName?: string;
   username?: string;
   avatarLetter?: string;
+  /** Segel "wajib ganti kata sandi" (login pertama akun @tera.smk). */
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextType {
@@ -37,6 +59,8 @@ interface AuthContextType {
   login: (usernameOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithCredentials: (usernameOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  /** Muat ulang profil dari server (mis. setelah kata sandi diganti). */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -52,6 +76,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ success: false }),
   loginWithCredentials: async () => ({ success: false }),
   logout: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -136,13 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data && data.role && OFFICIAL_ROLES.includes(data.role as UserRole)) {
           const role = data.role as UserRole;
           const fullName = data.fullName || emailStr.split('@')[0] || 'Pengguna PT SMK';
-          const roleLabel = role === 'admin_utama'
-            ? 'Admin Utama'
-            : role === 'admin_keuangan'
-              ? 'Admin Keuangan'
-              : role === 'admin_teknik'
-                ? 'Admin Teknik'
-                : 'Hanya SPH';
+          const roleLabel = labelRole(role);
 
           const username = emailStr.split('@')[0] || 'pengguna';
           const displayName = fullName;
@@ -156,7 +175,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fullName,
             displayName,
             username,
-            avatarLetter
+            avatarLetter,
+            mustChangePassword: data.mustChangePassword === true
           };
 
           return appUser;
@@ -188,13 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const role = profile.role as UserRole;
       const fullName = profile.full_name || emailStr.split('@')[0] || 'Pengguna PT SMK';
-      const roleLabel = role === 'admin_utama'
-        ? 'Admin Utama'
-        : role === 'admin_keuangan'
-          ? 'Admin Keuangan'
-          : role === 'admin_teknik'
-            ? 'Admin Teknik'
-            : 'Hanya SPH';
+      const roleLabel = labelRole(role);
 
       const username = emailStr.split('@')[0] || 'pengguna';
       const displayName = fullName;
@@ -208,7 +222,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName,
         displayName,
         username,
-        avatarLetter
+        avatarLetter,
+        mustChangePassword: sbUser.app_metadata?.must_change_password === true
       };
 
       return appUser;
@@ -313,6 +328,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshProfile = async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.user) return;
+    const profile = await loadUserProfile(s.user);
+    setUser(profile);
+  };
+
   const role: UserRole | '' = user?.role || '';
   const isAdmin = user?.role === 'admin_utama';
 
@@ -330,7 +352,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError,
         login,
         loginWithCredentials: login,
-        logout
+        logout,
+        refreshProfile
       }}
     >
       {children}

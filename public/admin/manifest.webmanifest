@@ -1,0 +1,20 @@
+{
+  "id": "/admin/",
+  "name": "Manajemen Aset SMK",
+  "short_name": "Aset SMK",
+  "description": "Sistem Informasi Terpadu Manajemen Aset, Kalibrasi, Logistik & Keuangan PT Sarana Multi Kalibrasi",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "/admin/dashboard",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EEEEEE",
+  "theme_color": "#1C658C",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/admin/admin-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/admin/admin-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/admin/admin-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "/tera/",
+  "name": "Tera SMK",
+  "short_name": "Tera SMK",
+  "description": "LKK digital PT Sarana Multi Kalibrasi — Tertelusur · Efisien · Rapi · Akurat",
+  "lang": "id",
+  "dir": "ltr",
+  "start_url": "/tera/",
+  "scope": "/tera/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EEF6FB",
+  "theme_color": "#0B6FB3",
+  "categories": ["business", "medical", "productivity"],
+  "icons": [
+    { "src": "/tera/tera-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/tera/tera-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/tera/tera-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
