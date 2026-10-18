@@ -1,7 +1,7 @@
 # CLAUDE.md — Tera SMK (sub-website PWA LKK Digital di dalam `qrcode-smk`)
 
 > File ini adalah **aturan kerja untuk Claude** (Claude Code / Project "TERA-SMK"). Semua aturan di sini WAJIB diikuti.
-> **Cara kerja proyek ini (diperbarui 18 Okt 2026): Claude (lewat Claude Code) menulis kode, menguji build, dan commit langsung ke cabang `tera-dev`. Cabang `main` hanya digabung oleh pemilik proyek. Perubahan database & pengaturan Vercel dijelaskan dulu dan baru dijalankan setelah kata "lanjutkan"** (lihat bagian 2A).
+> **Cara kerja proyek ini (diperbarui 18 Okt 2026): Claude (lewat Claude Code) menulis kode, menguji build, dan commit langsung ke cabang `tera-dev`. Claude boleh menggabungkan `tera-dev` ke `main` **hanya setelah pemilik proyek mengecek Preview dan membalas "oke"** (diubah 19 Okt 2026). Perubahan database & pengaturan Vercel dijelaskan dulu dan baru dijalankan setelah kata "lanjutkan"** (lihat bagian 2A).
 > Kalau ada aturan yang bertentangan dengan permintaan baru, tanyakan dulu ke pemilik proyek.
 > Kebutuhan produk, kriteria terima, model data, dan uji penerimaan ada di **`PRD.md`** — baca bersama file ini.
 > **PRD Draf 3 (18 Oktober 2026).** Keputusan pemilik produk ada di PRD bagian 11 — jangan ditanyakan ulang.
@@ -52,7 +52,12 @@ Aturan berkomunikasi:
 > Diperbarui 18 Oktober 2026 (keputusan pemilik proyek, menggantikan cara "pemilik proyek menyalin kode lewat GitHub web"). Pemilik proyek **bukan programmer** dan memantau/menyetujui dari iPhone (GitHub di Safari, link Preview Vercel, Supabase SQL Editor).
 
 1. **Satu langkah = sedikit file.** Maksimal ±3 file kode per giliran. Pekerjaan besar dipecah jadi beberapa giliran.
-2. **Cabang**: Claude hanya commit & push ke cabang **`tera-dev`**. **Claude tidak pernah push ke `main`.** Penggabungan ke `main` dilakukan pemilik proyek sendiri (tombol *Merge* di GitHub) setelah ia bilang "lanjutkan" untuk tahap itu; Claude memandu klik-demi-klik.
+2. **Cabang** *(diubah 19 Okt 2026 atas permintaan pemilik proyek)*: semua pekerjaan dikerjakan, di-commit, dan di-push ke **`tera-dev`**. Claude **boleh** menggabungkan `tera-dev` ke **`main`**, tetapi dengan urutan wajib:
+   1. Claude memastikan build Vercel `tera-dev` **READY**, lalu meminta pemilik proyek **mengecek link Preview** dengan daftar cek bernomor (apa yang dibuka, apa yang harus terlihat).
+   2. Claude **menunggu balasan "oke"** yang jelas untuk penggabungan itu. Kata "lanjutkan" saja **bukan** izin merge; diam/tanpa jawaban juga bukan izin.
+   3. Baru setelah "oke": merge `tera-dev` → `main` dengan *merge commit* (bukan squash, bukan force push), push, lalu cek deployment produksi READY dan uji cepat `saranamultikalibrasi.com` (scan QR lama, `/admin/login`, `/tera/`).
+   4. Bila produksi bermasalah: laporkan segera dan tawarkan *Promote* deployment produksi sebelumnya di Vercel (dijalankan setelah disetujui).
+   Claude **tidak pernah** commit langsung ke `main`, tidak pernah `push --force` ke `main`, dan tidak merge cabang lain selain `tera-dev`.
 3. **Sebelum mengubah file yang sudah ada**, Claude membaca isinya dari repo (bukan dari ingatan).
 4. **Sebelum setiap commit**: jalankan `npm run build` (dan `npm run lint` bila relevan) sampai lolos, lalu cek `git status` — **`_referensi/`, `.env`, dan data pelanggan tidak boleh ikut** (repo publik).
 5. **Pesan commit** singkat, bahasa Indonesia, diawali tahap, contoh: `Tahap 1: tambah halaman login Tera SMK`.
@@ -83,7 +88,7 @@ Website `qrcode-smk` **sudah dipakai** (± 3.934 label QR aktif tertempel di ala
 3. Kode Tera SMK dikumpulkan di folder sendiri (mis. `src/tera/`), dan modul lama hanya disentuh di titik sambungan yang disebut PRD (penjadwalan, Selia, BAP, penagihan, label).
 4. Ikuti pola yang sudah ada: Vite + React + TypeScript + Tailwind, API server Express di `api/` (Vercel serverless), Supabase.
 5. **Acuan struktur database = database langsung.** File `supabase_schema.sql` di repo **sudah usang**. Tabel asli berbahasa Indonesia (`rumah_sakit`, `jadwal_kalibrasi`, `labels`, `dokumen_bap`, dst.).
-6. Kerja di cabang **`tera-dev`**; cek di **Vercel Preview** sebelum digabung ke `main` (lihat 2A).
+6. Kerja di cabang **`tera-dev`**; cek di **Vercel Preview**; digabung ke `main` oleh Claude hanya setelah pemilik proyek membalas "oke" (lihat 2A).
 7. Kode harus lolos build (TypeScript tanpa error) sebelum di-commit, dan lolos build Vercel. Bila Vercel gagal, perbaiki dari log build.
 8. **Bahan acuan** (Master LKK v12, Report All, golden file, kop, contoh BAP/BASTP, MK Kemenkes) ada di **Project knowledge** (diunggah pemilik proyek) dan di folder laptop `_referensi/` — susunan lengkap di PRD Lampiran E. Bila file yang dibutuhkan belum diunggah, **minta** pemilik proyek mengunggahnya; jangan menebak isinya.
 9. **Repo `qrcode-smk` publik** (sampai pemilik proyek menjadikannya Private): **`_referensi/`, `.env`, dan data pelanggan TIDAK BOLEH di-commit.** Pastikan `_referensi/` ada di `.gitignore` sebelum commit pertama, dan cek `git status` sebelum setiap commit.

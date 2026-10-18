@@ -6,7 +6,7 @@
 | Produk | **Tera SMK**: TERA, Teknologi Evaluasi & Rekam Alkes |
 | Slogan | *Tertelusur · Efisien · Rapi · Akurat* |
 | Pemilik produk | Ridhwan (Developer, PT SMK) |
-| Dibangun dengan | **Claude Code** menulis kode, menguji build, dan commit ke cabang **`tera-dev`**; pemilik produk menyetujui & menggabungkan ke `main`; SQL dijalankan setelah persetujuan (CLAUDE.md 2A) |
+| Dibangun dengan | **Claude Code** menulis kode, menguji build, dan commit ke cabang **`tera-dev`**; Claude menggabungkan ke `main` hanya setelah pemilik produk mengecek Preview & membalas "oke"; SQL dijalankan setelah persetujuan (CLAUDE.md 2A) |
 | Rumah kode | Repo GitHub **`ridhwanwell/qrcode-smk`** · Vercel project **`qrcode-smk`** · Supabase project **`qr-label-kalibrasi`** |
 | Dokumen pendamping | `CLAUDE.md` (aturan kerja & desain — WAJIB dibaca bersama PRD ini) |
 | Acuan data | Paket **143 Master LKK v12** (`LKK-143_.zip`) |
@@ -476,7 +476,7 @@ Kerjakan berurutan; tiap tahap selesai bila **kriteria terima terpenuhi & pemili
 | 11.43 | Temuan Master Sphygmomanometer v12 yang **wajib ikut dibetulkan di template**: sel isian hijau ikut terkunci; "Baik " berspasi membuat skor fisik 0; U95 > toleransi (12.8) |
 | 11.45 | **U95 Sphygmomanometer (4,1–6,6 mmHg) lebih besar dari toleransi ±3 mmHg** → budget ketidakpastian **ditinjau & dibetulkan di proyek website oleh Claude di Project website** pada awal Tahap 4, usulan perbaikan disetujui pemilik produk dulu |
 | 11.46 | **Logo**: Tera SMK memakai **logo Tera SMK** (dari pemilik produk); Manajemen Aset SMK memakai **logo PT SMK** |
-| 11.47 | **Memakai Claude Code** *(diubah 18 Okt 2026; sebelumnya: tanpa Claude Code, kode disalin manual)*. Claude commit & push **hanya ke `tera-dev`**; **`main` hanya digabung pemilik produk**; SQL & pengaturan Vercel dijelaskan dulu dan dijalankan setelah "lanjutkan"; **struktur tabel dirancang Claude** (CLAUDE.md 2A) |
+| 11.47 | **Memakai Claude Code** *(diubah 18 Okt 2026; sebelumnya: tanpa Claude Code, kode disalin manual)*. Claude commit & push **hanya ke `tera-dev`**; **merge ke `main` oleh Claude hanya setelah pemilik produk mengecek Preview & membalas "oke"** *(diubah 19 Okt 2026)*; SQL & pengaturan Vercel dijelaskan dulu dan dijalankan setelah "lanjutkan"; **struktur tabel dirancang Claude** (CLAUDE.md 2A) |
 | 11.44 | Repo `qrcode-smk` **tetap publik selama pengembangan**, dijadikan Private setelah koding selesai. Selama publik: `_referensi/`, `.env`, dan data pelanggan **wajib** dikecualikan lewat `.gitignore` (F0.9) |
 
 ---

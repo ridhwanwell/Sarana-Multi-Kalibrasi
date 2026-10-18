@@ -1,6 +1,6 @@
 # PROMPT — Proyek Tera SMK (Claude Code)
 
-Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code menulis kode, menguji build, dan commit hanya ke cabang `tera-dev`.** Anda menyetujui, mengecek di link Preview, dan menggabungkan ke `main` sendiri. SQL & pengaturan Vercel selalu dijelaskan dulu dan baru dijalankan setelah Anda bilang **"lanjutkan"**.
+Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code menulis kode, menguji build, dan commit hanya ke cabang `tera-dev`.** Anda mengecek di link Preview; **Claude menggabungkan ke `main` hanya setelah Anda membalas "oke"** (diubah 19 Okt 2026, CLAUDE.md 2A.2). SQL & pengaturan Vercel selalu dijelaskan dulu dan baru dijalankan setelah Anda bilang **"lanjutkan"**.
 
 ---
 
@@ -16,14 +16,20 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 4. **Hasil uji berupa tabel kecil** (✅/❌/⏳), jujur soal yang belum diuji. Untuk layar: sebut skill yang dipakai + Pre-Delivery Checklist ui-ux-pro-max.
 5. **Akhiri SETIAP giliran dengan 4 blok tetap**: **Yang berubah** (file + aksi + nomor commit) · **Cara memasang** (biasanya "tidak perlu apa-apa") · **Cara mengecek** (langkah bernomor di Safari iPhone / link Preview) · **Langkah berikutnya** (+ ingatkan `/model` Opus atau Sonnet).
 6. **Cepat & hemat token**: Sonnet untuk layar/PWA/dokumen; Opus hanya untuk SQL/RLS/hak akses, sinkron (Tahap 2), rumus (Tahap 4), keamanan. Jangan mengulang isi PROMPT.md/CLAUDE.md ke jawaban; cukup merujuk.
-7. Setelah tiap langkah: perbarui STATUS TERAKHIR di PROMPT.md (repo + Project). Commit & push hanya ke `tera-dev`.
+7. Setelah tiap langkah: perbarui STATUS TERAKHIR di PROMPT.md (repo + Project). Commit & push ke `tera-dev`. Merge ke `main` hanya setelah Ridhwan cek Preview dan membalas **"oke"** (CLAUDE.md 2A.2).
 
 **Per 18 Oktober 2026, 23.59 WIB**
 
 | Tahap | Status |
 |---|---|
 | 0 — Audit | ✅ Selesai. `docs/audit-fase0.md` + `docs/audit-fase0-query.sql` di `tera-dev` (commit `96b4981`). Menunggu persetujuan akhir Anda |
-| 1 — Dua PWA, role teknisi, login | ✅ 1.0 · ✅ 1.1 (CEK 9/9) · ✅ 1.2 (commit `42b7fa4`) · ✅ **1.3a kode** (commit `e13dad9`, build READY) + **migrasi `0002` dijalankan** (18 Okt 22.57, CEK 5/5; pakai `alter policy` karena `drop policy` ditolak otomatis sambungan Supabase) · ✅ uji login `ridhwan@tera.smk` di Preview (Ridhwan, 22.58: "Halo, Ridhwan Nur Yudianto") · ✅ **1.3b kode + migrasi `0003`** (commit `498c53c`, build READY, CEK 3/3) · ✅ **1.4a** (commit `1efbc2b`): token Ocean + mode gelap (`src/tera/tera-tema.css`), logo di `public/tera/` (7 file asli + `tera-emblem-256.webp` ringan), login & "Buat kata sandi baru" digambar ulang · ✅ **Ridhwan uji 1.3b + 1.4a di iPhone (mode gelap)**: ganti sandi & tampilan OK (23.22) · ✅ **1.4b** (commit `ed2a42f`): kerangka HP/tablet, 3 halaman kosong · ✅ Ridhwan cek 1.4b ("lanjutkan" 23.30) · ✅ **1.5a** PWA Tera (commit lihat log `Tahap 1.5a`) · ✅ **1.5b** PWA Manajemen Aset · ✅ **1.6** uji F1 & F14 di HP/tablet: Ridhwan lapor 7/7 OK (23.51) + perbaikan hasil review UI (commit lihat log `Tahap 1.6`) · ✅ **Tahap 1 selesai** · ⏳ **Ridhwan: cek ulang halaman Akun di Preview, lalu merge `tera-dev` → `main` (dipandu)** · lalu **Tahap 2** (offline & sinkron, pakai Opus) |
+| 1 — Dua PWA, role teknisi, login | ✅ 1.0 · ✅ 1.1 (CEK 9/9) · ✅ 1.2 (commit `42b7fa4`) · ✅ **1.3a kode** (commit `e13dad9`, build READY) + **migrasi `0002` dijalankan** (18 Okt 22.57, CEK 5/5; pakai `alter policy` karena `drop policy` ditolak otomatis sambungan Supabase) · ✅ uji login `ridhwan@tera.smk` di Preview (Ridhwan, 22.58: "Halo, Ridhwan Nur Yudianto") · ✅ **1.3b kode + migrasi `0003`** (commit `498c53c`, build READY, CEK 3/3) · ✅ **1.4a** (commit `1efbc2b`): token Ocean + mode gelap (`src/tera/tera-tema.css`), logo di `public/tera/` (7 file asli + `tera-emblem-256.webp` ringan), login & "Buat kata sandi baru" digambar ulang · ✅ **Ridhwan uji 1.3b + 1.4a di iPhone (mode gelap)**: ganti sandi & tampilan OK (23.22) · ✅ **1.4b** (commit `ed2a42f`): kerangka HP/tablet, 3 halaman kosong · ✅ Ridhwan cek 1.4b ("lanjutkan" 23.30) · ✅ **1.5a** PWA Tera (commit lihat log `Tahap 1.5a`) · ✅ **1.5b** PWA Manajemen Aset · ✅ **1.6** uji F1 & F14 di HP/tablet: Ridhwan lapor 7/7 OK (23.51) + perbaikan hasil review UI (commit lihat log `Tahap 1.6`) · ✅ **Tahap 1 selesai** · ✅ aturan merge diubah (19 Okt: Claude merge setelah Ridhwan bilang "oke") · ⏳ **Ridhwan: cek Preview Tahap 1 (daftar di bawah), balas "oke" → Claude merge ke `main`** · lalu **Tahap 2** (offline & sinkron, pakai Opus) |
+
+**Cek Preview sebelum merge Tahap 1 → `main`** (link Preview `tera-dev`, dibuka di Safari iPhone; tombol "Share" di halaman deployment Vercel bila diminta login Vercel):
+1. `/tera/` → login `ridhwan@tera.smk` → tab **Akun**: nama, email, tombol Keluar tampil rapi (terang & gelap).
+2. `/admin/login` → akun kantor masuk seperti biasa; akun `@tera.smk` di `/admin` dialihkan ke `/tera`.
+3. `/087.0031` (QR lama) → halaman scan terbuka seperti biasa.
+4. Semua OK → balas **"oke"**. Claude lalu merge (merge commit), cek produksi READY, dan uji cepat `saranamultikalibrasi.com`.
 
 **Hasil 1.6 (18 Okt 23.59):** Ridhwan uji 7 butir di HP/tablet: semua OK (login per role, Tera offline, pesan offline Aset SMK, putar tablet, huruf besar, QR lama tanpa tawaran pasang). Review akhir dengan web-design-guidelines + break-ui + ui-ux-pro-max (data terburuk: nama bergelar panjang, email panjang, nama 2 huruf, nama kosong; lebar 320/375/1180, huruf 200%). Diperbaiki: (1) kartu profil Akun memotong kata per suku kata saat huruf besar → avatar & teks kini turun ke bawah bila sempit (`.t-profil`); (2) email terpecah di tengah (`break-all`) → pecah hanya bila perlu; (3) nama kosong → header "Teknisi", Akun "Nama belum diisi", layar ganti sandi "Halo, Teknisi"; (4) teks yang terpotong "…" kini punya `title`; (5) ketukan tanpa jeda & tanpa kotak abu Android (`touch-action`, tap highlight); (6) huruf avatar aman untuk huruf beraksen; (7) placeholder "contoh: ari…". Uji ulang: tanpa geseran horizontal di 16 kombinasi. Dibiarkan (keputusan): tanpa skip link (aplikasi berbasis tab, bukan situs panjang).
 
@@ -97,7 +103,7 @@ DOKUMEN WAJIB
 - Baca dan patuhi PRD.md, CLAUDE.md, PROMPT.md (bagian STATUS TERAKHIR) dan docs/audit-fase0.md di repo cabang tera-dev / Project knowledge sebelum menjawab. Keputusan pemilik produk ada di PRD bagian 11 — jangan ditanyakan ulang.
 
 CARA KERJA (CLAUDE.md 2A — Claude Code)
-- Aku (Ridhwan) bukan programmer dan sering memantau dari iPhone. Kamu menulis kode, menjalankan build, dan commit + push HANYA ke cabang tera-dev. JANGAN pernah push ke main; aku sendiri yang menggabungkan ke main setelah bilang "lanjutkan".
+- Aku (Ridhwan) bukan programmer dan sering memantau dari iPhone. Kamu menulis kode, menjalankan build, dan commit + push ke cabang tera-dev. Kamu BOLEH menggabungkan tera-dev ke main, tetapi HANYA setelah memintaku mengecek link Preview dan aku membalas "oke" (kata "lanjutkan" bukan izin merge). Jangan pernah commit langsung atau force push ke main.
 - Satu langkah kecil per giliran (maks ±3 file kode). Baca file lama dari repo sebelum mengubahnya. Sebelum commit: build lolos, cek git status (_referensi/, .env, data pelanggan tidak boleh ikut).
 - SQL selalu 4 blok: BACKUP, PERUBAHAN, CEK, BATALKAN, disimpan di supabase/migrations/. Jelaskan dulu dengan bahasa awam dan tunggu "lanjutkan" sebelum dijalankan. Tabel lama hanya boleh ditambah kolom; data Tera SMK di tabel berawalan tera_. Kamu yang merancang struktur tabel. Struktur lama dibaca dari database langsung (SELECT saja).
 - Pengaturan Vercel hanya diubah setelah disetujui; domain & pengalihan lama tidak pernah diubah; nilai rahasia tidak pernah ditulis di kode/chat.
@@ -213,5 +219,5 @@ Aku isi LKK [alat] di Tera SMK dengan data dari golden file [nama file]. Hasil d
 
 **Menggabungkan ke website utama (setelah tahap disetujui)**
 ```
-Tahap [n] sudah aku cek di Preview dan sesuai. Pandu aku menggabungkan tera-dev ke main.
+oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 ```
