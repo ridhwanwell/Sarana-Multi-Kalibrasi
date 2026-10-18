@@ -13,7 +13,9 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 | Tahap | Status |
 |---|---|
 | 0 — Audit | ✅ Selesai. `docs/audit-fase0.md` + `docs/audit-fase0-query.sql` di `tera-dev` (commit `96b4981`). Menunggu persetujuan akhir Anda |
-| 1 — Dua PWA, role teknisi, login | ✅ 1.0 Persiapan · ✅ **1.1 Migrasi `0001_role_teknisi` sudah dijalankan** (CEK 9/9 true) · ⏳ Berikutnya: **1.2 pemisahan role di server** (pakai **Opus**) |
+| 1 — Dua PWA, role teknisi, login | ✅ 1.0 Persiapan · ✅ 1.1 Migrasi `0001_role_teknisi` (CEK 9/9) · ✅ **1.2 Server dipisah** (commit `42b7fa4`) · ⏳ Berikutnya: **1.3 login & pengalihan per role + rute `/tera`** (pakai **Opus**) |
+
+**Hasil 1.2 (18 Okt 22.47):** pola "tolak kecuali diizinkan". `requireAuth` (dipakai semua API lama) = hanya 4 role kantor → teknisi selalu 403. `requireAuthTera` (kantor + teknisi) baru dipasang di `/api/auth/me` saja. `OFFICIAL_ROLES` tetap berarti role kantor. Uji Preview: `/api/health` 200, `/api/labels/087.0031` (publik) 200, `/api/auth/me` & `/api/collections/*` tanpa login 401. Build lokal tidak bisa (unduhan npm diblokir di sesi ini) → diverifikasi lewat build Vercel (READY) + cek tipe `tsc` pada 2 file. **P6** baru di audit (profil terbaca semua akun).
 
 **Hasil 1.1 (18 Okt 22.40):** role `teknisi` diizinkan; kolom `teknisi.user_id` terisi untuk 10 akun (ari = Ahmad Fajar Ariyanto, alin = Ardhiany Mayliana Wiyono, aziz, esak, hafizh, junior, ridhwan, rizky, sheva, shifa; An-Nisa Fitri tanpa akun); hak INSERT/DELETE/TRUNCATE di `profiles` dicabut (P2); `settings.general.publicBaseUrl = https://saranamultikalibrasi.com` (P5). **Profil akun @tera.smk SENGAJA belum dibuat** → akun masih "belum diaktifkan" sampai 1.2–1.3 aktif. Backup ada di skema `backup` (`b20261018_*`).
 

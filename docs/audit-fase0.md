@@ -407,6 +407,7 @@ Catatan rancangan:
 | P3 | Saat ini **Admin Teknik tidak bisa membuka/menyimpan BAP** di server (hanya Admin Utama & Keuangan). PRD menempatkan BAP/BASTP di Admin Teknik. Apakah memang disengaja? | Ditinjau di Tahap 5; tidak diubah sebelumnya |
 | P4 | Untuk alat tambahan, apakah rentang "Cadangan Laik Pakai" yang sudah tercetak boleh **diusulkan otomatis** sebagai rentang cadangan jadwal (bagian 5)? | Ya, diusulkan; Admin Teknik tetap bisa mengubah |
 | P5 | Bolehkah di Tahap 1 ditambahkan pengaturan `general.publicBaseUrl = https://saranamultikalibrasi.com` agar QR baru **selalu** memakai domain resmi, dari alamat mana pun admin membuat label (R5, F14.8)? | Ya, ikut migrasi 0001 |
+| P6 | *(ditambah 18 Okt, Tahap 1.2)* Aturan RLS lama "Users can read all profiles" membuat **setiap akun login (termasuk teknisi) bisa membaca daftar semua profil** (nama, email, role) langsung dari database. Bolehkah dipersempit: teknisi hanya membaca profilnya sendiri, role kantor tetap seperti sekarang? | Diusulkan sebagai migrasi kecil terpisah sebelum teknisi dipakai sungguhan (Tahap 1.3/1.6) |
 
 ---
 
