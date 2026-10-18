@@ -8,7 +8,7 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 
 *(Bagian ini diperbarui Claude setiap selesai satu langkah. Saat kembali, cukup ketik **"lanjutkan"**.)*
 
-**Per 18 Oktober 2026, 20.30 WIB**
+**Per 18 Oktober 2026, 20.40 WIB**
 
 | Tahap | Status |
 |---|---|
@@ -18,7 +18,7 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 **Yang perlu ANDA lakukan (sebaiknya dari laptop), berurutan — Claude memandu klik demi klik:**
 1. **Unduh backup database**: Supabase → project *qr-label-kalibrasi* → Database → Backups → unduh yang terbaru, simpan di laptop/Drive (risiko R18).
 2. **Isi 2 kunci untuk link Preview** (risiko R1): Vercel → project *qrcode-smk* → Settings → Environment Variables → tambah `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, target **Preview**, cabang **`tera-dev`**. Nilainya disalin dari Supabase → Project Settings → API. **Jangan tempel nilainya di chat.**
-3. **Buat akun teknisi**: Supabase → Authentication → Add user → email `@tera.smk` (minimal `ridhwan@tera.smk` & `hafizh@tera.smk`) → centang **Auto Confirm User**. **Jangan** isi tabel `profiles`.
+3. ✅ **Akun teknisi sudah dibuat** (dicek Claude 18 Okt 20.40): 10 akun `@tera.smk` (alin, ari, aziz, esak, hafizh, junior, ridhwan, rizky, sheva, shifa), semua terkonfirmasi, **belum punya profil** → belum bisa masuk ke mana pun (aman, sesuai F1.9).
 4. **(Opsional) Jawab P1–P5** di `docs/audit-fase0.md` bagian 15. Bila tidak dijawab, dipakai nilai bawaan.
 
 **Yang dikerjakan CLAUDE setelah itu (tiap langkah menunggu "lanjutkan"):**
