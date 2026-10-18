@@ -8,7 +8,7 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 
 *(Bagian ini diperbarui Claude setiap selesai satu langkah. Saat kembali, cukup ketik **"lanjutkan"**.)*
 
-**Per 19 Oktober 2026, 00.25 WIB**
+**Per 19 Oktober 2026, 00.35 WIB**
 
 | Tahap | Status |
 |---|---|
@@ -40,6 +40,16 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 6. **(Opsional) Jawab P1–P5** di `docs/audit-fase0.md` bagian 15. Bila tidak dijawab, dipakai nilai bawaan.
 
 **Saran model:** Sonnet untuk layar/PWA/dokumen; **Opus untuk 1.1–1.2** (SQL/RLS/hak akses), Tahap 2 (sinkron) dan Tahap 4 (rumus) serta pemeriksaan sebelum merge. Ganti dengan `/model`.
+
+**Catatan teknis dari sesi sebelumnya (supaya tidak menemukan ulang):**
+- **Build lokal tidak bisa** (unduhan npm diblokir di sesi cloud). Pengganti yang dipakai: cek sintaks `tsc` dengan berkas stub, uji tampilan/PWA di Chromium (Playwright dengan `/opt/pw-browsers/chromium`) memakai tiruan HTML + server statis yang meniru rewrite Vercel, lalu build Vercel READY + `web_fetch_vercel_url`.
+- **Playwright `set_offline` TIDAK berlaku untuk service worker** → uji offline harus dengan mematikan server sungguhan.
+- **Preview dilindungi Vercel Authentication** → uji lewat MCP `web_fetch_vercel_url`. Alias: `qrcode-smk-git-tera-dev-ridhwanwell-8868.vercel.app`. Tim `team_pZj6iTT8xZmsuPxYtOLnqxTz`, project `qrcode-smk`. MCP tidak bisa menghapus variabel lingkungan.
+- **Supabase MCP menolak `drop policy` otomatis** (status `cancelled`) → pakai `alter policy` + rename. Project id `auzpctxhltcdzdhcaetb`. Salinan backup tabel ada di skema `backup` (`b20261018_*`).
+- **Skrip pencarian ui-ux-pro-max**: jalankan `python3 "$S/scripts/search.py"` dari `/tmp` TANPA `-I`.
+- **Sandi akun @tera.smk**: akun baru bersegel `must_change_password`; reset sandi teknisi = lihat catatan bawah `supabase/migrations/0003_segel_ganti_sandi.sql`.
+- **Model**: Opus untuk SQL/RLS/hak akses, Tahap 2 (sinkron), 3, 4, 6 (rumus), 9, 10 dan pemeriksaan sebelum merge; Sonnet untuk layar/dokumen. Ingatkan Ridhwan memakai `/model`.
+- **Akhir tiap giliran** wajib: Yang berubah · Cara memasang · Cara mengecek · Langkah berikutnya + sebut skill + checklist ui-ux-pro-max bila ada layar.
 
 **Yang dikerjakan CLAUDE setelah itu (tiap langkah menunggu "lanjutkan"):**
 - 1.1 Migrasi SQL `0001_role_teknisi` (4 blok): role `teknisi`, kolom `teknisi.user_id`, cabut hak berlebih `profiles` (P2), `general.publicBaseUrl` (P5).
