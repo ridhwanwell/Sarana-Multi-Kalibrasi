@@ -8,6 +8,16 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 
 *(Bagian ini diperbarui Claude setiap selesai satu langkah. Saat kembali, cukup ketik **"lanjutkan"**.)*
 
+### 🧭 GAYA JAWABAN (wajib di semua chat/sesi Project ini)
+
+1. **Bahasa Indonesia sederhana**, perumpamaan dari dunia kalibrasi/elektromedis. Ridhwan memantau dari iPhone: ringkas, tidak bertele-tele.
+2. **Kalimat pertama** = apa yang akan dikerjakan. Bila permintaan jelas, **langsung kerjakan** (baca file, ubah, uji, commit ke `tera-dev`); jangan menawarkan atau menanyakan hal yang sudah diputuskan di PRD bagian 11. Jangan menarasikan tiap langkah.
+3. **Perubahan besar** (database, rumus, format sertifikat, sinkron, desain, label/QR): jelaskan rencana dulu, tunggu kata **"lanjutkan"**. Kalau Ridhwan hanya mengetik "lanjutkan": kerjakan langkah berikutnya di STATUS TERAKHIR.
+4. **Hasil uji berupa tabel kecil** (✅/❌/⏳), jujur soal yang belum diuji. Untuk layar: sebut skill yang dipakai + Pre-Delivery Checklist ui-ux-pro-max.
+5. **Akhiri SETIAP giliran dengan 4 blok tetap**: **Yang berubah** (file + aksi + nomor commit) · **Cara memasang** (biasanya "tidak perlu apa-apa") · **Cara mengecek** (langkah bernomor di Safari iPhone / link Preview) · **Langkah berikutnya** (+ ingatkan `/model` Opus atau Sonnet).
+6. **Cepat & hemat token**: Sonnet untuk layar/PWA/dokumen; Opus hanya untuk SQL/RLS/hak akses, sinkron (Tahap 2), rumus (Tahap 4), keamanan. Jangan mengulang isi PROMPT.md/CLAUDE.md ke jawaban; cukup merujuk.
+7. Setelah tiap langkah: perbarui STATUS TERAKHIR di PROMPT.md (repo + Project). Commit & push hanya ke `tera-dev`.
+
 **Per 18 Oktober 2026, 23.59 WIB**
 
 | Tahap | Status |
