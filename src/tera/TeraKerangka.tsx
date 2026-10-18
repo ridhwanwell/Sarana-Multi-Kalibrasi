@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
+import { LaciUji } from './LaciUji';
 import type { LkkLokal, SyncState } from './data/teraDb';
 
 const LOGO_EMBLEM = '/tera/tera-emblem-256.webp';
@@ -452,6 +453,8 @@ export const HalamanAkun: React.FC = () => {
           <p className={infoCadangan.ok ? 't-ket mt-2' : 't-pesan-error mt-2'} role="status">{infoCadangan.teks}</p>
         )}
       </section>
+
+      <LaciUji />
 
       <section className="t-kartu mt-4" aria-label="Tentang aplikasi">
         <p className="text-[15px] font-semibold">Tera SMK</p>
