@@ -22,7 +22,8 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AlertCircle, Check, Circle, Eye, EyeOff, Loader2, Lock, LogOut, User } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
-import { HalamanAkun, HalamanBeranda, HalamanLkk, KerangkaTera } from './TeraKerangka';
+import { HalamanAkun, HalamanLkk, KerangkaTera } from './TeraKerangka';
+import { HalamanBeranda, HalamanDetailRs } from './HalamanJadwal';
 import { SinkronProvider } from './SinkronKonteks';
 import './tera-tema.css';
 
@@ -340,6 +341,7 @@ const LayarKerja: React.FC = () => (
     <Routes>
       <Route element={<KerangkaTera />}>
         <Route index element={<HalamanBeranda />} />
+        <Route path="rs/:id" element={<HalamanDetailRs />} />
         <Route path="lkk" element={<HalamanLkk />} />
         <Route path="akun" element={<HalamanAkun />} />
         <Route path="*" element={<Navigate to="/tera/" replace />} />

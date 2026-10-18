@@ -552,3 +552,45 @@ html.tera-aktif body {
 /* Kotak centang (laci uji) — area sentuh 48 px */
 .t-centang { display: flex; align-items: flex-start; gap: 12px; min-height: 48px; padding: 8px 0; font-size: 14px; cursor: pointer; }
 .t-centang input { flex-shrink: 0; width: 24px; height: 24px; margin-top: 0; accent-color: var(--t-primary); }
+
+/* ===== Beranda & Detail RS (Tahap 3.4b) ===== */
+.t-rs-daftar, .t-alat-daftar { display: flex; flex-direction: column; gap: 8px; }
+.t-rs-kartu {
+  display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 16px;
+  background: var(--t-surface); border: 1px solid var(--t-border); border-radius: var(--t-radius-card);
+  color: var(--t-text); text-decoration: none;
+  transition: transform 120ms ease-out;
+  content-visibility: auto; contain-intrinsic-size: auto 132px;
+}
+.t-rs-kartu:active { transform: scale(0.97); }
+.t-rs-kartu:focus-visible, .t-kembali:focus-visible { outline: 2px solid var(--t-primary); outline-offset: 2px; }
+.t-rs-utama { min-width: 0; flex: 1; }
+/* Nama RS boleh dua baris lalu "…"; tidak pernah menimpa panah/chip */
+.t-rs-nama {
+  font-size: 16px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.t-rs-meta { overflow-wrap: anywhere; }
+.t-rs-kemajuan { margin-top: 8px; }
+.t-rs-panah { flex-shrink: 0; color: var(--t-text-2); }
+.t-rs-judul { overflow-wrap: anywhere; }
+.t-bilah { height: 6px; margin: 4px 0; border-radius: 9999px; background: var(--t-border); overflow: hidden; }
+.t-bilah-isi { height: 100%; width: 100%; background: var(--t-primary); transform-origin: left center; transition: transform 240ms ease-out; }
+.t-kembali {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 48px; padding: 0 12px 0 4px;
+  color: var(--t-primary); font-size: 15px; font-weight: 600; text-decoration: none;
+}
+.t-alat-baris {
+  padding: 12px 16px; background: var(--t-surface); border: 1px solid var(--t-border); border-radius: var(--t-radius-card);
+  content-visibility: auto; contain-intrinsic-size: auto 92px;
+}
+.t-alat-atas { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.t-alat-nama { min-width: 0; flex: 1; font-size: 16px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.t-alat-atas .t-chip-sync { flex-shrink: 0; }
+.t-ringkas-angka { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.t-ringkas-angka dt { font-size: 13px; color: var(--t-text-2); }
+.t-ringkas-angka dd { font-size: 22px; font-weight: 600; line-height: 1.2; }
+@media (prefers-reduced-motion: reduce) {
+  .t-rs-kartu, .t-bilah-isi { transition: none; }
+  .t-rs-kartu:active { transform: none; }
+}
