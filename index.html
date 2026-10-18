@@ -59,6 +59,32 @@
         } catch (e) {}
       })();
     </script>
+    <script>
+      // Manajemen Aset SMK (PWA, wilayah /admin/): kartu identitas, ikon iPhone, penjaga gudang.
+      // Hanya untuk alamat /admin… — halaman publik scan QR TIDAK diberi manifest/service worker.
+      (function () {
+        try {
+          var p = location.pathname;
+          if (!(p === '/admin' || p.indexOf('/admin/') === 0)) return;
+          var h = document.head;
+          var pasang = function (tag, attrs) {
+            var el = document.createElement(tag);
+            for (var k in attrs) el.setAttribute(k, attrs[k]);
+            h.appendChild(el);
+          };
+          pasang('link', { rel: 'manifest', href: '/admin/manifest.webmanifest' });
+          pasang('link', { rel: 'apple-touch-icon', href: '/admin/admin-apple-touch-icon-180.png' });
+          pasang('meta', { name: 'apple-mobile-web-app-title', content: 'Aset SMK' });
+          pasang('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+          pasang('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+              navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin/' }).catch(function () {});
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta name="description" content="Sistem Informasi Terpadu Manajemen Aset, Kalibrasi, Logistik & Keuangan PT Sarana Multi Kalibrasi." />
     <meta property="og:title" content="Manajemen Aset SMK" />
     <meta property="og:description" content="Sistem Informasi Terpadu Manajemen Aset, Kalibrasi, Logistik & Keuangan PT Sarana Multi Kalibrasi." />

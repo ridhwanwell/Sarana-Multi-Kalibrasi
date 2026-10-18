@@ -65,6 +65,7 @@ const IGNORED_PARAMS = new Set([
 
 const RESERVED_PATHS = new Set([
   'admin',
+  'tera',
   'login',
   'dashboard',
   'labels',
