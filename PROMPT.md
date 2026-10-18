@@ -8,18 +8,22 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 
 *(Bagian ini diperbarui Claude setiap selesai satu langkah. Saat kembali, cukup ketik **"lanjutkan"**.)*
 
-**Per 18 Oktober 2026, 20.40 WIB**
+**Per 18 Oktober 2026, 22.35 WIB**
 
 | Tahap | Status |
 |---|---|
 | 0 — Audit | ✅ Selesai. `docs/audit-fase0.md` + `docs/audit-fase0-query.sql` di `tera-dev` (commit `96b4981`). Menunggu persetujuan akhir Anda |
-| 1 — Dua PWA, role teknisi, login | ⏳ Berikutnya: giliran **1.0 Persiapan** |
+| 1 — Dua PWA, role teknisi, login | ⏳ **1.0 Persiapan hampir selesai** (sisa: cek Preview). Berikutnya: **1.1 migrasi** |
 
-**Yang perlu ANDA lakukan (sebaiknya dari laptop), berurutan — Claude memandu klik demi klik:**
-1. **Unduh backup database**: Supabase → project *qr-label-kalibrasi* → Database → Backups → unduh yang terbaru, simpan di laptop/Drive (risiko R18).
-2. **Isi 2 kunci untuk link Preview** (risiko R1): Vercel → project *qrcode-smk* → Settings → Environment Variables → tambah `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, target **Preview**, cabang **`tera-dev`**. Nilainya disalin dari Supabase → Project Settings → API. **Jangan tempel nilainya di chat.**
+**Persiapan 1.0:**
+1. ✅ **Backup database**: Supabase membuat backup *physical* harian otomatis (terbaru 17 Okt 2026 20.33 UTC). Backup jenis ini **tidak punya tombol Download** dan **jangan menekan Restore**. Pengganti: tiap migrasi punya blok BACKUP (salinan tabel `backup_YYYYMMDD_*`) + blok BATALKAN.
+2. ✅ **2 kunci Preview terpasang** (dicek lewat Vercel 18 Okt 22.30): `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY`, hanya Preview cabang `tera-dev`; variabel Production tidak berubah. Baris "semua cabang Preview" yang sempat ikut terbentuk sudah dihapus.
 3. ✅ **Akun teknisi sudah dibuat** (dicek Claude 18 Okt 20.40): 10 akun `@tera.smk` (alin, ari, aziz, esak, hafizh, junior, ridhwan, rizky, sheva, shifa), semua terkonfirmasi, **belum punya profil** → belum bisa masuk ke mana pun (aman, sesuai F1.9).
-4. **(Opsional) Jawab P1–P5** di `docs/audit-fase0.md` bagian 15. Bila tidak dijawab, dipakai nilai bawaan.
+4. ✅ **Project instructions** di Claude Project TERA-SMK sudah memakai teks baru (Claude Code).
+5. ⏳ **Cek Preview**: link Preview `tera-dev` tidak lagi 503 (Claude mengecek setelah deploy dari commit ini).
+6. **(Opsional) Jawab P1–P5** di `docs/audit-fase0.md` bagian 15. Bila tidak dijawab, dipakai nilai bawaan.
+
+**Saran model:** Sonnet untuk layar/PWA/dokumen; **Opus untuk 1.1–1.2** (SQL/RLS/hak akses), Tahap 2 (sinkron) dan Tahap 4 (rumus) serta pemeriksaan sebelum merge. Ganti dengan `/model`.
 
 **Yang dikerjakan CLAUDE setelah itu (tiap langkah menunggu "lanjutkan"):**
 - 1.1 Migrasi SQL `0001_role_teknisi` (4 blok): role `teknisi`, kolom `teknisi.user_id`, cabut hak berlebih `profiles` (P2), `general.publicBaseUrl` (P5).
