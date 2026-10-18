@@ -13,8 +13,10 @@ import {
   MapPin,
   Tag,
   Hash,
-  Info
+  Info,
+  Smartphone
 } from 'lucide-react';
+import { apiFetch } from '../lib/apiClient';
 import { 
   CalibrationSchedule, 
   Hospital, 
@@ -106,6 +108,19 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
   const [poContractNumber, setPoContractNumber] = useState(initialData?.poContractNumber || '');
   const [poDate, setPoDate] = useState(initialData?.poDate || '');
 
+  // Tera SMK (Tahap 3.3a, PRD F2.1–F2.2): mode sertifikat & rentang label cadangan.
+  // Disimpan sebagai kunci JSON baru di jadwal; modul lama mengabaikannya. Bawaan = Manual (alur lama).
+  const [modeSertifikat, setModeSertifikat] = useState<'tera' | 'manual_drive'>(
+    initialData?.modeSertifikat === 'tera' ? 'tera' : 'manual_drive'
+  );
+  const urutDariLabel = (l?: string) => (l && /^[0-9]{3}\.[0-9]{4}$/.test(l) ? String(parseInt(l.slice(4), 10)) : '');
+  const [cadAwal, setCadAwal] = useState(urutDariLabel(initialData?.labelCadanganAwal));
+  const [cadAkhir, setCadAkhir] = useState(urutDariLabel(initialData?.labelCadanganAkhir));
+  const [usulanCadangan, setUsulanCadangan] = useState<
+    { status: 'memuat' | 'ada' | 'kosong' | 'gagal'; awal?: string; akhir?: string; jumlah?: number; bolong?: number } | null
+  >(null);
+  const [tampilSalahCadangan, setTampilSalahCadangan] = useState(false);
+
   // Medical devices list with quantity
   const [devices, setDevices] = useState<MedicalDeviceToCalibrate[]>(
     initialData?.targetDevices || []
@@ -182,6 +197,44 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
     return assignDeviceLabels(devices, hospitalCode, startSequence);
   }, [devices, hospitalCode, startSequence]);
 
+  // Label utama yang benar-benar tersimpan: jadwal transisi memakai label ketikan admin (lihat handleSaveSchedule)
+  const labelAwalEfektif = (initialData?.sumber === 'transisi' ? initialData.labelStart : labelRangeInfo.startLabel) || '';
+  const labelAkhirEfektif = (initialData?.sumber === 'transisi' ? initialData.labelEnd : labelRangeInfo.endLabel) || '';
+  const boAktif = /^[0-9]{3}\./.test(labelAwalEfektif) ? labelAwalEfektif.slice(0, 3) : '';
+  const labelCadangan = (urut: string) => `${boAktif}.${String(parseInt(urut, 10)).padStart(4, '0')}`;
+
+  const salahCadangan = useMemo((): string | null => {
+    if (!cadAwal && !cadAkhir) return null;
+    if (!cadAwal || !cadAkhir) return 'Isi nomor awal dan akhir, atau kosongkan keduanya.';
+    if (!boAktif) return 'Isi Kode Rumah Sakit (3 digit) dulu.';
+    const a = parseInt(cadAwal, 10);
+    const b = parseInt(cadAkhir, 10);
+    if (!(a >= 1) || !(b >= 1) || a > 9999 || b > 9999) return 'Nomor urut 1 sampai 9999.';
+    if (a > b) return 'Nomor awal lebih besar dari nomor akhir.';
+    const akhirUtama = parseInt(labelAkhirEfektif.slice(4), 10);
+    if (Number.isFinite(akhirUtama) && a <= akhirUtama) return `Harus sesudah label utama terakhir (${labelAkhirEfektif}).`;
+    return null;
+  }, [cadAwal, cadAkhir, boAktif, labelAkhirEfektif]);
+
+  // Usulan otomatis dari stiker "Cadangan Laik Pakai" di BO ini (audit bagian 5); hanya membaca.
+  useEffect(() => {
+    if (!boAktif) { setUsulanCadangan(null); return; }
+    let batal = false;
+    setUsulanCadangan({ status: 'memuat' });
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await apiFetch(`/api/tera/usulan-cadangan?bo=${boAktif}`, { retries: 0, timeoutMs: 10000 });
+        const isi = await res.json().catch(() => null);
+        if (batal) return;
+        if (!res.ok || !isi) { setUsulanCadangan({ status: 'gagal' }); return; }
+        setUsulanCadangan(isi.ada ? { status: 'ada', awal: isi.awal, akhir: isi.akhir, jumlah: isi.jumlah, bolong: isi.bolong } : { status: 'kosong' });
+      } catch {
+        if (!batal) setUsulanCadangan({ status: 'gagal' });
+      }
+    }, 400);
+    return () => { batal = true; window.clearTimeout(t); };
+  }, [boAktif]);
+
   const selectedLeadTech = technicians.find(t => t.id === leadTechId) || technicians[0] || {
     id: 'TECH-001',
     name: 'Shifa Zalza Billa',
@@ -191,6 +244,12 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (salahCadangan) {
+      setTampilSalahCadangan(true);
+      document.getElementById('tera-cadangan-awal')?.focus();
+      return;
+    }
+    const cadanganLengkap = !!(cadAwal && cadAkhir && boAktif);
 
     const supportTechNames = technicians
       .filter(t => selectedSupportIds.includes(t.id))
@@ -241,7 +300,10 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
       notes,
       progressPercent: initialData?.progressPercent || 0,
       createdAt: initialData?.createdAt || TODAY_STR,
-      remindersSentCount: initialData?.remindersSentCount || 0
+      remindersSentCount: initialData?.remindersSentCount || 0,
+      modeSertifikat,
+      labelCadanganAwal: cadanganLengkap ? labelCadangan(cadAwal) : undefined,
+      labelCadanganAkhir: cadanganLengkap ? labelCadangan(cadAkhir) : undefined
     };
 
     onSave(savedSchedule);
@@ -352,6 +414,138 @@ export const ScheduleFormModal: React.FC<ScheduleFormModalProps> = ({
                   <span>{labelRangeInfo.displayRange}</span>
                   <span className="text-[10px] text-[#DCDFE3]">({totalDeviceUnits} Unit)</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION TERA SMK: mode sertifikat & label cadangan (Tahap 3.3a) */}
+          <div className="p-3.5 bg-white rounded-xl border border-[#DCDFE3] space-y-3 shadow-xs">
+            <h3 className="font-bold text-[#1C658C] text-xs flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4" />
+              <span>Sertifikat & Label Cadangan (Tera SMK)</span>
+            </h3>
+
+            <fieldset>
+              <legend className="font-semibold text-slate-700 block mb-1.5">Mode sertifikat untuk jadwal ini</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {([
+                  { nilai: 'manual_drive', judul: 'Manual link Google Drive', ket: 'Cara lama: sertifikat diunggah & ditautkan manual.' },
+                  { nilai: 'tera', judul: 'Terintegrasi Tera SMK', ket: 'LKK diisi di tablet, sertifikat terbit otomatis. Bisa di-Push ke Tera SMK.' }
+                ] as const).map((m) => (
+                  <label
+                    key={m.nilai}
+                    className={`p-2.5 rounded-xl border flex items-start gap-2 cursor-pointer transition-colors ${
+                      modeSertifikat === m.nilai
+                        ? 'bg-[#1C658C]/10 border-[#1C658C] text-[#1C658C]'
+                        : 'bg-[#EEEEEE]/30 border-[#DCDFE3] text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="modeSertifikat"
+                      value={m.nilai}
+                      checked={modeSertifikat === m.nilai}
+                      onChange={() => setModeSertifikat(m.nilai)}
+                      className="mt-0.5 text-[#1C658C] focus:ring-[#1C658C]"
+                    />
+                    <span>
+                      <span className="block text-[11px] font-bold">{m.judul}</span>
+                      <span className="block text-[10px] text-slate-500 font-normal">{m.ket}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <div>
+              <p className="font-semibold text-slate-700 mb-1">Rentang label cadangan (untuk alat tambahan di luar PO)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label htmlFor="tera-cadangan-awal" className="text-[10px] text-slate-500 block mb-1">Nomor urut awal</label>
+                  <div className="flex items-center gap-1 bg-white border border-[#DCDFE3] rounded-xl px-3 py-2 focus-within:border-[#1C658C]">
+                    <span className="text-[11px] text-slate-500 font-mono">{boAktif || '___'}.</span>
+                    <input
+                      id="tera-cadangan-awal"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={cadAwal}
+                      onChange={(e) => setCadAwal(e.target.value.replace(/[^0-9]/g, ''))}
+                      onBlur={() => setTampilSalahCadangan(true)}
+                      aria-invalid={tampilSalahCadangan && !!salahCadangan ? true : undefined}
+                      aria-describedby="tera-cadangan-pesan"
+                      className="w-full bg-transparent text-slate-900 font-mono font-bold text-xs focus:outline-none"
+                      placeholder="kosong"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="tera-cadangan-akhir" className="text-[10px] text-slate-500 block mb-1">Nomor urut akhir</label>
+                  <div className="flex items-center gap-1 bg-white border border-[#DCDFE3] rounded-xl px-3 py-2 focus-within:border-[#1C658C]">
+                    <span className="text-[11px] text-slate-500 font-mono">{boAktif || '___'}.</span>
+                    <input
+                      id="tera-cadangan-akhir"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={cadAkhir}
+                      onChange={(e) => setCadAkhir(e.target.value.replace(/[^0-9]/g, ''))}
+                      onBlur={() => setTampilSalahCadangan(true)}
+                      aria-invalid={tampilSalahCadangan && !!salahCadangan ? true : undefined}
+                      aria-describedby="tera-cadangan-pesan"
+                      className="w-full bg-transparent text-slate-900 font-mono font-bold text-xs focus:outline-none"
+                      placeholder="kosong"
+                    />
+                  </div>
+                </div>
+                <div>
+                  {(cadAwal || cadAkhir) && (
+                    <button
+                      type="button"
+                      onClick={() => { setCadAwal(''); setCadAkhir(''); setTampilSalahCadangan(false); }}
+                      className="px-3 py-2 rounded-xl text-[11px] font-semibold text-slate-600 hover:bg-[#EEEEEE] border border-[#DCDFE3] transition-colors"
+                    >
+                      Kosongkan cadangan
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div id="tera-cadangan-pesan" aria-live="polite" className="mt-1.5 space-y-1">
+                {tampilSalahCadangan && salahCadangan && (
+                  <p className="text-[11px] font-semibold text-rose-700 flex items-start gap-1">
+                    <Info className="w-3.5 h-3.5 mt-px shrink-0" />
+                    <span>{salahCadangan}</span>
+                  </p>
+                )}
+                {usulanCadangan?.status === 'memuat' && (
+                  <p className="text-[10px] text-slate-500">Mencari stiker “Cadangan Laik Pakai” untuk BO {boAktif}…</p>
+                )}
+                {usulanCadangan?.status === 'ada' && (
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                    <span>
+                      Usulan dari stiker “Cadangan Laik Pakai”: <strong className="font-mono text-[#1C658C]">{usulanCadangan.awal} s/d {usulanCadangan.akhir}</strong>
+                      {' '}({usulanCadangan.jumlah} stiker{usulanCadangan.bolong ? `, ${usulanCadangan.bolong} nomor di tengahnya sudah tidak berstatus cadangan` : ''})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCadAwal(String(parseInt(usulanCadangan.awal!.slice(4), 10)));
+                        setCadAkhir(String(parseInt(usulanCadangan.akhir!.slice(4), 10)));
+                        setTampilSalahCadangan(true);
+                      }}
+                      className="text-[#1C658C] font-bold bg-[#1C658C]/10 border border-[#1C658C]/30 px-2 py-1 rounded-lg hover:bg-[#1C658C]/20 transition-colors"
+                    >
+                      Pakai usulan
+                    </button>
+                  </div>
+                )}
+                {usulanCadangan?.status === 'kosong' && (
+                  <p className="text-[10px] text-slate-500">Belum ada stiker “Cadangan Laik Pakai” untuk BO {boAktif}. Isi manual bila perlu, atau biarkan kosong.</p>
+                )}
+                {usulanCadangan?.status === 'gagal' && (
+                  <p className="text-[10px] text-slate-500">Usulan otomatis belum bisa dimuat. Isian manual tetap bisa dipakai.</p>
+                )}
               </div>
             </div>
           </div>

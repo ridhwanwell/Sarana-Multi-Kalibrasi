@@ -4,6 +4,7 @@
  *  POST /api/tera/push            -> kantor: fotokopi jadwal ke tablet teknisi (push ulang = versi naik)
  *  POST /api/tera/push/cabut      -> kantor: tarik jadwal dari tablet (LKK yang ada tidak terhapus)
  *  GET  /api/tera/push-status     -> kantor: status push satu jadwal (untuk tombol di form penjadwalan)
+ *  GET  /api/tera/usulan-cadangan -> kantor: usulan rentang cadangan dari stiker "Cadangan Laik Pakai" (audit bagian 5)
  *  GET  /api/tera/jadwal          -> teknisi: jadwal yang ditugaskan kepadanya (F2.5, dicek di server)
  *
  * Keamanan:
@@ -139,6 +140,34 @@ export function registerTeraJadwalRoutes(app: Express, deps: { rateLimitKey: (re
       });
     } catch (err: any) {
       console.error('[Tera] GET /api/tera/push-status:', err?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    }
+  });
+
+  // --- Usulan label cadangan dari stiker "Cadangan Laik Pakai" (kantor) ---------------
+  //     Hanya MEMBACA tabel labels (tidak mengubah status apa pun).
+  app.get("/api/tera/usulan-cadangan", limiter, ...kantor, async (req: AuthRequest, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const bo = req.query.bo;
+    if (typeof bo !== 'string' || !/^[0-9]{3}$/.test(bo)) return res.status(400).json({ error: 'Nomor BO harus 3 angka.' });
+    try {
+      const { data, error } = await berbatas((s) =>
+        supabaseAdmin.from('labels')
+          .select('no_label')
+          .eq('status', 'Cadangan Laik Pakai')
+          .like('no_label', `${bo}.%`)
+          .order('no_label', { ascending: true })
+          .limit(2000)
+          .abortSignal(s));
+      if (error) { console.error('[Tera] usulan-cadangan:', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      const nomor = (data || []).map((r: any) => String(r.no_label)).filter((n) => /^[0-9]{3}\.[0-9]{4}$/.test(n));
+      if (nomor.length === 0) return res.json({ ada: false });
+      const awal = nomor[0];
+      const akhir = nomor[nomor.length - 1];
+      const rentang = Number.parseInt(akhir.slice(4), 10) - Number.parseInt(awal.slice(4), 10) + 1;
+      return res.json({ ada: true, awal, akhir, jumlah: nomor.length, bolong: Math.max(0, rentang - nomor.length) });
+    } catch (err: any) {
+      console.error('[Tera] GET /api/tera/usulan-cadangan:', err?.message);
       return res.status(503).json({ error: PESAN_SIBUK });
     }
   });

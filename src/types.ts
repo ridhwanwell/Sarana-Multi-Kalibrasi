@@ -148,6 +148,10 @@ export interface CalibrationSchedule {
   mtSignatureUrl?: string;     // TTD Manajer Teknik
   seliaItems?: DeviceSeliaItem[]; // Itemized 1-by-1 unit tracking for review & certificates
   sumber?: 'web' | 'transisi'; // 'transisi' = dibuat dari upload SPH lama (Excel/PDF)
+  // --- Tera SMK (Tahap 3, PRD F2.1–F2.2) — kunci JSON baru, diabaikan modul lama ---
+  modeSertifikat?: 'tera' | 'manual_drive'; // kosong = manual_drive (alur lama)
+  labelCadanganAwal?: string;   // BBB.NNNN — label cadangan untuk alat tambahan
+  labelCadanganAkhir?: string;  // BBB.NNNN
 }
 
 export interface CalibratorAsset {
