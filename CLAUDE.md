@@ -172,7 +172,7 @@ Aplikasi lama pernah **kehilangan data** saat sinkron. **Ini tidak boleh terulan
 9. Selama ada LKK belum hijau: peringatan tampil dan **logout diblokir**.
 10. Tombol **"Backup ke file"** sebagai cadangan darurat.
 11. **Tidak ada tombol Upload manual.**
-12. Nomor label ganda dalam satu BO: **terima & beri peringatan** ke Penyelia, jangan tolak.
+12. Nomor label ganda: **ditolak** dengan pesan jelas *(diubah 19 Okt 2026 atas permintaan pemilik proyek)*. LKK-nya **tetap aman di perangkat** (chip merah, bisa diperbaiki), salinan kiriman disimpan di `tera_sync_conflicts`, mesin kirim berhenti mencoba ulang sampai nomor diperbaiki. Tidak boleh ada penolakan diam-diam.
 13. Server **tidak menolak** LKK berisi kalibrator expired (data tidak boleh hilang): simpan, beri penanda merah, ACC ditolak.
 14. Pemindaian AI berjalan **setelah** 🟢 dan terpisah dari sinkron.
 15. **Uji wajib** sebelum tahap sinkron selesai: sinyal putus di tengah kirim, tab/aplikasi ditutup paksa, HP mati, ≥ 50 LKK sekaligus, sinyal putus-sambung, memori hampir penuh, update versi saat ada data 🟡.

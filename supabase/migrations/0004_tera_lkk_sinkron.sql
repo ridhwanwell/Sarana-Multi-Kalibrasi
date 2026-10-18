@@ -17,7 +17,8 @@
 --       sama seperti tabel lama (audit-fase0 bagian 9.2).
 --   - Fungsi penerima hanya boleh dipanggil service role.
 --   - Data uji BO 999 wajib is_test = true (dicegah database).
---   - Nomor label ganda dalam satu BO DITERIMA (bukan unik) → peringatan di Selia (F4.14).
+--   - Nomor label HARUS unik (diubah 19 Okt 2026 atas permintaan Ridhwan): LKK kedua dengan nomor
+--     yang sama DITOLAK, salinannya disimpan di tera_sync_conflicts, data teknisi tetap aman di perangkat.
 -- =====================================================================
 
 
@@ -68,7 +69,7 @@ create table public.tera_lkk (
 comment on table public.tera_lkk is 'Tera SMK: LKK yang sudah dikirim teknisi (1 baris = 1 LKK utuh). Ditulis hanya lewat public.tera_terima_lkk().';
 
 create index tera_lkk_teknisi_idx   on public.tera_lkk (teknisi_user_id, updated_at desc);
-create index tera_lkk_bo_label_idx  on public.tera_lkk (bo, no_label);          -- cek label ganda (tidak unik, F4.14)
+create unique index tera_lkk_no_label_uniq on public.tera_lkk (no_label);        -- 1 nomor stiker = 1 LKK (F4.14)
 create index tera_lkk_jadwal_idx    on public.tera_lkk (jadwal_id) where jadwal_id is not null;
 create index tera_lkk_status_idx    on public.tera_lkk (status) where status <> 'approved';
 
@@ -126,7 +127,7 @@ grant select, insert, update on public.tera_lkk, public.tera_sync_receipts, publ
 
 -- 5) Satu pintu penerimaan paket (utuh atau tidak sama sekali) -------------------
 --    Hasil (jsonb):
---      {"hasil":"diterima"|"sudah_diterima"|"ditolak_terkunci"|"ditolak_versi_lama", ...}
+--      {"hasil":"diterima"|"sudah_diterima"|"ditolak_terkunci"|"ditolak_versi_lama"|"ditolak_label_ganda", ...}
 --    Pemeriksaan checksum & jumlah titik dihitung ULANG di server (Node) sebelum fungsi ini dipanggil;
 --    fungsi ini menjaga urutan versi, kunci Penyelia, dan tanda terima dalam SATU transaksi.
 create or replace function public.tera_terima_lkk(
@@ -143,7 +144,8 @@ set search_path = ''
 as $$
 declare
   v_lama  public.tera_lkk%rowtype;
-  v_ganda integer;
+  v_dup   boolean;
+  v_con   text;
 begin
   select * into v_lama from public.tera_lkk where id = p_id for update;
 
@@ -176,6 +178,15 @@ begin
       return jsonb_build_object('hasil','ditolak_versi_lama','client_version_server',v_lama.client_version);
     end if;
 
+    select exists (select 1 from public.tera_lkk where no_label = p_no_label and id <> p_id) into v_dup;
+    if v_dup then
+      insert into public.tera_sync_conflicts (lkk_id, user_id, alasan, status_server, payload)
+      values (p_id, p_user, 'Nomor label sudah dipakai LKK lain', v_lama.status,
+              jsonb_build_object('no_label',p_no_label,'data',p_data,'results',p_results,'checksum',p_checksum,'client_version',p_client_version));
+      return jsonb_build_object('hasil','ditolak_label_ganda','no_label',p_no_label,
+        'alasan','Nomor stiker '||p_no_label||' sudah dipakai LKK lain. Periksa nomor di stiker alat, perbaiki, lalu kirim lagi. Data Anda aman di perangkat.');
+    end if;
+
     update public.tera_lkk set
       jadwal_id = p_jadwal_id, bo = p_bo, no_label = p_no_label,
       template_kode = p_template_kode, template_versi = p_template_versi,
@@ -186,6 +197,15 @@ begin
       server_received_at = now(), updated_at = now()
     where id = p_id;
   else
+    select exists (select 1 from public.tera_lkk where no_label = p_no_label) into v_dup;
+    if v_dup then
+      insert into public.tera_sync_conflicts (lkk_id, user_id, alasan, status_server, payload)
+      values (p_id, p_user, 'Nomor label sudah dipakai LKK lain', null,
+              jsonb_build_object('no_label',p_no_label,'data',p_data,'results',p_results,'checksum',p_checksum,'client_version',p_client_version));
+      return jsonb_build_object('hasil','ditolak_label_ganda','no_label',p_no_label,
+        'alasan','Nomor stiker '||p_no_label||' sudah dipakai LKK lain. Periksa nomor di stiker alat, perbaiki, lalu kirim lagi. Data Anda aman di perangkat.');
+    end if;
+
     insert into public.tera_lkk (id, jadwal_id, bo, no_label, template_kode, template_versi, teknisi_user_id,
       tanggal_kalibrasi, alat_tambahan, po_item_ref, status, data, results, calibrator_snapshot,
       checksum, jumlah_titik, client_version, is_test, client_updated_at)
@@ -197,11 +217,21 @@ begin
   insert into public.tera_sync_receipts (lkk_id, client_version, checksum, jumlah_titik, user_id)
   values (p_id, p_client_version, p_checksum, p_jumlah_titik, p_user);
 
-  select count(*) into v_ganda from public.tera_lkk
-   where bo = p_bo and no_label = p_no_label and id <> p_id;
-
   return jsonb_build_object('hasil','diterima','checksum',p_checksum,'jumlah_titik',p_jumlah_titik,
-                            'client_version',p_client_version,'status','submitted','label_ganda',v_ganda > 0);
+                            'client_version',p_client_version,'status','submitted');
+
+exception
+  when unique_violation then
+    -- Dua perangkat mengirim nomor yang sama di detik yang sama: yang kalah ditolak, bukan hilang.
+    get stacked diagnostics v_con = constraint_name;
+    if v_con = 'tera_lkk_no_label_uniq' then
+      insert into public.tera_sync_conflicts (lkk_id, user_id, alasan, status_server, payload)
+      values (p_id, p_user, 'Nomor label sudah dipakai LKK lain', null,
+              jsonb_build_object('no_label',p_no_label,'data',p_data,'results',p_results,'checksum',p_checksum,'client_version',p_client_version));
+      return jsonb_build_object('hasil','ditolak_label_ganda','no_label',p_no_label,
+        'alasan','Nomor stiker '||p_no_label||' sudah dipakai LKK lain. Periksa nomor di stiker alat, perbaiki, lalu kirim lagi. Data Anda aman di perangkat.');
+    end if;
+    raise;   -- kiriman ulang LKK yang sama: perangkat mencoba lagi dan mendapat "sudah_diterima"
 end;
 $$;
 
@@ -232,6 +262,9 @@ union all
 select 'fungsi penerima hanya untuk service_role',
        not has_function_privilege('authenticated', 'public.tera_terima_lkk(uuid,uuid,text,text,text,integer,date,boolean,text,text,jsonb,jsonb,jsonb,text,integer,integer,boolean,timestamptz)', 'execute')
        and not has_function_privilege('anon', 'public.tera_terima_lkk(uuid,uuid,text,text,text,integer,date,boolean,text,text,jsonb,jsonb,jsonb,text,integer,integer,boolean,timestamptz)', 'execute')
+union all
+select 'nomor label dijaga unik',
+       exists (select 1 from pg_indexes where schemaname='public' and indexname='tera_lkk_no_label_uniq')
 union all
 select 'tabel lama tidak berubah (labels masih 3.934-an baris)',
        (select count(*) from public.labels) >= 3934;

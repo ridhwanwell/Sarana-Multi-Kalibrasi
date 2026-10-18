@@ -76,7 +76,7 @@ Isi migrasi `0004` (semua **tabel baru**, tabel lama tidak disentuh):
 |---|---|---|
 | `tera_lkk` | Rak arsip LKK | 1 baris = 1 LKK utuh, id = UUID dari perangkat |
 | `tera_sync_receipts` | Buku tanda terima | Tiap kiriman yang diterima utuh (dasar 🟢) |
-| `tera_sync_conflicts` | Map "kiriman ditolak" | Kiriman yang datang setelah LKK dipegang Penyelia — **salinan disimpan**, tidak dibuang (F4.13) |
+| `tera_sync_conflicts` | Map "kiriman ditolak" | Kiriman yang datang setelah LKK dipegang Penyelia **atau** bernomor label ganda — **salinan disimpan**, tidak dibuang (F4.13, F4.14) |
 | `tera_error_logs` | Buku catatan gangguan | Error/macet dari perangkat, dibaca Developer |
 | fungsi `tera_terima_lkk` | Petugas loket | Menyimpan LKK + tanda terima dalam **satu transaksi** (utuh atau tidak sama sekali) |
 
@@ -85,7 +85,11 @@ Pengaman di database:
 - Kiriman ulang yang sama persis → jawaban "sudah diterima" (tidak dobel).
 - Versi lama tidak bisa menimpa versi baru.
 - LKK yang sudah **Diperiksa/ACC** tidak bisa ditimpa teknisi.
-- **Nomor label ganda dalam satu BO diterima**, diberi tanda `label_ganda` untuk Selia (F4.14).
+- **Nomor label harus unik** (diubah 19 Okt 2026 atas permintaan Ridhwan): satu nomor stiker = satu LKK.
+  LKK kedua dengan nomor yang sama **ditolak** dengan pesan jelas, salinannya disimpan di `tera_sync_conflicts`,
+  dan LKK-nya **tetap aman di perangkat** (chip merah "Nomor stiker sudah dipakai", bukan hilang).
+  Mesin kirim **berhenti mencoba ulang** LKK itu sampai nomornya diperbaiki. Dijaga dua lapis:
+  pemeriksaan di perangkat (F3.3, saat mengetik/scan) dan indeks unik di database (menangkap dua tablet yang offline).
 - BO `999` **wajib** `is_test = true` (dicegah database).
 
 ## 6. Backup ke file (F4.11)
@@ -116,6 +120,7 @@ Semua memakai **BO 999** dari laci uji. Hasil wajib: **0 data hilang, 0 dobel**.
 6. **Sinyal putus-sambung**: nyala-matikan mode pesawat 5× selama pengiriman → hasil sama dengan no. 2.
 7. **Memori hampir penuh**: (bila memungkinkan) isi HP sampai hampir penuh → aplikasi tetap menyimpan, atau memberi pesan jelas bila benar-benar penuh.
 8. **Update versi saat ada 🟡**: buat LKK dalam mode pesawat → Claude merilis versi baru → buka aplikasi → LKK 🟡 tetap ada → kirim → 🟢.
-9. **Logout diblokir**: saat ada 🟡, tekan Keluar → ditolak dengan pesan jelas.
+9. **Nomor ganda ditolak**: buat LKK bernomor `999.0001` di tablet A dan tablet B (keduanya mode pesawat) → nyalakan internet → satu 🟢, satu merah "Nomor stiker sudah dipakai" dengan isian masih utuh → ubah nomor jadi `999.0002` → 🟢. Di server tetap 2 LKK, 0 dobel.
+10. **Logout diblokir**: saat ada 🟡, tekan Keluar → ditolak dengan pesan jelas.
 
 Setelah uji, data BO 999 di server tetap bertanda `is_test` (tidak masuk BAP/tagihan).
