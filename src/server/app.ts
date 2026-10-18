@@ -425,11 +425,60 @@ export function createApp() {
         email: user.email,
         role,
         fullName: profile?.full_name || user.email?.split('@')[0] || 'Pengguna PT SMK',
-        avatarUrl: profile?.avatar_url || null
+        avatarUrl: profile?.avatar_url || null,
+        // Segel "wajib ganti kata sandi" (app_metadata hanya bisa diubah server)
+        mustChangePassword: user.app_metadata?.must_change_password === true
       });
     } catch (err: any) {
       console.error("API error in GET /api/auth/me:", err);
       res.status(500).json({ error: "Gagal memuat profil pengguna" });
+    }
+  });
+
+  // --- API: TERA SMK — GANTI KATA SANDI LOGIN PERTAMA ---
+  // Hanya untuk akun sendiri, dan HANYA selama segel must_change_password masih ada.
+  // Kata sandi tidak pernah dicatat di log.
+  const gantiSandiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    keyGenerator: rateLimitKey,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Terlalu banyak percobaan. Tunggu 15 menit lalu coba lagi." }
+  });
+
+  app.post("/api/tera/ganti-sandi", gantiSandiLimiter, requireAuthTera, async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (user?.app_metadata?.must_change_password !== true) {
+        return res.status(409).json({ error: "Kata sandi akun ini sudah pernah diganti. Muat ulang halaman." });
+      }
+
+      const passwordBaru = typeof req.body?.passwordBaru === 'string' ? req.body.passwordBaru : '';
+      if (passwordBaru.length < 8 || passwordBaru.length > 72) {
+        return res.status(400).json({ error: "Kata sandi baru minimal 8 karakter (maksimal 72)." });
+      }
+
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        password: passwordBaru,
+        app_metadata: { ...(user.app_metadata || {}), must_change_password: false }
+      });
+
+      if (error) {
+        console.error("[Tera] Gagal mengganti kata sandi:", error.message);
+        const lemah = /password|weak|short|characters/i.test(error.message || '');
+        return res.status(lemah ? 400 : 502).json({
+          error: lemah
+            ? "Kata sandi ditolak karena terlalu lemah. Pakai kombinasi huruf dan angka yang lebih panjang."
+            : "Server belum bisa menyimpan kata sandi. Coba lagi sebentar."
+        });
+      }
+
+      await logActivity(req, 'TERA_GANTI_SANDI_PERTAMA', 'Teknisi mengganti kata sandi pada login pertama');
+      return res.json({ ok: true });
+    } catch (err: any) {
+      console.error("API error in POST /api/tera/ganti-sandi:", err);
+      return res.status(500).json({ error: "Server belum bisa menyimpan kata sandi. Coba lagi sebentar." });
     }
   });
 

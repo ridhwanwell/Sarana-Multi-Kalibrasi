@@ -42,6 +42,8 @@ export interface AppUser {
   displayName?: string;
   username?: string;
   avatarLetter?: string;
+  /** Segel "wajib ganti kata sandi" (login pertama akun @tera.smk). */
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextType {
@@ -57,6 +59,8 @@ interface AuthContextType {
   login: (usernameOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
   loginWithCredentials: (usernameOrEmail: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  /** Muat ulang profil dari server (mis. setelah kata sandi diganti). */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -72,6 +76,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ success: false }),
   loginWithCredentials: async () => ({ success: false }),
   logout: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -170,7 +175,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             fullName,
             displayName,
             username,
-            avatarLetter
+            avatarLetter,
+            mustChangePassword: data.mustChangePassword === true
           };
 
           return appUser;
@@ -216,7 +222,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fullName,
         displayName,
         username,
-        avatarLetter
+        avatarLetter,
+        mustChangePassword: sbUser.app_metadata?.must_change_password === true
       };
 
       return appUser;
@@ -321,6 +328,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshProfile = async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s?.user) return;
+    const profile = await loadUserProfile(s.user);
+    setUser(profile);
+  };
+
   const role: UserRole | '' = user?.role || '';
   const isAdmin = user?.role === 'admin_utama';
 
@@ -338,7 +352,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setError,
         login,
         loginWithCredentials: login,
-        logout
+        logout,
+        refreshProfile
       }}
     >
       {children}
