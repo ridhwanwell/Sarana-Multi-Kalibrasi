@@ -102,7 +102,7 @@ const Statistik: React.FC = () => {
 export const KerangkaTera: React.FC = () => {
   const { user, isOnline } = useAuth();
   const lokasi = useLocation();
-  const nama = user?.fullName || 'Teknisi';
+  const nama = user?.fullName?.trim() || 'Teknisi';
 
   return (
     <div className="tera-root t-app">
@@ -113,7 +113,7 @@ export const KerangkaTera: React.FC = () => {
           </div>
           <div className="t-bar-teks">
             <p className="t-bar-salam">Halo,</p>
-            <p className="t-bar-nama truncate">{nama}</p>
+            <p className="t-bar-nama truncate" title={nama}>{nama}</p>
           </div>
         </div>
         <div className="t-bar-chips">
@@ -124,12 +124,12 @@ export const KerangkaTera: React.FC = () => {
           {isOnline ? (
             <span className="t-chip-header">
               <Check size={14} aria-hidden="true" />
-              <span className="truncate">Tidak ada yang menunggu kirim</span>
+              <span className="truncate" title="Tidak ada yang menunggu kirim">Tidak ada yang menunggu kirim</span>
             </span>
           ) : (
             <span className="t-chip-header" role="status">
               <WifiOff size={14} aria-hidden="true" />
-              <span className="truncate">Offline · data aman di perangkat</span>
+              <span className="truncate" title="Offline · data aman di perangkat">Offline · data aman di perangkat</span>
             </span>
           )}
         </div>
@@ -154,8 +154,8 @@ export const KerangkaTera: React.FC = () => {
           ))}
         </div>
         <div className="t-nav-akun">
-          <p className="truncate text-[14px] font-medium" style={{ color: 'var(--t-text)' }}>{nama}</p>
-          <p className="t-ket truncate">{user?.roleLabel}</p>
+          <p className="truncate text-[14px] font-medium" style={{ color: 'var(--t-text)' }} title={nama}>{nama}</p>
+          {user?.roleLabel && <p className="t-ket truncate" title={user.roleLabel}>{user.roleLabel}</p>}
         </div>
       </nav>
 
@@ -214,18 +214,20 @@ export const HalamanLkk: React.FC = () => (
 
 export const HalamanAkun: React.FC = () => {
   const { user, logout } = useAuth();
-  const huruf = (user?.fullName || user?.email || 'T').trim().charAt(0).toUpperCase();
+  const nama = user?.fullName?.trim() || '';
+  // Huruf pertama utuh (Array.from tidak memotong huruf beraksen/emoji di tengah)
+  const huruf = (Array.from((nama || user?.email || 'T').trim())[0] || 'T').toUpperCase();
   return (
     <>
       <h1 className="t-judul-layar">Akun</h1>
 
       <section className="t-kartu mt-4" aria-label="Profil">
-        <div className="flex items-center gap-4">
+        <div className="t-profil">
           <div className="t-avatar" aria-hidden="true">{huruf}</div>
-          <div className="min-w-0">
-            <p className="break-words text-[17px] font-semibold leading-snug">{user?.fullName}</p>
-            <p className="t-ket">{user?.roleLabel}</p>
-            <p className="t-ket break-all">{user?.email}</p>
+          <div className="t-profil-teks">
+            <p className="text-[17px] font-semibold leading-snug">{nama || 'Nama belum diisi'}</p>
+            {user?.roleLabel && <p className="t-ket">{user.roleLabel}</p>}
+            <p className="t-ket">{user?.email}</p>
           </div>
         </div>
       </section>

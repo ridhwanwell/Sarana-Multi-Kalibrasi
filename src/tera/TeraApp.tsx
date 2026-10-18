@@ -195,7 +195,7 @@ const LoginTera: React.FC = () => {
               onChange={(e) => setAkun(e.target.value)}
               aria-invalid={errAkun ? true : undefined}
               aria-describedby={errAkun ? idErrAkun : undefined}
-              placeholder="contoh: ari"
+              placeholder="contoh: ari…"
             />
             {!akun.includes('@') && <span className="t-akhiran" aria-hidden="true">{DOMAIN_TERA}</span>}
           </div>
@@ -283,7 +283,7 @@ const GantiSandiPertama: React.FC = () => {
   return (
     <LayarMasuk>
       <form onSubmit={simpan} noValidate aria-labelledby="judul-ganti-sandi">
-        <p className="t-ket truncate">Halo, {user?.fullName}</p>
+        <p className="t-ket truncate" title={user?.fullName || undefined}>Halo, {user?.fullName?.trim() || 'Teknisi'}</p>
         <h1 id="judul-ganti-sandi" className="t-judul-layar mt-1">Buat kata sandi baru</h1>
         <p className="t-teks-2 mt-2 text-[15px]">
           Ini login pertama Anda. Ganti kata sandi sementara dari Developer dengan kata sandi milik Anda sendiri.
