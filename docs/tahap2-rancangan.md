@@ -27,7 +27,7 @@ Gagal kirim / timeout 20 detik → kembali 🟡, dicoba lagi otomatis. **Tidak a
 
 ## 2. Di perangkat (IndexedDB, nama database `tera_smk`)
 
-Disimpan lewat pustaka **Dexie** (pembungkus IndexedDB yang matang; versinya dicek di dokumentasi terbaru sebelum dipasang).
+Disimpan langsung di **IndexedDB tanpa pustaka** (`src/tera/data/teraDb.ts`). *Diputuskan 19 Okt 2026 di langkah 2.3: CLAUDE.md hanya "menyarankan" Dexie; tanpa Dexie tidak ada paket baru yang bisa gagal terpasang di Vercel, dan seluruh perilaku bisa diuji di Chromium sungguhan (`npm run test:tera:sinkron`, 19/19).*
 Terpisah total dari penyimpanan Manajemen Aset (awalan `tera_`, CLAUDE.md 3A.8).
 
 | Laci | Isi | Catatan |
@@ -113,7 +113,7 @@ Impor kembali hanya oleh Developer (`admin_utama`), memakai jalur kirim yang sam
 |---|---|---|
 | **2.1** | Jalankan migrasi `0004` (setelah "lanjutkan") | Opus |
 | **2.2** | Server: `POST/GET /api/tera/lkk`, `/api/tera/log`, hitung segel bersama (`src/tera/shared/segel.ts`) | Opus |
-| **2.3** | Perangkat: database `tera_smk` (Dexie), auto-save, outbox & mesin kirim | Opus |
+| **2.3** | Perangkat: database `tera_smk` (IndexedDB langsung), auto-save, outbox & mesin kirim, cadangan draft | Opus |
 | **2.4** | Layar: chip 🟡🔵🟢, angka "di perangkat", banner izin/pasang, blokir logout, Backup ke file | Sonnet |
 | **2.5** | **Laci uji BO 999** (khusus Developer): buat 1–50 LKK contoh sekaligus untuk uji F4.12 — sebelum ada template Sphygmomanometer | Sonnet |
 | **2.6** | Uji wajib F4.12 (Claude di Chromium + Ridhwan di HP/tablet), laporan tabel ✅/❌ | Opus |
