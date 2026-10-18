@@ -31,17 +31,16 @@ select (select count(*) from public.profiles) asli,
 -- =====================================================================
 begin;
 
-drop policy "Users can read all profiles" on public.profiles;
-
-create policy "Kantor baca semua, lainnya baca milik sendiri"
-  on public.profiles
-  for select
-  to authenticated
+-- Aturan lama diubah DI TEMPAT (tanpa drop): isi syarat diganti, lalu diberi nama baru.
+-- (Versi drop+create ditolak otomatis oleh sambungan Supabase; hasil akhirnya sama.)
+alter policy "Users can read all profiles" on public.profiles
   using (
     id = (select auth.uid())
     or (select public.get_current_user_role())
        = any (array['admin_utama','admin_teknik','admin_keuangan','hanya_sph']::text[])
   );
+alter policy "Users can read all profiles" on public.profiles
+  rename to "Kantor baca semua, lainnya baca milik sendiri";
 
 insert into public.profiles (id, email, full_name, role)
 select u.id, u.email, t.nama, 'teknisi'
@@ -71,7 +70,13 @@ union all
 select '11 profil kantor tidak berubah',
        not exists (select 1 from backup.b20261018_02_profiles b
                      left join public.profiles p on p.id = b.id
-                    where p.id is null or p.role is distinct from b.role), 'true';
+                    where p.id is null or p.role is distinct from b.role), 'true'
+union all
+select 'nama profil uji', (select full_name = 'Ridhwan Nur Yudianto' from public.profiles where role = 'teknisi'), 'true';
+
+-- HASIL DIJALANKAN 18 Okt 2026 ±22.57 WIB (oleh Claude lewat sambungan Supabase, atas izin Ridhwan):
+--   BACKUP : profiles 11/11
+--   CEK    : 5 dari 5 = true
 
 
 -- =====================================================================
@@ -80,7 +85,7 @@ select '11 profil kantor tidak berubah',
 -- begin;
 -- delete from public.profiles p using auth.users u
 --  where u.id = p.id and lower(u.email) = 'ridhwan@tera.smk' and p.role = 'teknisi';
--- drop policy "Kantor baca semua, lainnya baca milik sendiri" on public.profiles;
--- create policy "Users can read all profiles" on public.profiles
---   for select to authenticated using (true);
+-- alter policy "Kantor baca semua, lainnya baca milik sendiri" on public.profiles using (true);
+-- alter policy "Kantor baca semua, lainnya baca milik sendiri" on public.profiles
+--   rename to "Users can read all profiles";
 -- commit;

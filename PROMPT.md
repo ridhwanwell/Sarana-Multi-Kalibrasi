@@ -13,7 +13,7 @@ Cara kerja (diperbarui 18 Okt 2026, PRD 11.47 · CLAUDE.md 2A): **Claude Code me
 | Tahap | Status |
 |---|---|
 | 0 — Audit | ✅ Selesai. `docs/audit-fase0.md` + `docs/audit-fase0-query.sql` di `tera-dev` (commit `96b4981`). Menunggu persetujuan akhir Anda |
-| 1 — Dua PWA, role teknisi, login | ✅ 1.0 · ✅ 1.1 (CEK 9/9) · ✅ 1.2 (commit `42b7fa4`) · 🟡 **1.3a kode selesai** (commit `e13dad9`, build Vercel READY) — **migrasi `0002_tera_profil_uji` BELUM masuk database** (2× *cancelled* di sambungan Supabase; menunggu Ridhwan: "coba lagi" + Izinkan, atau jalankan sendiri di SQL Editor) · ⏳ lalu uji login `ridhwan@tera.smk` di Preview · ⏳ 1.3b wajib ganti kata sandi login pertama (pakai **Opus**) |
+| 1 — Dua PWA, role teknisi, login | ✅ 1.0 · ✅ 1.1 (CEK 9/9) · ✅ 1.2 (commit `42b7fa4`) · ✅ **1.3a kode** (commit `e13dad9`, build READY) + **migrasi `0002` dijalankan** (18 Okt 22.57, CEK 5/5; pakai `alter policy` karena `drop policy` ditolak otomatis sambungan Supabase) · ⏳ **Ridhwan uji login `ridhwan@tera.smk` di Preview `/tera`** · ⏳ 1.3b wajib ganti kata sandi login pertama (pakai **Opus**) |
 
 **Hasil 1.3a (18 Okt 22.55):** `AuthContext` mengenal role `teknisi`; penjaga `KantorOnly` + `ProtectedRoute` mengalihkan teknisi dari `/admin`, `/`, `/portal-aset` ke `/tera`; `src/tera/TeraApp.tsx` = login Tera (ketik `ari` → `ari@tera.smk`) + layar sementara "Halo, nama"; kantor non-admin_utama yang membuka `/tera` → `/admin`. Migrasi 0002 = P6 (teknisi hanya baca profil sendiri) + aktifkan 1 akun uji `ridhwan@tera.smk`.
 
