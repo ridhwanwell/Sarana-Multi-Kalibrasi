@@ -3,7 +3,7 @@
  *
  * Tahap 1.3: login teknisi, pengalihan per role, wajib ganti kata sandi saat login pertama.
  * Tahap 1.4a: tampilan Ocean (token di tera-tema.css), logo Tera SMK, mode gelap otomatis.
- * Kerangka HP/tablet (header, tab bawah, menu samping) menyusul di Tahap 1.4b.
+ * Tahap 1.4b: kerangka HP/tablet (header, tab bawah, menu samping) ada di TeraKerangka.tsx.
  *
  * Aturan akses (CLAUDE.md 3A.4 & 6):
  * - Belum login            -> form login (cukup ketik nama akun, "@tera.smk" ditambahkan otomatis)
@@ -17,10 +17,11 @@
  * Authentication, Submit Feedback, Inline Validation) + design-system (token, bukan warna mentah).
  */
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AlertCircle, Check, Circle, Eye, EyeOff, Loader2, Lock, LogOut, User } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
+import { HalamanAkun, HalamanBeranda, HalamanLkk, KerangkaTera } from './TeraKerangka';
 import './tera-tema.css';
 
 const DOMAIN_TERA = '@tera.smk';
@@ -330,24 +331,18 @@ const GantiSandiPertama: React.FC = () => {
   );
 };
 
-/* ---------- Layar: Beranda sementara (diganti kerangka asli di 1.4b) ---------- */
+/* ---------- Layar kerja: kerangka + 3 halaman (rute /tera, /tera/lkk, /tera/akun) ---------- */
 
-const BerandaSementara: React.FC = () => {
-  const { user, logout } = useAuth();
-  return (
-    <LayarMasuk>
-      <p className="t-ket">Tera SMK · {user?.roleLabel}</p>
-      <h1 className="t-judul-layar mt-1 break-words">Halo, {user?.fullName}</h1>
-      <p className="t-teks-2 mt-3 text-[15px]">Login berhasil. Layar kerja Tera SMK sedang disiapkan.</p>
-      <div className="mt-6">
-        <button type="button" onClick={() => { void logout(); }} className="t-tombol t-tombol-kedua">
-          <LogOut size={18} aria-hidden="true" />
-          Keluar
-        </button>
-      </div>
-    </LayarMasuk>
-  );
-};
+const LayarKerja: React.FC = () => (
+  <Routes>
+    <Route element={<KerangkaTera />}>
+      <Route index element={<HalamanBeranda />} />
+      <Route path="lkk" element={<HalamanLkk />} />
+      <Route path="akun" element={<HalamanAkun />} />
+      <Route path="*" element={<Navigate to="/tera" replace />} />
+    </Route>
+  </Routes>
+);
 
 /* ---------- Pintu masuk ---------- */
 
@@ -370,7 +365,7 @@ const TeraApp: React.FC = () => {
   if (!user) return <LoginTera />;
   if (user.role !== 'teknisi' && user.role !== 'admin_utama') return <Navigate to="/admin" replace />;
   if (user.mustChangePassword) return <GantiSandiPertama />;
-  return <BerandaSementara />;
+  return <LayarKerja />;
 };
 
 export default TeraApp;
