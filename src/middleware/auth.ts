@@ -1,14 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabaseAdmin } from '../server/supabaseAdmin.js';
 
-export type UserRole = 'admin_utama' | 'admin_teknik' | 'admin_keuangan' | 'hanya_sph';
+/** Role kantor (Manajemen Aset SMK, /admin). */
+export type RoleKantor = 'admin_utama' | 'admin_teknik' | 'admin_keuangan' | 'hanya_sph';
+/** Role lapangan (Tera SMK, /tera). */
+export type RoleTera = 'teknisi';
+export type UserRole = RoleKantor | RoleTera;
 
-export const OFFICIAL_ROLES: readonly UserRole[] = [
+export const ROLE_KANTOR: readonly RoleKantor[] = [
   'admin_utama',
   'admin_teknik',
   'admin_keuangan',
   'hanya_sph'
 ] as const;
+
+export const ROLE_TERA: readonly RoleTera[] = ['teknisi'] as const;
+
+/** Semua role yang diakui database (chk_profiles_official_role). */
+export const SEMUA_ROLE: readonly UserRole[] = [...ROLE_KANTOR, ...ROLE_TERA];
+
+/**
+ * Tetap berarti "role kantor" agar semua pemeriksaan lama (mis. canReadCollection)
+ * tidak berubah makna. Teknisi TIDAK termasuk.
+ */
+export const OFFICIAL_ROLES: readonly UserRole[] = ROLE_KANTOR;
 
 export interface AuthRequest extends Request {
   user?: any;
@@ -23,18 +38,16 @@ interface CachedRole {
 const roleCache = new Map<string, CachedRole>();
 
 /**
- * Express middleware to enforce valid Supabase Authentication Bearer token on backend API routes.
- * 
+ * Pembuat "satpam" API: memeriksa token Supabase lalu role dari public.profiles.
+ *
  * Aturan:
- * - Tanpa header "Authorization: Bearer <token>" -> 401 {"error":"Sesi login diperlukan"}.
- * - Token tidak valid/kedaluwarsa (supabaseAdmin.auth.getUser gagal) -> 401 {"error":"Sesi login diperlukan"}.
- * - Baca role dari public.profiles berdasarkan user.id. Jika baris tidak ada atau role bukan
- *   salah satu dari 4 role resmi -> 403 {"error":"Akun belum memiliki hak akses"}.
+ * - Tanpa header "Authorization: Bearer <token>" / token tidak valid -> 401 {"error":"Sesi login diperlukan"}.
+ * - Baris profil tidak ada atau role bukan role resmi -> 403 {"error":"Akun belum memiliki hak akses"}.
+ * - Role resmi tetapi tidak termasuk `allowed` -> 403 (pola "tolak kecuali diizinkan").
  * - Blok catch -> 503 {"error":"Layanan autentikasi sedang tidak tersedia, coba lagi"}.
- * - Hapus SEMUA fallback yang mengisi req.userRole = 'admin_utama' dan user palsu 'admin-utama-local'.
- * - Simpan hasil (user id -> role) di cache memori 60 detik agar tidak query profiles setiap request.
+ * - Tidak ada fallback role apa pun. Role di-cache 60 detik per user id.
  */
-export const requireAuth = async (
+const buatSatpam = (allowed: readonly UserRole[]) => async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -80,7 +93,7 @@ export const requireAuth = async (
         return res.status(503).json({ error: "Layanan autentikasi sedang tidak tersedia, coba lagi" });
       }
 
-      if (!profile || !profile.role || !OFFICIAL_ROLES.includes(profile.role as UserRole)) {
+      if (!profile || !profile.role || !SEMUA_ROLE.includes(profile.role as UserRole)) {
         console.warn(`[Auth Warning] User ${userId} (${user.email}) tidak memiliki role resmi:`, profile?.role);
         return res.status(403).json({ error: "Akun belum memiliki hak akses" });
       }
@@ -92,6 +105,11 @@ export const requireAuth = async (
       });
     }
 
+    if (!allowed.includes(assignedRole)) {
+      console.warn(`[Access Denied] User '${user.email}' dengan role '${assignedRole}' tidak diizinkan di ${req.method} ${req.path}.`);
+      return res.status(403).json({ error: "Akun belum memiliki hak akses" });
+    }
+
     req.userRole = assignedRole;
     return next();
   } catch (error) {
@@ -99,6 +117,19 @@ export const requireAuth = async (
     return res.status(503).json({ error: "Layanan autentikasi sedang tidak tersedia, coba lagi" });
   }
 };
+
+/**
+ * Satpam bawaan untuk SEMUA API lama (Manajemen Aset SMK): hanya role kantor.
+ * Akun teknisi selalu ditolak di sini.
+ */
+export const requireAuth = buatSatpam(ROLE_KANTOR);
+
+/**
+ * Satpam untuk API yang memang dipakai Tera SMK: role kantor + teknisi.
+ * Pasang HANYA di alamat yang disengaja untuk teknisi; data teknisi di alamat itu
+ * wajib dibatasi ke miliknya sendiri.
+ */
+export const requireAuthTera = buatSatpam(SEMUA_ROLE);
 
 /**
  * Middleware untuk validasi hak akses berdasarkan role pengguna.
@@ -113,5 +144,3 @@ export const requireRole = (allowedRoles: UserRole[]) => {
     return next();
   };
 };
-
-

@@ -2,7 +2,7 @@ import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "./supabaseAdmin.js";
-import { requireAuth, requireRole, OFFICIAL_ROLES } from "../middleware/auth.js";
+import { requireAuth, requireAuthTera, requireRole, OFFICIAL_ROLES } from "../middleware/auth.js";
 import type { AuthRequest, UserRole } from "../middleware/auth.js";
 import { registerSphTransisiRoutes } from "./sphTransisiRoutes.js";
 
@@ -408,8 +408,8 @@ export function createApp() {
     }
   });
 
-  // --- API: CURRENT AUTH USER PROFILE ---
-  app.get("/api/auth/me", requireAuth, async (req: AuthRequest, res) => {
+  // --- API: CURRENT AUTH USER PROFILE (kantor & teknisi: dipakai untuk pengalihan /admin atau /tera) ---
+  app.get("/api/auth/me", requireAuthTera, async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       const role = req.userRole;
