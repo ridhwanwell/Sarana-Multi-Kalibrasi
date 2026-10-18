@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# File referensi perusahaan (Master LKK, kop, golden file, MK) - JANGAN masuk repo publik (PRD F0.9)
+_referensi/
