@@ -95,7 +95,9 @@ function AsetPortalMain() {
   const { user, isAdmin, role, logout } = useAuth();
   
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sph' | 'labels' | 'schedules' | 'billing' | 'selia' | 'calibrators' | 'tablets' | 'financial' | 'masters' | 'templates' | 'aspak'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sph' | 'labels' | 'schedules' | 'billing' | 'selia' | 'calibrators' | 'tablets' | 'financial' | 'masters' | 'templates' | 'aspak'>(
+    () => (new URLSearchParams(window.location.search).get('modul') === 'label' ? 'labels' : 'dashboard')
+  );
   const [slideDirection, setSlideDirection] = useState<number>(1);
 
   // Auto-redirect to default permitted tab if current activeTab is restricted for the logged-in role

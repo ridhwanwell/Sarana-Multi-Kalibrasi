@@ -65,13 +65,21 @@
       (function () {
         try {
           var p = location.pathname;
-          if (!(p === '/admin' || p.indexOf('/admin/') === 0)) return;
           var h = document.head;
           var pasang = function (tag, attrs) {
             var el = document.createElement(tag);
             for (var k in attrs) el.setAttribute(k, attrs[k]);
             h.appendChild(el);
           };
+          // Portal di "/" dan "/portal-aset" (tanpa nomor label di alamat): hanya ikon & nama iPhone,
+          // supaya "Tambahkan ke Layar Utama" memakai logo SMK, bukan huruf "M". Tanpa manifest/service worker.
+          var adaLabel = /\d{2,}/.test(location.search + location.hash);
+          if ((p === '/' || p === '' || p === '/portal-aset') && !adaLabel) {
+            pasang('link', { rel: 'apple-touch-icon', href: '/admin/admin-apple-touch-icon-180.png' });
+            pasang('meta', { name: 'apple-mobile-web-app-title', content: 'Aset SMK' });
+            return;
+          }
+          if (!(p === '/admin' || p.indexOf('/admin/') === 0)) return;
           pasang('link', { rel: 'manifest', href: '/admin/manifest.webmanifest' });
           pasang('link', { rel: 'apple-touch-icon', href: '/admin/admin-apple-touch-icon-180.png' });
           pasang('meta', { name: 'apple-mobile-web-app-title', content: 'Aset SMK' });
