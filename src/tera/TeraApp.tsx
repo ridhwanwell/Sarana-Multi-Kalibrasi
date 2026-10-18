@@ -1,9 +1,9 @@
 /**
  * Tera SMK — pintu masuk (/tera).
  *
- * Tahap 1.3a/1.3b: login teknisi, pengalihan per role, wajib ganti kata sandi
- * saat login pertama, dan layar sementara. Tampilan lengkap (token Ocean, mode
- * gelap, logo, tata letak HP/tablet) dibuat di Tahap 1.4 — warna di sini sementara.
+ * Tahap 1.3: login teknisi, pengalihan per role, wajib ganti kata sandi saat login pertama.
+ * Tahap 1.4a: tampilan Ocean (token di tera-tema.css), logo Tera SMK, mode gelap otomatis.
+ * Kerangka HP/tablet (header, tab bawah, menu samping) menyusul di Tahap 1.4b.
  *
  * Aturan akses (CLAUDE.md 3A.4 & 6):
  * - Belum login            -> form login (cukup ketik nama akun, "@tera.smk" ditambahkan otomatis)
@@ -13,17 +13,19 @@
  * - role kantor lain       -> dialihkan ke /admin
  * Pembatasan data tetap dijaga di server (requireAuth / requireAuthTera).
  *
- * UI mengikuti ui-ux-pro-max (ux: Password Visibility, Error Placement,
- * Accessible Authentication, Submit Feedback, Inline Validation).
+ * UI mengikuti ui-ux-pro-max (Password Visibility, Error Placement, Accessible
+ * Authentication, Submit Feedback, Inline Validation) + design-system (token, bukan warna mentah).
  */
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { AlertCircle, Check, Circle, Eye, EyeOff, Loader2, Lock, LogOut, User } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
+import './tera-tema.css';
 
 const DOMAIN_TERA = '@tera.smk';
 const MIN_SANDI = 8;
+const LOGO_EMBLEM = '/tera/tera-emblem-256.webp';
 
 function keEmailTera(input: string): string {
   const bersih = input.trim().toLowerCase();
@@ -33,31 +35,22 @@ function keEmailTera(input: string): string {
 
 /* ---------- Bagian kecil yang dipakai ulang ---------- */
 
-const kelasKotak =
-  'flex items-center rounded-[12px] border bg-white transition-shadow ' +
-  'focus-within:border-sky-700 focus-within:ring-2 focus-within:ring-sky-700 ' +
-  'focus-within:shadow-[0_0_0_5px_rgba(41,197,246,0.25)]';
-
-const kelasTombolUtama =
-  'flex min-h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-sky-700 px-4 ' +
-  'text-[15px] font-semibold text-white transition-transform duration-100 active:scale-[0.97] ' +
-  'motion-reduce:transform-none disabled:opacity-70 ' +
-  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700';
-
-const kelasTombolKedua =
-  'flex min-h-12 w-full items-center justify-center rounded-[12px] border border-slate-300 bg-white px-4 ' +
-  'text-[15px] font-medium text-slate-700 transition-transform duration-100 active:scale-[0.97] ' +
-  'motion-reduce:transform-none ' +
-  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700';
-
-const Putar: React.FC = () => (
-  <Loader2 size={20} aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
-);
+const Putar: React.FC = () => <Loader2 size={20} aria-hidden="true" className="t-putar" />;
 
 const PesanError: React.FC<{ id: string; pesan: string | null }> = ({ id, pesan }) =>
   pesan ? (
-    <p id={id} className="mt-1 text-[13px] font-medium text-red-700">{pesan}</p>
+    <p id={id} className="t-pesan-error">
+      <AlertCircle size={16} aria-hidden="true" className="mt-px shrink-0" />
+      <span>{pesan}</span>
+    </p>
   ) : null;
+
+const Peringatan: React.FC<{ pesan: string }> = ({ pesan }) => (
+  <p role="alert" className="t-peringatan">
+    <AlertCircle size={20} aria-hidden="true" className="shrink-0" />
+    <span>{pesan}</span>
+  </p>
+);
 
 interface KotakSandiProps {
   label: string;
@@ -82,9 +75,10 @@ const KotakSandi: React.FC<KotakSandiProps> = ({
 
   return (
     <div className="mt-4">
-      <label htmlFor={id} className="block text-[14px] font-medium text-slate-700">{label}</label>
-      {bantuan && <p id={idBantuan} className="mt-0.5 text-[13px] text-slate-500">{bantuan}</p>}
-      <div className={`mt-1 ${kelasKotak} ${error ? 'border-red-600' : 'border-slate-500'}`}>
+      <label htmlFor={id} className="t-label">{label}</label>
+      {bantuan && <p id={idBantuan} className="t-ket mt-0.5">{bantuan}</p>}
+      <div className="t-kotak" data-error={error ? 'true' : undefined}>
+        <Lock size={20} aria-hidden="true" className="t-ikon-kotak" />
         <input
           id={id}
           ref={inputRef}
@@ -97,14 +91,13 @@ const KotakSandi: React.FC<KotakSandiProps> = ({
           onBlur={onBlur}
           aria-invalid={error ? true : undefined}
           aria-describedby={keterangan}
-          className="min-h-12 w-full min-w-0 rounded-[12px] bg-transparent px-3 text-[16px] text-slate-800 outline-none"
         />
         <button
           type="button"
           onClick={() => setTerlihat((v) => !v)}
           aria-label={terlihat ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
           aria-pressed={terlihat}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700"
+          className="t-tombol-ikon"
         >
           {terlihat ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
         </button>
@@ -114,18 +107,32 @@ const KotakSandi: React.FC<KotakSandiProps> = ({
   );
 };
 
-const Kartu: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <main className="min-h-dvh bg-slate-50 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] font-sans">
-    <div className="mx-auto w-full max-w-sm rounded-[14px] border border-slate-200 bg-white p-6">
-      {children}
-    </div>
-  </main>
+/**
+ * Kerangka layar masuk: header biru + garis cyan + skala penggaris, lencana logo,
+ * kartu di atasnya. Dipakai login dan "Buat kata sandi baru".
+ */
+const LayarMasuk: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="tera-root">
+    <header className="t-hero">
+      <div className="t-lencana t-animasi-masuk">
+        <img src={LOGO_EMBLEM} width={64} height={64} alt="Logo Tera SMK" decoding="async" />
+      </div>
+      <p className="mt-3 text-center text-[13px] font-medium tracking-[0.08em]" style={{ color: 'var(--t-on-header-muted)' }}>
+        Tertelusur · Efisien · Rapi · Akurat
+      </p>
+      <div className="t-hero-skala" aria-hidden="true" />
+    </header>
+    <main className="t-kartu-layar t-animasi-masuk-2">{children}</main>
+    <footer className="t-ket t-isi-bawah mt-6 px-4 text-center">PT Sarana Multi Kalibrasi</footer>
+  </div>
 );
 
 const LayarMemuat: React.FC<{ pesan: string }> = ({ pesan }) => (
-  <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-slate-50 font-sans text-slate-600" role="status">
-    <Putar />
-    <span className="text-[15px]">{pesan}</span>
+  <div className="tera-root flex min-h-dvh flex-col items-center justify-center gap-3" role="status">
+    <div className="t-lencana t-animasi-masuk">
+      <img src={LOGO_EMBLEM} width={64} height={64} alt="" decoding="async" />
+    </div>
+    <span className="t-teks-2 flex items-center gap-2 text-[15px]"><Putar />{pesan}</span>
   </div>
 );
 
@@ -166,14 +173,15 @@ const LoginTera: React.FC = () => {
   const idErrAkun = `${idAkun}-error`;
 
   return (
-    <Kartu>
+    <LayarMasuk>
       <form onSubmit={kirim} noValidate aria-labelledby="judul-login-tera">
-        <h1 id="judul-login-tera" className="text-[22px] font-semibold text-slate-800">Tera SMK</h1>
-        <p className="mt-1 text-[13px] text-slate-500">Teknologi Evaluasi &amp; Rekam Alkes</p>
+        <h1 id="judul-login-tera" className="t-judul-layar">Masuk ke Tera SMK</h1>
+        <p className="t-ket mt-1">Teknologi Evaluasi &amp; Rekam Alkes</p>
 
         <div className="mt-6">
-          <label htmlFor={idAkun} className="block text-[14px] font-medium text-slate-700">Nama akun</label>
-          <div className={`mt-1 ${kelasKotak} ${errAkun ? 'border-red-600' : 'border-slate-500'}`}>
+          <label htmlFor={idAkun} className="t-label">Nama akun</label>
+          <div className="t-kotak" data-error={errAkun ? 'true' : undefined}>
+            <User size={20} aria-hidden="true" className="t-ikon-kotak" />
             <input
               id={idAkun}
               ref={refAkun}
@@ -186,12 +194,9 @@ const LoginTera: React.FC = () => {
               onChange={(e) => setAkun(e.target.value)}
               aria-invalid={errAkun ? true : undefined}
               aria-describedby={errAkun ? idErrAkun : undefined}
-              className="min-h-12 w-full min-w-0 rounded-[12px] bg-transparent px-3 text-[16px] text-slate-800 outline-none"
               placeholder="contoh: ari"
             />
-            {!akun.includes('@') && (
-              <span className="shrink-0 pr-3 text-[15px] text-slate-600" aria-hidden="true">{DOMAIN_TERA}</span>
-            )}
+            {!akun.includes('@') && <span className="t-akhiran" aria-hidden="true">{DOMAIN_TERA}</span>}
           </div>
           <PesanError id={idErrAkun} pesan={errAkun} />
         </div>
@@ -205,22 +210,28 @@ const LoginTera: React.FC = () => {
           inputRef={refSandi}
         />
 
-        {pesan && (
-          <p role="alert" className="mt-4 rounded-[12px] bg-red-50 px-3 py-2 text-[14px] text-red-800">{pesan}</p>
-        )}
+        {pesan && <Peringatan pesan={pesan} />}
 
         <div className="mt-6">
-          <button type="submit" disabled={sedangMasuk} className={kelasTombolUtama}>
+          <button type="submit" disabled={sedangMasuk} aria-busy={sedangMasuk} className="t-tombol t-tombol-utama">
             {sedangMasuk && <Putar />}
             {sedangMasuk ? 'Sedang masuk…' : 'Masuk'}
           </button>
         </div>
       </form>
-    </Kartu>
+    </LayarMasuk>
   );
 };
 
 /* ---------- Layar: Buat kata sandi baru (login pertama) ---------- */
+
+const Syarat: React.FC<{ ok: boolean; teks: string }> = ({ ok, teks }) => (
+  <li data-ok={ok ? 'true' : 'false'}>
+    {ok ? <Check size={16} aria-hidden="true" /> : <Circle size={16} aria-hidden="true" />}
+    <span>{teks}</span>
+    <span className="sr-only">{ok ? '(terpenuhi)' : '(belum terpenuhi)'}</span>
+  </li>
+);
 
 const GantiSandiPertama: React.FC = () => {
   const { user, logout, refreshProfile } = useAuth();
@@ -269,17 +280,16 @@ const GantiSandiPertama: React.FC = () => {
   };
 
   return (
-    <Kartu>
+    <LayarMasuk>
       <form onSubmit={simpan} noValidate aria-labelledby="judul-ganti-sandi">
-        <p className="text-[13px] text-slate-500">Tera SMK · {user?.fullName}</p>
-        <h1 id="judul-ganti-sandi" className="mt-1 text-[22px] font-semibold text-slate-800">Buat kata sandi baru</h1>
-        <p className="mt-2 text-[15px] text-slate-600">
+        <p className="t-ket truncate">Halo, {user?.fullName}</p>
+        <h1 id="judul-ganti-sandi" className="t-judul-layar mt-1">Buat kata sandi baru</h1>
+        <p className="t-teks-2 mt-2 text-[15px]">
           Ini login pertama Anda. Ganti kata sandi sementara dari Developer dengan kata sandi milik Anda sendiri.
         </p>
 
         <KotakSandi
           label="Kata sandi baru"
-          bantuan={`Minimal ${MIN_SANDI} karakter. Jangan sama dengan kata sandi sementara.`}
           value={baru}
           onChange={(v) => { setBaru(v); if (errBaru) setErrBaru(cekBaru(v)); }}
           onBlur={() => baru && setErrBaru(cekBaru(baru))}
@@ -297,39 +307,45 @@ const GantiSandiPertama: React.FC = () => {
           inputRef={refUlang}
         />
 
-        {pesanServer && (
-          <p role="alert" className="mt-4 rounded-[12px] bg-red-50 px-3 py-2 text-[14px] text-red-800">{pesanServer}</p>
-        )}
+        <ul className="t-syarat" aria-label="Syarat kata sandi">
+          <Syarat ok={baru.length >= MIN_SANDI} teks={`Minimal ${MIN_SANDI} karakter`} />
+          <Syarat ok={ulang.length > 0 && ulang === baru} teks="Kedua isian sama" />
+        </ul>
+        <p className="t-ket mt-2">Jangan sama dengan kata sandi sementara.</p>
+
+        {pesanServer && <Peringatan pesan={pesanServer} />}
 
         <div className="mt-6 flex flex-col gap-3">
-          <button type="submit" disabled={menyimpan} className={kelasTombolUtama}>
+          <button type="submit" disabled={menyimpan} aria-busy={menyimpan} className="t-tombol t-tombol-utama">
             {menyimpan && <Putar />}
             {menyimpan ? 'Sedang menyimpan…' : 'Simpan kata sandi'}
           </button>
-          <button type="button" onClick={() => { void logout(); }} className={kelasTombolKedua}>
+          <button type="button" onClick={() => { void logout(); }} className="t-tombol t-tombol-kedua">
+            <LogOut size={18} aria-hidden="true" />
             Keluar
           </button>
         </div>
       </form>
-    </Kartu>
+    </LayarMasuk>
   );
 };
 
-/* ---------- Layar: Beranda sementara ---------- */
+/* ---------- Layar: Beranda sementara (diganti kerangka asli di 1.4b) ---------- */
 
 const BerandaSementara: React.FC = () => {
   const { user, logout } = useAuth();
   return (
-    <Kartu>
-      <p className="text-[13px] text-slate-500">Tera SMK · {user?.roleLabel}</p>
-      <h1 className="mt-1 text-[22px] font-semibold text-slate-800">Halo, {user?.fullName}</h1>
-      <p className="mt-3 text-[15px] text-slate-600">Login berhasil. Layar kerja Tera SMK sedang disiapkan.</p>
+    <LayarMasuk>
+      <p className="t-ket">Tera SMK · {user?.roleLabel}</p>
+      <h1 className="t-judul-layar mt-1 break-words">Halo, {user?.fullName}</h1>
+      <p className="t-teks-2 mt-3 text-[15px]">Login berhasil. Layar kerja Tera SMK sedang disiapkan.</p>
       <div className="mt-6">
-        <button type="button" onClick={() => { void logout(); }} className={kelasTombolKedua}>
+        <button type="button" onClick={() => { void logout(); }} className="t-tombol t-tombol-kedua">
+          <LogOut size={18} aria-hidden="true" />
           Keluar
         </button>
       </div>
-    </Kartu>
+    </LayarMasuk>
   );
 };
 
@@ -343,6 +359,12 @@ const TeraApp: React.FC = () => {
   useEffect(() => {
     if (!loading) setPemeriksaanAwal(false);
   }, [loading]);
+
+  // Tema Ocean berlaku selama area /tera terbuka (latar penuh, termasuk di balik status bar iPhone).
+  useEffect(() => {
+    document.documentElement.classList.add('tera-aktif');
+    return () => document.documentElement.classList.remove('tera-aktif');
+  }, []);
 
   if (loading && pemeriksaanAwal) return <LayarMemuat pesan="Memeriksa akun…" />;
   if (!user) return <LoginTera />;

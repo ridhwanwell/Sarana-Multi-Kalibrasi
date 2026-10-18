@@ -1,0 +1,288 @@
+/* =====================================================================
+   TERA SMK — TEMA "OCEAN" (CLAUDE.md bagian 13)
+   Perumpamaan: tabel koreksi kalibrator. Komponen tidak menulis angka warna;
+   mereka hanya menyebut nama ("warna utama", "latar kartu"), angkanya dibaca
+   dari tabel di bawah ini. Mengganti warna = ubah satu baris di sini.
+
+   - Hanya berlaku di dalam area /tera (kelas .tera-root). Modul Manajemen Aset,
+     halaman publik scan QR, dan label TIDAK tersentuh.
+   - Mode gelap mengikuti pengaturan HP (prefers-color-scheme).
+   - Kontras semua pasangan teks/latar sudah dihitung >= AA (4.5:1 teks, 3:1 garis kotak).
+   - Hanya transform & opacity yang dianimasikan; reduced-motion dihormati.
+   ===================================================================== */
+
+.tera-root,
+html.tera-aktif {
+  /* Latar & permukaan */
+  --t-bg: #EEF6FB;
+  --t-surface: #FFFFFF;
+  --t-border: #D5DEE7;
+  --t-input-border: #7D8DA1;
+  /* Teks */
+  --t-text: #1E293B;
+  --t-text-2: #5B6B80;
+  /* Warna utama */
+  --t-primary: #0B6FB3;
+  --t-primary-pressed: #095C95;
+  --t-on-primary: #FFFFFF;
+  --t-accent: #29C5F6;            /* dekorasi saja, BUKAN teks */
+  --t-focus-glow: rgba(41, 197, 246, 0.28);
+  /* Header */
+  --t-header: #0B6FB3;
+  --t-on-header: #FFFFFF;
+  --t-on-header-muted: #E6F3FC;
+  /* Status (CLAUDE.md 13.4) */
+  --t-danger-bg: #FEE2E2;
+  --t-danger-text: #991B1B;
+  --t-danger-line: #DC2626;
+  --t-ok-bg: #DCFCE7;
+  --t-ok-text: #166534;
+  --t-silver: #B8C2CC;
+  /* Bentuk & gerak */
+  --t-radius-card: 14px;
+  --t-radius-ctl: 12px;
+  --t-shadow-card: 0 1px 2px rgba(15, 40, 70, 0.06), 0 8px 24px -12px rgba(15, 40, 70, 0.18);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tera-root,
+  html.tera-aktif {
+    --t-bg: #0B1220;
+    --t-surface: #152033;
+    --t-border: #2A3A52;
+    --t-input-border: #6B7F99;
+    --t-text: #E6EEF5;
+    --t-text-2: #94A3B8;
+    --t-primary: #3FA9F5;
+    --t-primary-pressed: #6BBBF7;
+    --t-on-primary: #0B1220;
+    --t-focus-glow: rgba(41, 197, 246, 0.32);
+    --t-header: #0F2742;
+    --t-on-header: #E6EEF5;
+    --t-on-header-muted: #B6C7DA;
+    --t-danger-bg: #3B1215;
+    --t-danger-text: #FCA5A5;
+    --t-danger-line: #F87171;
+    --t-ok-bg: #0F2A1A;
+    --t-ok-text: #86EFAC;
+    --t-silver: #4A5B74;
+    --t-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 28px -14px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+
+/* Latar penuh (termasuk area tarik-lewat di iPhone) selama Tera SMK terbuka */
+html.tera-aktif,
+html.tera-aktif body {
+  background: var(--t-bg);
+}
+
+.tera-root {
+  min-height: 100dvh;
+  background: var(--t-bg);
+  color: var(--t-text);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tera-root .tabular { font-variant-numeric: tabular-nums; }
+
+/* ---------- Kerangka layar masuk (login & ganti sandi) ---------- */
+
+.t-hero {
+  position: relative;
+  background: var(--t-header);
+  color: var(--t-on-header);
+  padding: max(24px, env(safe-area-inset-top)) 24px 88px;
+  border-bottom: 4px solid var(--t-accent);
+  overflow: hidden;
+}
+
+/* Skala penggaris sebagai hiasan di dasar header (motif metrologi) */
+.t-hero-skala {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22px;
+  opacity: 0.28;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, var(--t-on-header) 0 1.5px, transparent 1.5px 12px),
+    repeating-linear-gradient(90deg, var(--t-on-header) 0 1.5px, transparent 1.5px 60px);
+  background-size: 100% 9px, 100% 18px;
+  background-position: left bottom, left bottom;
+  background-repeat: no-repeat;
+}
+
+.t-lencana {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto;
+  border-radius: 9999px;
+  background: #FFFFFF;           /* logo selalu di atas putih agar warnanya terbaca di mode gelap */
+  box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.45);
+}
+
+.t-kartu-layar {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  margin: -64px auto 0;
+  padding: 24px;
+  background: var(--t-surface);
+  border: 1px solid var(--t-border);
+  border-radius: var(--t-radius-card);
+  box-shadow: var(--t-shadow-card);
+}
+
+.t-isi-bawah {
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+}
+
+/* ---------- Tipografi (CLAUDE.md 13.2) ---------- */
+
+.t-judul-layar { font-size: 22px; font-weight: 600; line-height: 1.3; color: var(--t-text); }
+.t-teks-2 { color: var(--t-text-2); }
+.t-ket { font-size: 13px; line-height: 1.5; color: var(--t-text-2); }
+.t-label { display: block; font-size: 14px; font-weight: 500; color: var(--t-text); }
+
+/* ---------- Kotak isian ---------- */
+
+.t-kotak {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  background: var(--t-surface);
+  border: 1.5px solid var(--t-input-border);
+  border-radius: var(--t-radius-ctl);
+  transition: box-shadow 120ms ease, border-color 120ms ease;
+}
+.t-kotak:focus-within {
+  border-color: var(--t-primary);
+  box-shadow: 0 0 0 2px var(--t-primary), 0 0 0 6px var(--t-focus-glow);
+}
+.t-kotak[data-error="true"] { border-color: var(--t-danger-line); }
+.t-kotak input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--t-text);
+  font-size: 16px;               /* >= 16px: mencegah zoom otomatis di iPhone */
+  outline: none;
+  border-radius: var(--t-radius-ctl);
+}
+.t-kotak input::placeholder { color: var(--t-text-2); opacity: 0.85; }
+.t-ikon-kotak { flex-shrink: 0; margin-left: 12px; color: var(--t-text-2); }
+.t-akhiran { flex-shrink: 0; padding-right: 12px; font-size: 15px; color: var(--t-text-2); }
+
+.t-tombol-ikon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  color: var(--t-text-2);
+  border-radius: var(--t-radius-ctl);
+  cursor: pointer;
+}
+
+.t-pesan-error {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t-danger-text);
+}
+
+/* ---------- Tombol ---------- */
+
+.t-tombol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: var(--t-radius-ctl);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 100ms ease, background-color 120ms ease, opacity 120ms ease;
+}
+.t-tombol:active { transform: scale(0.97); }
+.t-tombol-utama { background: var(--t-primary); color: var(--t-on-primary); }
+.t-tombol-utama:hover { background: var(--t-primary-pressed); }
+.t-tombol-utama:disabled { opacity: 0.7; cursor: progress; }
+.t-tombol-kedua {
+  background: transparent;
+  color: var(--t-text);
+  border: 1.5px solid var(--t-border);
+  font-weight: 500;
+}
+.t-tombol-kedua:hover { background: var(--t-bg); }
+
+/* Fokus keyboard / pembaca layar: terlihat jelas di terang & gelap */
+.tera-root :where(button, a, [role="button"]):focus-visible {
+  outline: 3px solid var(--t-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- Kotak peringatan (warna + ikon + tulisan) ---------- */
+
+.t-peringatan {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: var(--t-radius-ctl);
+  border-left: 3px solid var(--t-danger-line);
+  background: var(--t-danger-bg);
+  color: var(--t-danger-text);
+  font-size: 14px;
+}
+
+/* ---------- Daftar syarat kata sandi ---------- */
+
+.t-syarat { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; }
+.t-syarat li { display: flex; align-items: center; gap: 8px; color: var(--t-text-2); }
+.t-syarat li[data-ok="true"] { color: var(--t-ok-text); font-weight: 500; }
+
+/* ---------- Animasi masuk (fade + geser 12 px, 280 ms) ---------- */
+
+@keyframes t-masuk {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.t-animasi-masuk { animation: t-masuk 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.t-animasi-masuk-2 { animation: t-masuk 280ms cubic-bezier(0.2, 0.7, 0.2, 1) 60ms both; }
+
+@keyframes t-putar { to { transform: rotate(360deg); } }
+.t-putar { animation: t-putar 800ms linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .t-animasi-masuk, .t-animasi-masuk-2 { animation: none; }
+  .t-putar { animation: none; }
+  .t-tombol, .t-kotak { transition: none; }
+  .t-tombol:active { transform: none; }
+}
+
+/* ---------- Layar kecil sekali (320 px) & huruf diperbesar ---------- */
+
+@media (max-width: 359px) {
+  .t-kartu-layar { padding: 16px; }
+  .t-hero { padding-left: 16px; padding-right: 16px; }
+}
