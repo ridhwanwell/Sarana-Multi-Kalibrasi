@@ -51,6 +51,15 @@ Aturan keras:
 - **Jumlah titik ukur** dihitung dari isian dan ikut dicocokkan.
 - Segel tidak cocok → server menolak, perangkat tetap 🟡 dan mencatat error (tidak pernah "setengah masuk").
 
+## 3b. Cadangan draft ke server (permintaan Ridhwan 19 Okt 04.36)
+
+**Semua draft juga dicadangkan** ke tabel `tera_lkk_drafts`, supaya bila HP rusak/hilang/data situs terhapus, isian tetap bisa dipulihkan Developer.
+- Dikirim otomatis **paling sering tiap 60 detik** selama mengetik, dan segera saat aplikasi ditutup/disembunyikan atau sinyal kembali.
+- Cadangan **bukan kiriman**: tidak masuk Selia, BAP, tagihan; tidak dicek nomor ganda; boleh tanpa nomor label.
+- Versi baru menimpa versi lama, tidak sebaliknya. Gagal kirim cadangan tidak mengganggu isian (dicoba lagi).
+- Di layar draft tampil keterangan kecil **"Cadangan di server ✓ 04.36"** / **"Cadangan tertunda"** (bukan chip 🟡🔵🟢, yang tetap khusus LKK yang sudah "Selesai").
+- Endpoint: `POST /api/tera/draft` → fungsi `tera_simpan_draft()`.
+
 ## 4. Mesin kirim (tanpa tombol)
 
 Berjalan di latar belakang, **tidak mengunci layar**:
@@ -78,6 +87,7 @@ Isi migrasi `0004` (semua **tabel baru**, tabel lama tidak disentuh):
 | `tera_sync_receipts` | Buku tanda terima | Tiap kiriman yang diterima utuh (dasar 🟢) |
 | `tera_sync_conflicts` | Map "kiriman ditolak" | Kiriman yang datang setelah LKK dipegang Penyelia **atau** bernomor label ganda — **salinan disimpan**, tidak dibuang (F4.13, F4.14) |
 | `tera_error_logs` | Buku catatan gangguan | Error/macet dari perangkat, dibaca Developer |
+| `tera_lkk_drafts` | Map fotokopi draft | Cadangan draft yang belum "Selesai" (untuk pemulihan saja) |
 | fungsi `tera_terima_lkk` | Petugas loket | Menyimpan LKK + tanda terima dalam **satu transaksi** (utuh atau tidak sama sekali) |
 
 Pengaman di database:

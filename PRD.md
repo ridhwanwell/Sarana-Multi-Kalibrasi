@@ -221,6 +221,7 @@ Pengembangan dilakukan langsung di project Supabase produksi (keputusan pemilik 
 | F4.13 | Konflik: LKK yang sudah dikunci Penyelia tidak bisa ditimpa kiriman teknisi | Kiriman ditolak dengan alasan jelas, salinan lokal disimpan untuk Developer |
 | F4.14 | Nomor label ganda (dari dua perangkat) *(diubah 19 Okt 2026 atas permintaan pemilik produk; sebelumnya "diterima + peringatan")* | **Ditolak** dengan pesan jelas *"Nomor stiker … sudah dipakai LKK lain"*; LKK **tetap aman di perangkat** (merah, bisa diperbaiki), salinan kiriman disimpan untuk Developer; tidak dikirim ulang terus-menerus sampai nomor diperbaiki |
 | F4.15 | Pembaruan versi aplikasi tidak boleh menghapus data lokal | Uji: update versi saat ada LKK 🟡 → data tetap |
+| F4.16 | **Cadangan draft ke server** *(ditambah 19 Okt 2026, permintaan pemilik produk)*: draft yang belum "Selesai" ikut dicadangkan otomatis (maks tiap 60 s & saat aplikasi ditutup) ke `tera_lkk_drafts` | Draft bisa dipulihkan Developer dari server bila perangkat bermasalah; cadangan tidak masuk Selia/BAP/tagihan |
 
 ### F5 · Mesin Hitung & Template
 | ID | Kebutuhan | Kriteria terima |

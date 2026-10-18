@@ -2,14 +2,22 @@
 -- MIGRASI 0004 — GUDANG SERVER UNTUK LKK TERA SMK (TAHAP 2: OFFLINE & SINKRON)
 -- Supabase : qr-label-kalibrasi (PRODUKSI)
 -- Dibuat   : 19 Oktober 2026 (Tahap 2.1 Tera SMK)
--- Disetujui: (menunggu "lanjutkan" Ridhwan)
+-- Disetujui: Ridhwan ("lanjutkan" + draft ikut dicadangkan, 19 Okt 2026 04.36 WIB)
+-- Dijalankan: 19 Okt 2026 ±04.40 WIB oleh Claude lewat sambungan Supabase (apply_migration
+--             "tera_0004_lkk_sinkron", blok 2 tanpa begin/commit karena dibungkus otomatis).
+--             CEK 7/7 true. Uji perilaku (BO 999, dibatalkan otomatis): diterima · kirim ulang = sudah_diterima ·
+--             nomor ganda = ditolak_label_ganda · versi lama = ditolak_versi_lama · LKK ACC = ditolak_terkunci ·
+--             draft = dicadangkan · tabel kembali kosong.
 --
 -- Isi (SEMUA TABEL BARU, tidak ada tabel lama yang disentuh):
 --   1. tera_lkk            : LKK yang sudah dikirim teknisi (1 baris = 1 LKK utuh)
 --   2. tera_sync_receipts  : "tanda terima" tiap kiriman yang diterima utuh (dasar status hijau)
 --   3. tera_sync_conflicts : kiriman yang DITOLAK karena LKK sudah dikunci Penyelia (salinan disimpan, F4.13)
 --   4. tera_error_logs     : catatan error/macet dari perangkat teknisi (F13 / CLAUDE.md 12)
+--   4b. tera_lkk_drafts    : CADANGAN draft LKK (belum "Selesai") — fotokopi berkala ke server,
+--                            TIDAK masuk Selia, tidak dicek nomor ganda (permintaan Ridhwan 19 Okt 04.36)
 --   5. fungsi public.tera_terima_lkk(...) : satu pintu penerimaan paket, utuh-atau-tidak-sama-sekali
+--   6. fungsi public.tera_simpan_draft(...): simpan cadangan draft (versi baru menimpa versi lama, tidak sebaliknya)
 --
 -- Pengaman:
 --   - Semua tabel RLS aktif TANPA policy & tanpa GRANT ke anon/authenticated
@@ -31,6 +39,7 @@ select to_regclass('public.tera_lkk')            is not null as tera_lkk_sudah_a
        to_regclass('public.tera_sync_receipts')  is not null as receipts_sudah_ada,
        to_regclass('public.tera_sync_conflicts') is not null as conflicts_sudah_ada,
        to_regclass('public.tera_error_logs')     is not null as error_logs_sudah_ada,
+       to_regclass('public.tera_lkk_drafts')     is not null as drafts_sudah_ada,
        exists (select 1 from pg_proc where proname = 'tera_terima_lkk') as fungsi_sudah_ada;
 
 
@@ -115,14 +124,32 @@ comment on table public.tera_error_logs is 'Tera SMK: error & kejadian macet dar
 create index tera_error_logs_waktu_idx on public.tera_error_logs (waktu desc);
 create index tera_error_logs_user_idx  on public.tera_error_logs (user_id);
 
+-- 4b) Cadangan draft ------------------------------------------------------------
+create table public.tera_lkk_drafts (
+  id                uuid primary key,                     -- = id LKK di perangkat
+  teknisi_user_id   uuid not null references public.profiles(id) on delete restrict,
+  bo                text check (bo is null or bo ~ '^[0-9]{3}$'),
+  no_label          text,                                 -- boleh kosong / ganda: ini hanya cadangan
+  template_kode     text,
+  data              jsonb not null,
+  checksum          text not null check (checksum ~ '^[0-9a-f]{64}$'),
+  client_version    integer not null check (client_version > 0),
+  is_test           boolean not null default false,
+  client_updated_at timestamptz,
+  dicadangkan_pada  timestamptz not null default now()
+);
+comment on table public.tera_lkk_drafts is 'Tera SMK: cadangan draft LKK (belum Selesai). Hanya untuk pemulihan bila perangkat bermasalah; tidak masuk Selia/BAP/tagihan. Ditulis hanya lewat public.tera_simpan_draft().';
+create index tera_lkk_drafts_teknisi_idx on public.tera_lkk_drafts (teknisi_user_id, dicadangkan_pada desc);
+
 -- Kunci pintu: RLS aktif, tanpa policy, tanpa hak untuk browser
 alter table public.tera_lkk            enable row level security;
 alter table public.tera_sync_receipts  enable row level security;
 alter table public.tera_sync_conflicts enable row level security;
 alter table public.tera_error_logs     enable row level security;
-revoke all on public.tera_lkk, public.tera_sync_receipts, public.tera_sync_conflicts, public.tera_error_logs
+alter table public.tera_lkk_drafts     enable row level security;
+revoke all on public.tera_lkk, public.tera_sync_receipts, public.tera_sync_conflicts, public.tera_error_logs, public.tera_lkk_drafts
   from public, anon, authenticated;
-grant select, insert, update on public.tera_lkk, public.tera_sync_receipts, public.tera_sync_conflicts, public.tera_error_logs
+grant select, insert, update on public.tera_lkk, public.tera_sync_receipts, public.tera_sync_conflicts, public.tera_error_logs, public.tera_lkk_drafts
   to service_role;
 
 -- 5) Satu pintu penerimaan paket (utuh atau tidak sama sekali) -------------------
@@ -240,19 +267,62 @@ revoke all on function public.tera_terima_lkk(uuid,uuid,text,text,text,integer,d
 grant execute on function public.tera_terima_lkk(uuid,uuid,text,text,text,integer,date,boolean,text,text,jsonb,jsonb,jsonb,text,integer,integer,boolean,timestamptz)
   to service_role;
 
+-- 6) Simpan cadangan draft -------------------------------------------------------
+create or replace function public.tera_simpan_draft(
+  p_id uuid, p_user uuid, p_bo text, p_no_label text, p_template_kode text,
+  p_data jsonb, p_checksum text, p_client_version integer, p_is_test boolean, p_client_updated_at timestamptz
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_lama public.tera_lkk_drafts%rowtype;
+begin
+  select * into v_lama from public.tera_lkk_drafts where id = p_id for update;
+  if found then
+    if v_lama.teknisi_user_id <> p_user then
+      return jsonb_build_object('hasil','ditolak','alasan','Draft milik teknisi lain.');
+    end if;
+    if p_client_version <= v_lama.client_version then
+      return jsonb_build_object('hasil','sudah_dicadangkan','client_version',v_lama.client_version,'checksum',v_lama.checksum);
+    end if;
+    update public.tera_lkk_drafts set
+      bo = p_bo, no_label = p_no_label, template_kode = p_template_kode, data = p_data,
+      checksum = p_checksum, client_version = p_client_version, is_test = p_is_test,
+      client_updated_at = p_client_updated_at, dicadangkan_pada = now()
+    where id = p_id;
+  else
+    insert into public.tera_lkk_drafts (id, teknisi_user_id, bo, no_label, template_kode, data, checksum,
+      client_version, is_test, client_updated_at)
+    values (p_id, p_user, p_bo, p_no_label, p_template_kode, p_data, p_checksum,
+      p_client_version, p_is_test, p_client_updated_at);
+  end if;
+  return jsonb_build_object('hasil','dicadangkan','client_version',p_client_version,'checksum',p_checksum);
+exception
+  when unique_violation then
+    return jsonb_build_object('hasil','coba_lagi');   -- dua kiriman draft yang sama di detik yang sama
+end;
+$$;
+
+revoke all on function public.tera_simpan_draft(uuid,uuid,text,text,text,jsonb,text,integer,boolean,timestamptz)
+  from public, anon, authenticated;
+grant execute on function public.tera_simpan_draft(uuid,uuid,text,text,text,jsonb,text,integer,boolean,timestamptz)
+  to service_role;
+
 commit;
 
 
 -- =====================================================================
 -- BLOK 3 — CEK (harapan: semua kolom "hasil" = true)
 -- =====================================================================
-select 'empat tabel ada' cek,
+select 'lima tabel ada' cek,
        (select count(*) from pg_tables where schemaname='public'
-          and tablename in ('tera_lkk','tera_sync_receipts','tera_sync_conflicts','tera_error_logs')) = 4 hasil
+          and tablename in ('tera_lkk','tera_sync_receipts','tera_sync_conflicts','tera_error_logs','tera_lkk_drafts')) = 5 hasil
 union all
-select 'RLS aktif di keempatnya',
+select 'RLS aktif di kelimanya',
        (select bool_and(rowsecurity) from pg_tables where schemaname='public'
-          and tablename in ('tera_lkk','tera_sync_receipts','tera_sync_conflicts','tera_error_logs'))
+          and tablename in ('tera_lkk','tera_sync_receipts','tera_sync_conflicts','tera_error_logs','tera_lkk_drafts'))
 union all
 select 'browser tidak punya hak apa pun',
        not exists (select 1 from information_schema.role_table_grants
@@ -262,6 +332,10 @@ union all
 select 'fungsi penerima hanya untuk service_role',
        not has_function_privilege('authenticated', 'public.tera_terima_lkk(uuid,uuid,text,text,text,integer,date,boolean,text,text,jsonb,jsonb,jsonb,text,integer,integer,boolean,timestamptz)', 'execute')
        and not has_function_privilege('anon', 'public.tera_terima_lkk(uuid,uuid,text,text,text,integer,date,boolean,text,text,jsonb,jsonb,jsonb,text,integer,integer,boolean,timestamptz)', 'execute')
+union all
+select 'fungsi draft hanya untuk service_role',
+       not has_function_privilege('authenticated', 'public.tera_simpan_draft(uuid,uuid,text,text,text,jsonb,text,integer,boolean,timestamptz)', 'execute')
+       and not has_function_privilege('anon', 'public.tera_simpan_draft(uuid,uuid,text,text,text,jsonb,text,integer,boolean,timestamptz)', 'execute')
 union all
 select 'nomor label dijaga unik',
        exists (select 1 from pg_indexes where schemaname='public' and indexname='tera_lkk_no_label_uniq')
@@ -275,6 +349,8 @@ select 'tabel lama tidak berubah (labels masih 3.934-an baris)',
 -- =====================================================================
 -- begin;
 -- drop function if exists public.tera_terima_lkk(uuid,uuid,text,text,text,integer,date,boolean,text,text,jsonb,jsonb,jsonb,text,integer,integer,boolean,timestamptz);
+-- drop function if exists public.tera_simpan_draft(uuid,uuid,text,text,text,jsonb,text,integer,boolean,timestamptz);
+-- drop table if exists public.tera_lkk_drafts;
 -- drop table if exists public.tera_sync_receipts;
 -- drop table if exists public.tera_sync_conflicts;
 -- drop table if exists public.tera_error_logs;

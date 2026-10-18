@@ -170,7 +170,7 @@ Aplikasi lama pernah **kehilangan data** saat sinkron. **Ini tidak boleh terulan
 7. Minta **izin penyimpanan permanen** (`navigator.storage.persist()`) dan wajibkan PWA **dipasang ke layar utama**. Kalau belum: banner peringatan yang jelas.
 8. Data di perangkat **TIDAK BOLEH dihapus** sebelum hijau — termasuk saat **update versi** aplikasi/service worker.
 9. Selama ada LKK belum hijau: peringatan tampil dan **logout diblokir**.
-10. Tombol **"Backup ke file"** sebagai cadangan darurat.
+10. Tombol **"Backup ke file"** sebagai cadangan darurat. **Draft juga dicadangkan otomatis ke server** (`tera_lkk_drafts`, maks tiap 60 s & saat aplikasi ditutup) — cadangan saja, tidak masuk Selia (PRD F4.16).
 11. **Tidak ada tombol Upload manual.**
 12. Nomor label ganda: **ditolak** dengan pesan jelas *(diubah 19 Okt 2026 atas permintaan pemilik proyek)*. LKK-nya **tetap aman di perangkat** (chip merah, bisa diperbaiki), salinan kiriman disimpan di `tera_sync_conflicts`, mesin kirim berhenti mencoba ulang sampai nomor diperbaiki. Tidak boleh ada penolakan diam-diam.
 13. Server **tidak menolak** LKK berisi kalibrator expired (data tidak boleh hilang): simpan, beri penanda merah, ACC ditolak.
