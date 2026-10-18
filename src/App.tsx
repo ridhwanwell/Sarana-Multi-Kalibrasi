@@ -12,13 +12,24 @@ import { ThemeProvider, ThemeRouteSync } from './lib/theme';
 // Pages
 import PublicScanPage from './pages/PublicScanPage';
 import AdminLogin from './pages/AdminLogin';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminLabels from './pages/AdminLabels';
-import AdminGenerate from './pages/AdminGenerate';
-import AdminTemplates from './pages/AdminTemplates';
 import AdminLayout from './components/AdminLayout';
 import AsetPortalApp from './pages/AsetPortalApp';
 import TeraApp from './tera/TeraApp';
+
+/**
+ * Admin Panel lama (/admin/dashboard, /labels, /generate, /templates) sudah tidak dipakai:
+ * isinya sama dengan tab "Label & Cetak Stiker" di portal Manajemen Aset.
+ * Alamat lama tetap hidup (bookmark & tombol di dalam modul label) — dibelokkan ke portal,
+ * parameter (mis. ?folder=087) ikut dibawa, sub-tab label yang sesuai langsung terbuka.
+ */
+const PanelLamaKePortal = ({ sub }: { sub?: 'labels' | 'generate' | 'templates' }) => {
+  const location = useLocation();
+  if (!sub) return <Navigate to="/admin/aset" replace />;
+  const params = new URLSearchParams(location.search);
+  params.set('modul', 'label');
+  params.set('sub', sub);
+  return <Navigate to={`/admin/aset?${params.toString()}`} replace />;
+};
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -107,11 +118,11 @@ export default function App() {
               <AdminLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="labels" element={<AdminLabels />} />
-            <Route path="generate" element={<AdminGenerate />} />
-            <Route path="templates" element={<AdminTemplates />} />
+            <Route index element={<PanelLamaKePortal />} />
+            <Route path="dashboard" element={<PanelLamaKePortal />} />
+            <Route path="labels" element={<PanelLamaKePortal sub="labels" />} />
+            <Route path="generate" element={<PanelLamaKePortal sub="generate" />} />
+            <Route path="templates" element={<PanelLamaKePortal sub="templates" />} />
             <Route path="aset" element={<AsetPortalApp />} />
           </Route>
 

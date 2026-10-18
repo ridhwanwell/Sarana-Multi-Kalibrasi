@@ -25,11 +25,8 @@ export default function AdminLogin() {
 
   useEffect(() => {
     if (user) {
-      if (user.role === 'admin_teknik' || user.role === 'admin_keuangan' || user.role === 'hanya_sph') {
-        navigate('/admin/aset', { replace: true });
-      } else {
-        navigate('/admin/dashboard', { replace: true });
-      }
+      // Semua role kantor masuk ke Dashboard Utama Manajemen Aset (teknisi dibelokkan ke /tera oleh penjaga rute)
+      navigate('/admin/aset', { replace: true });
     }
   }, [user, navigate]);
 
@@ -41,13 +38,7 @@ export default function AdminLogin() {
     try {
       const result = await loginWithCredentials(username, password);
       if (result.success) {
-        // Redirect based on role
-        const targetEmail = username.toLowerCase();
-        if (targetEmail.includes('teknik') || targetEmail.includes('keuangan') || targetEmail.includes('sph') || targetEmail.includes('nissa') || targetEmail.includes('erwin') || targetEmail.includes('sulis')) {
-          navigate('/admin/aset');
-        } else {
-          navigate('/admin/dashboard');
-        }
+        navigate('/admin/aset', { replace: true });
       } else {
         setError(result.error || 'Username atau password tidak sesuai.');
       }

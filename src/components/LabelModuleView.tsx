@@ -7,7 +7,10 @@ import { Tags, FilePlus2, Palette, BarChart3, Database } from 'lucide-react';
 import { apiFetch } from '../lib/apiClient';
 
 export const LabelModuleView: React.FC = () => {
-  const [subTab, setSubTab] = useState<'labels' | 'generate' | 'templates' | 'dashboard'>('labels');
+  const [subTab, setSubTab] = useState<'labels' | 'generate' | 'templates' | 'dashboard'>(() => {
+    const s = new URLSearchParams(window.location.search).get('sub');
+    return s === 'generate' || s === 'templates' || s === 'dashboard' ? s : 'labels';
+  });
   const [dbStatus, setDbStatus] = useState<{ connected: boolean; count: number }>({ connected: true, count: 0 });
 
   useEffect(() => {

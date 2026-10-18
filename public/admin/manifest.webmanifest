@@ -5,7 +5,7 @@
   "description": "Sistem Informasi Terpadu Manajemen Aset, Kalibrasi, Logistik & Keuangan PT Sarana Multi Kalibrasi",
   "lang": "id",
   "dir": "ltr",
-  "start_url": "/admin/dashboard",
+  "start_url": "/admin/aset",
   "scope": "/admin/",
   "display": "standalone",
   "orientation": "any",
