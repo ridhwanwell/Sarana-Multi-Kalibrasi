@@ -39,6 +39,8 @@ export interface KalibratorLokal {
   sumber: string;
   diubahPada: string;
   diambilAt: string;
+  /** T9 (Ridhwan 20 Okt 2026): alat yang direkomendasikan. Server belum mengirim → tidak ada. */
+  rekomendasi?: boolean;
 }
 
 const teks = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
@@ -80,6 +82,7 @@ export function bersihkanKalibrator(mentah: unknown, diambilAt: string): Kalibra
     tanggalKalibrasi: tanggal(k.tanggalKalibrasi), berlakuSampai: tanggal(k.berlakuSampai),
     points: points.sort((a, b) => a.titik - b.titik), budget: k.budget ?? null,
     sumber: teks(k.sumber) || '-', diubahPada: String(k.diubahPada ?? ''), diambilAt,
+    ...(k.rekomendasi === true ? { rekomendasi: true } : {}),
   };
 }
 

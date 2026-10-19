@@ -20,6 +20,7 @@ export const NavLink = Link;
 export const Outlet = () => null;
 export const useLocation = () => ({ pathname: '/tera/' });
 export const useParams = () => (window.__params || {});
+export const useNavigate = () => (to) => { window.__navigasi = to; };
 `;
 const stubAuth = `export const useAuth = () => ({ user: window.__user, isOnline: true, logout: async () => {} });`;
 const stubApi = `export const apiFetch = (u, o) => window.__api(u, o);`;
@@ -172,7 +173,8 @@ cek('ketuk dobel → tetap 1 LKK', lkk.length === 1, String(lkk.length));
 const a = lkk[0] || {};
 cek('LKK terbentuk: nomor, BO, template & versi, tanggal hari ini, draft', a.noLabel === '095.0001' && a.bo === '095' && a.templateKode === 'sphygmomanometer' && a.templateVersi === 1 && a.tanggalKalibrasi === hariIni() && a.syncState === 'draft', JSON.stringify(a));
 cek('LKK PO: bukan alat tambahan, terkait item PO "A" dan jadwal j1, bukan data uji', a.alatTambahan === false && a.poItemRef === 'A' && a.jadwalId === 'j1' && a.isTest === false);
-cek('lembar tertutup, kabar sukses tampil (ikon + tulisan)', !(await adaSheet(p)) && await p.evaluate(() => /LKK 095\.0001 \(Sphygmomanometer\) dibuat/.test(document.querySelector('.t-sukses')?.textContent || '') && !!document.querySelector('.t-sukses svg[data-ikon="Check"]')));
+cek('lembar tertutup lalu langsung pindah ke layar isi LKK (/tera/lkk/<id>)', !(await adaSheet(p)) && (await p.evaluate(() => (window as any).__navigasi)) === `/tera/lkk/${encodeURIComponent(a.id)}`, String(await p.evaluate(() => (window as any).__navigasi)));
+cek('baris LKK di Detail RS menjadi tautan ke layar isi LKK', await tunggu(p, () => !!document.querySelector('a.t-lkk-baris[href^="/tera/lkk/"]')));
 cek('angka Detail RS naik: dikerjakan 1, sisa 5 (≤ 6 detik)', await tunggu(p, () => /PO 6 · dikerjakan 1 · sisa 5/.test(document.body.innerText)));
 
 // ---------- 4. nomor sudah dipakai ----------

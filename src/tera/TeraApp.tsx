@@ -24,6 +24,7 @@ import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 import { HalamanAkun, HalamanLkk, KerangkaTera } from './TeraKerangka';
 import { HalamanBeranda, HalamanDetailRs } from './HalamanJadwal';
+import { LayarLkk } from './LayarLkk';
 import { SinkronProvider } from './SinkronKonteks';
 import './tera-tema.css';
 
@@ -343,6 +344,7 @@ const LayarKerja: React.FC = () => (
         <Route index element={<HalamanBeranda />} />
         <Route path="rs/:id" element={<HalamanDetailRs />} />
         <Route path="lkk" element={<HalamanLkk />} />
+        <Route path="lkk/:id" element={<LayarLkk />} />
         <Route path="akun" element={<HalamanAkun />} />
         <Route path="*" element={<Navigate to="/tera/" replace />} />
       </Route>

@@ -13,7 +13,7 @@
  * `content-visibility: auto` pada baris (tanpa paket baru).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, Building2, Check, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, Plus, RefreshCw, Tag,
 } from 'lucide-react';
@@ -172,6 +172,7 @@ export const HalamanBeranda: React.FC = () => {
 
 export const HalamanDetailRs: React.FC = () => {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
   const { jadwal, daftar, siap, dorong, statusJadwal } = useSinkron();
   const [templates, setTemplates] = useState<TemplateAlat[]>([]);
   const [lembar, setLembar] = useState<{ alat: HitunganAlat | null } | null>(null);
@@ -335,10 +336,10 @@ export const HalamanDetailRs: React.FC = () => {
         <MulaiLkk
           jadwal={j} alat={lembar.alat} templates={templates} pemilik={j.pemilik}
           onTutup={() => setLembar(null)}
-          onDibuat={(l, tpl) => {
+          onDibuat={(l) => {
             setLembar(null);
-            setKabar({ jenis: 'ok', teks: `LKK ${l.noLabel} (${tpl.nama}) dibuat dan tersimpan di perangkat sebagai draft. Layar pengisian dibuka di langkah berikutnya.` });
             dorong();
+            navigate(`/tera/lkk/${encodeURIComponent(l.id)}`);   // langsung ke layar isi LKK (4.3c)
           }}
         />
       )}

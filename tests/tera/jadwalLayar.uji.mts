@@ -20,6 +20,7 @@ export const NavLink = Link;
 export const Outlet = () => null;
 export const useLocation = () => ({ pathname: '/tera/' });
 export const useParams = () => (window.__params || {});
+export const useNavigate = () => (to) => { window.__navigasi = to; };
 `;
 const stubAuth = `
 export const useAuth = () => ({ user: window.__user, isOnline: true, logout: async () => {} });
