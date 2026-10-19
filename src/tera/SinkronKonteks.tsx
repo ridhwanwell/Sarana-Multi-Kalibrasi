@@ -18,6 +18,7 @@ import {
 } from './data/teraDb';
 import { mintaPenyimpananPermanen, mulaiMesinKirim, pengirimApi, type MesinKirim } from './data/mesinKirim';
 import { daftarJadwalAktif, tarikJadwal, type JadwalLokal } from './data/jadwalLokal';
+import { tarikMaster } from './data/masterLokal';
 
 const KOSONG: Ringkasan = {
   draft: 0, tersimpan: 0, mengirim: 0, diterima: 0, ditolak: 0, belumHijau: 0, draftBelumTercadang: 0
@@ -124,6 +125,9 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const h = await tarikJadwal(pemilik, (signal) =>
         apiFetch('/api/tera/jadwal', { method: 'GET', retries: 0, timeoutMs: 15000, signal }));
+      // Template & kalibrator ikut ditarik (4.3a). Gagal = pakai salinan lama / template bawaan, tanpa pesan.
+      await tarikMaster((signal) => apiFetch('/api/tera/master', { method: 'GET', retries: 0, timeoutMs: 15000, signal }))
+        .catch(() => undefined);
       if (!hidup.current) return;
       if (h.ok) {
         setStatusJadwal({ keadaan: 'ok', pesan: null, waktu: new Date().toISOString() });
