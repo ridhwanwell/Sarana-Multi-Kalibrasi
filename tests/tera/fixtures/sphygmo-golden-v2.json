@@ -1,0 +1,700 @@
+{
+ "sumber": "_referensi/golden/Master_Sphygmomanometer_golden_{1,2}_v2.xlsx (Master v12 + keputusan U95 19 Okt 2026), dihitung ulang penuh LibreOffice",
+ "dibuat": "2026-10-19",
+ "kasus": [
+  {
+   "nama": "golden_1_v2",
+   "data": {
+    "identitas": {
+     "resolusi": 2,
+     "jenisSkala": "Analog"
+    },
+    "fisik": {
+     "badan": {
+      "fisik": "Baik",
+      "fungsi": "Baik"
+     },
+     "level_cairan": {
+      "fisik": "Baik",
+      "fungsi": "Baik"
+     },
+     "tabung_selang": {
+      "fisik": "Baik",
+      "fungsi": "Baik"
+     }
+    },
+    "bocor": {
+     "bacaan": 247
+    },
+    "lajuBuang": {
+     "waktu": 6.5
+    },
+    "kinerja": {
+     "tekanan": {
+      "0": {
+       "naik": [
+        0,
+        0,
+        0
+       ],
+       "turun": [
+        0,
+        0,
+        0
+       ]
+      },
+      "50": {
+       "naik": [
+        51,
+        50,
+        52
+       ],
+       "turun": [
+        53,
+        52,
+        52
+       ]
+      },
+      "100": {
+       "naik": [
+        102,
+        103,
+        102
+       ],
+       "turun": [
+        103,
+        103,
+        99
+       ]
+      },
+      "150": {
+       "naik": [
+        154,
+        153,
+        156
+       ],
+       "turun": [
+        150,
+        154,
+        153
+       ]
+      },
+      "200": {
+       "naik": [
+        202,
+        203,
+        202
+       ],
+       "turun": [
+        201,
+        203,
+        203
+       ]
+      },
+      "250": {
+       "naik": [
+        250,
+        252,
+        252
+       ],
+       "turun": [
+        251,
+        250,
+        249
+       ]
+      }
+     }
+    }
+   },
+   "kalibrator": [
+    {
+     "titik": 0,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 50,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 100,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 150,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 200,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.09,
+     "u95Turun": 0.09,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 250,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.09,
+     "u95Turun": 0.09,
+     "driftNaik": 0,
+     "driftTurun": 0
+    }
+   ],
+   "harapan": {
+    "titik": [
+     {
+      "titik": 0,
+      "arah": "naik",
+      "rataRata": 0,
+      "koreksi": 0,
+      "uTipeA": 0,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.411298755975102,
+      "u95": 0.822597511950205,
+      "u95Laporan": 1.0,
+      "u95Cetak": 1,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 0,
+      "arah": "turun",
+      "rataRata": 0,
+      "koreksi": 0,
+      "uTipeA": 0,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.411298755975102,
+      "u95": 0.822597511950205,
+      "u95Laporan": 1.0,
+      "u95Cetak": 1,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 50,
+      "arah": "naik",
+      "rataRata": 51,
+      "koreksi": 1,
+      "uTipeA": 0.577350269189626,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.708872343937891,
+      "u95": 1.41774468787578,
+      "u95Laporan": 1.41774468787578,
+      "u95Cetak": 1.42,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 50,
+      "arah": "turun",
+      "rataRata": 52.3333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52941267247562,
+      "u95": 1.05882534495124,
+      "u95Laporan": 1.05882534495124,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 100,
+      "arah": "naik",
+      "rataRata": 102.333333333333,
+      "koreksi": 2.33333333333333,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52941267247562,
+      "u95": 1.05882534495124,
+      "u95Laporan": 1.05882534495124,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 100,
+      "arah": "turun",
+      "rataRata": 101.666666666667,
+      "koreksi": 1.66666666666667,
+      "uTipeA": 1.33333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 1.39532951106341,
+      "u95": 2.79065902212681,
+      "u95Laporan": 2.79065902212681,
+      "u95Cetak": 2.79,
+      "hasil": "Tidak Laik"
+     },
+     {
+      "titik": 150,
+      "arah": "naik",
+      "rataRata": 154.333333333333,
+      "koreksi": 4.33333333333334,
+      "uTipeA": 0.881917103688197,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.973110705133,
+      "u95": 1.946221410266,
+      "u95Laporan": 1.946221410266,
+      "u95Cetak": 1.95,
+      "hasil": "Tidak Laik"
+     },
+     {
+      "titik": 150,
+      "arah": "turun",
+      "rataRata": 152.333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 1.20185042515466,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 1.27027993415275,
+      "u95": 2.5405598683055,
+      "u95Laporan": 2.5405598683055,
+      "u95Cetak": 2.54,
+      "hasil": "Tidak Laik"
+     },
+     {
+      "titik": 200,
+      "arah": "naik",
+      "rataRata": 202.333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52896387190221,
+      "u95": 1.05792774380442,
+      "u95Laporan": 1.05792774380442,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 200,
+      "arah": "turun",
+      "rataRata": 202.333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.666666666666667,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.783030083145668,
+      "u95": 1.56606016629134,
+      "u95Laporan": 1.56606016629134,
+      "u95Cetak": 1.57,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 250,
+      "arah": "naik",
+      "rataRata": 251.333333333333,
+      "koreksi": 1.33333333333334,
+      "uTipeA": 0.666666666666667,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.783030083145668,
+      "u95": 1.56606016629134,
+      "u95Laporan": 1.56606016629134,
+      "u95Cetak": 1.57,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 250,
+      "arah": "turun",
+      "rataRata": 250,
+      "koreksi": 0,
+      "uTipeA": 0.577350269189626,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.708537225556992,
+      "u95": 1.41707445111398,
+      "u95Laporan": 1.41707445111398,
+      "u95Cetak": 1.42,
+      "hasil": "Laik"
+     }
+    ],
+    "bocor": {
+     "selisih": 3,
+     "hasil": "Laik"
+    },
+    "lajuBuang": {
+     "hasil": "Laik"
+    },
+    "skor": {
+     "fisik": 10,
+     "bocor": 30,
+     "lajuBuangDanAkurasi": 60,
+     "total": 100
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "golden_2_v2",
+   "data": {
+    "identitas": {
+     "resolusi": 2,
+     "jenisSkala": "Analog"
+    },
+    "fisik": {
+     "badan": {
+      "fisik": "Baik",
+      "fungsi": "Baik"
+     },
+     "level_cairan": {
+      "fisik": "Baik",
+      "fungsi": "Baik"
+     },
+     "tabung_selang": {
+      "fisik": "Baik",
+      "fungsi": "Baik"
+     }
+    },
+    "bocor": {
+     "bacaan": 245
+    },
+    "lajuBuang": {
+     "waktu": 6
+    },
+    "kinerja": {
+     "tekanan": {
+      "0": {
+       "naik": [
+        0,
+        0,
+        0
+       ],
+       "turun": [
+        0,
+        0,
+        0
+       ]
+      },
+      "50": {
+       "naik": [
+        51,
+        51,
+        52
+       ],
+       "turun": [
+        53,
+        52,
+        52
+       ]
+      },
+      "100": {
+       "naik": [
+        102,
+        103,
+        102
+       ],
+       "turun": [
+        102,
+        101,
+        100
+       ]
+      },
+      "150": {
+       "naik": [
+        152,
+        153,
+        152
+       ],
+       "turun": [
+        152,
+        154,
+        151
+       ]
+      },
+      "200": {
+       "naik": [
+        201,
+        203,
+        202
+       ],
+       "turun": [
+        201,
+        203,
+        203
+       ]
+      },
+      "250": {
+       "naik": [
+        251,
+        251,
+        252
+       ],
+       "turun": [
+        251,
+        250,
+        250
+       ]
+      }
+     }
+    }
+   },
+   "kalibrator": [
+    {
+     "titik": 0,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 50,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 100,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 150,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.1,
+     "u95Turun": 0.1,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 200,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.09,
+     "u95Turun": 0.09,
+     "driftNaik": 0,
+     "driftTurun": 0
+    },
+    {
+     "titik": 250,
+     "koreksiNaik": 0,
+     "koreksiTurun": 0,
+     "u95Naik": 0.09,
+     "u95Turun": 0.09,
+     "driftNaik": 0,
+     "driftTurun": 0
+    }
+   ],
+   "harapan": {
+    "titik": [
+     {
+      "titik": 0,
+      "arah": "naik",
+      "rataRata": 0,
+      "koreksi": 0,
+      "uTipeA": 0,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.411298755975102,
+      "u95": 0.822597511950205,
+      "u95Laporan": 1.0,
+      "u95Cetak": 1,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 0,
+      "arah": "turun",
+      "rataRata": 0,
+      "koreksi": 0,
+      "uTipeA": 0,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.411298755975102,
+      "u95": 0.822597511950205,
+      "u95Laporan": 1.0,
+      "u95Cetak": 1,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 50,
+      "arah": "naik",
+      "rataRata": 51.3333333333333,
+      "koreksi": 1.33333333333334,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52941267247562,
+      "u95": 1.05882534495124,
+      "u95Laporan": 1.05882534495124,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 50,
+      "arah": "turun",
+      "rataRata": 52.3333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52941267247562,
+      "u95": 1.05882534495124,
+      "u95Laporan": 1.05882534495124,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 100,
+      "arah": "naik",
+      "rataRata": 102.333333333333,
+      "koreksi": 2.33333333333333,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52941267247562,
+      "u95": 1.05882534495124,
+      "u95Laporan": 1.05882534495124,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 100,
+      "arah": "turun",
+      "rataRata": 101,
+      "koreksi": 1,
+      "uTipeA": 0.577350269189626,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.708872343937891,
+      "u95": 1.41774468787578,
+      "u95Laporan": 1.41774468787578,
+      "u95Cetak": 1.42,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 150,
+      "arah": "naik",
+      "rataRata": 152.333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52941267247562,
+      "u95": 1.05882534495124,
+      "u95Laporan": 1.05882534495124,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 150,
+      "arah": "turun",
+      "rataRata": 152.333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.881917103688197,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.973110705133,
+      "u95": 1.946221410266,
+      "u95Laporan": 1.946221410266,
+      "u95Cetak": 1.95,
+      "hasil": "Tidak Laik"
+     },
+     {
+      "titik": 200,
+      "arah": "naik",
+      "rataRata": 202,
+      "koreksi": 2,
+      "uTipeA": 0.577350269189626,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.708537225556992,
+      "u95": 1.41707445111398,
+      "u95Laporan": 1.41707445111398,
+      "u95Cetak": 1.42,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 200,
+      "arah": "turun",
+      "rataRata": 202.333333333333,
+      "koreksi": 2.33333333333334,
+      "uTipeA": 0.666666666666667,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.783030083145668,
+      "u95": 1.56606016629134,
+      "u95Laporan": 1.56606016629134,
+      "u95Cetak": 1.57,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 250,
+      "arah": "naik",
+      "rataRata": 251.333333333333,
+      "koreksi": 1.33333333333334,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52896387190221,
+      "u95": 1.05792774380442,
+      "u95Laporan": 1.05792774380442,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     },
+     {
+      "titik": 250,
+      "arah": "turun",
+      "rataRata": 250.333333333333,
+      "koreksi": 0.333333333333343,
+      "uTipeA": 0.333333333333333,
+      "uZero": 0,
+      "uResolusi": 0.408248290463863,
+      "uc": 0.52896387190221,
+      "u95": 1.05792774380442,
+      "u95Laporan": 1.05792774380442,
+      "u95Cetak": 1.06,
+      "hasil": "Laik"
+     }
+    ],
+    "bocor": {
+     "selisih": 5,
+     "hasil": "Laik"
+    },
+    "lajuBuang": {
+     "hasil": "Laik"
+    },
+    "skor": {
+     "fisik": 10,
+     "bocor": 30,
+     "lajuBuangDanAkurasi": 60,
+     "total": 100
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  }
+ ]
+}

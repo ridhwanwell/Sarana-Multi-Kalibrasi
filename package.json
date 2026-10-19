@@ -16,7 +16,8 @@
     "test:tera:jadwal": "tsx tests/tera/jadwal.test.mts",
     "test:tera:jadwal-lokal": "tsx tests/tera/jadwalLokal.uji.mts",
     "test:tera:jadwal-layar": "tsx tests/tera/jadwalLayar.uji.mts",
-    "test:tera:impor": "tsx tests/tera/imporServer.test.mts"
+    "test:tera:impor": "tsx tests/tera/imporServer.test.mts",
+    "test:tera:hitung": "tsx tests/tera/hitungSphygmo.test.mts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

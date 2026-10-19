@@ -82,3 +82,15 @@ Hasil (dicek dengan skrip Python terpisah: selisih maks 5·10⁻¹⁵; Budget = 
 Catatan: teks gabungan di Report All (mis. "( 27.8±0.5 )") memakai titik karena dihitung di LibreOffice berbahasa Inggris; di Excel Indonesia menjadi koma. Bukan perubahan rumus.
 
 Berikutnya: template JSON Sphygmomanometer + mesin hitung bersama (perangkat & server) + test golden v2 (angka di tabel ini = target test).
+
+## 7. Langkah 4.1 — template & mesin hitung (19 Okt 2026, ±14.40)
+- `src/tera/shared/hitung.ts` — mesin hitung bersama (tablet & server), fungsi murni, rumus bagian 6.
+- `src/tera/shared/templates/sphygmomanometer.ts` — template (data murni, siap disimpan ke `tera_device_templates`).
+- `tests/tera/hitungSphygmo.test.mts` + `tests/tera/fixtures/sphygmo-golden-v2.json` (angka saja) — `npm run test:tera:hitung`: **58/58** (24 titik × 10 angka = Excel, skor & kesimpulan 2 golden; kasus tepi U5, U6, data kosong, run kosong, "Baik " berspasi, Digital, interpolasi kalibrator, ROUND Excel, template lewat JSON). Uji mutasi: toleransi diubah ke 3 → 15 uji gagal (test benar-benar menjaga).
+
+Temuan baru (belum diubah, menunggu keputusan):
+| # | Temuan | Excel sekarang | MK 090 |
+|---|---|---|---|
+| T6 | Batas laju buang | `< 10` detik | `≤ 10` detik (90.10.2) |
+| T7 | Batas bocor | `≤ 15` mmHg | `< 15` mmHg (90.10.1) |
+| T8 | Teks sertifikat Report All A83 | "Toleransi Akurasi Tekanan **± 3** mmHg" | ± 4 mmHg (View Report sudah ± 4) |
