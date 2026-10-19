@@ -7,7 +7,10 @@
 -- Dijalankan: 19 Okt 2026 ±13.00 WIB oleh Claude lewat sambungan Supabase (execute_sql, blok 2 lalu blok 3).
 --             Sebelumnya diuji kering (dibatalkan otomatis; tabel tetap 2 baris). CEK 9/9 true:
 --             3 baris, 32 kolom, kolom turunan terisi trigger, 10 unit PO, TECH-011 tertaut ke ridhwan@tera.smk,
---             belum ada Push. BERSIHKAN (blok 4a) dijalankan setelah uji 3.5 selesai.
+--             belum ada Push.
+-- Uji 3.5 oleh Ridhwan (19 Okt 13.17–13.19, Preview tera-dev): Push v1 oleh ridhwanwell@smk.co.id, RS tampil di
+--             /tera/ akun ridhwan@tera.smk, Cabut (v2). BERSIHKAN blok 4a DIJALANKAN 19 Okt ±13.20:
+--             jadwal uji deleted_at terisi, fotokopi push tercabut; CEK 6/6 (2 jadwal lama tetap aktif).
 --
 -- Perumpamaan: selembar surat tugas LATIHAN yang diselipkan di map surat tugas asli. Tertulis jelas
 -- "DATA UJI", nomor BO 999 (nomor yang tidak pernah dipakai RS sungguhan), dan akan dicabut lagi
