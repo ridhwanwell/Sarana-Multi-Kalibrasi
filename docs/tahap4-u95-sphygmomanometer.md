@@ -1,6 +1,7 @@
 # Tahap 4 · Langkah 4.0 — Tinjauan budget U95 Sphygmomanometer (PRD 11.45)
 
 > 19 Okt 2026. Status: **usulan, menunggu persetujuan Ridhwan**. Belum ada rumus yang diubah.
+> ⚠️ **SEMENTARA** — Ridhwan (19 Okt 13.29): acuan LKK **bukan** dari Google Drive, tetapi dari **zip LKK** (paket `_referensi`). Analisis ini dibuat dari salinan Drive dan **akan diulang** dengan file dari zip; angka & kesimpulan bisa berubah.
 > Sumber: `Master Sphygmomanometer.xlsx` (Drive, folder "Master LKK baru", 30 Sep 2026), sheet *Ketidakpastian* baris 37–42.
 > File Excel tidak di-commit (repo publik).
 
