@@ -15,7 +15,8 @@
     "test:tera:penyimpanan": "tsx tests/tera/penyimpanan.uji.mts",
     "test:tera:jadwal": "tsx tests/tera/jadwal.test.mts",
     "test:tera:jadwal-lokal": "tsx tests/tera/jadwalLokal.uji.mts",
-    "test:tera:jadwal-layar": "tsx tests/tera/jadwalLayar.uji.mts"
+    "test:tera:jadwal-layar": "tsx tests/tera/jadwalLayar.uji.mts",
+    "test:tera:impor": "tsx tests/tera/imporServer.test.mts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

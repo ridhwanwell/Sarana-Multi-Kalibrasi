@@ -11,7 +11,7 @@
  *   leadTechnicianId, supportTechnicianIds[], hospitalName, hospitalCity, scheduledDate, endDate,
  *   targetDevices[] { id, sphItemId?, name, quantity, labelSequenceStart, labelSequenceEnd }
  */
-import { BO_UJI, POLA_LABEL, POLA_TANGGAL } from './segel';
+import { BO_UJI, POLA_LABEL, POLA_TANGGAL } from './segel.js';
 
 export interface JadwalBaris {
   id: string;
