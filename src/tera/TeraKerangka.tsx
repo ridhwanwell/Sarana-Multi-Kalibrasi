@@ -4,8 +4,7 @@
  * HP & tablet portrait : header biru di atas + tab bawah (Beranda · LKK · Akun)
  * Tablet landscape/laptop: menu samping kiri + header tipis (lihat tera-tema.css)
  *
- * Isi halaman masih kosong dengan ajakan jelas; daftar RS, LKK, dan status sinkron
- * sungguhan datang di Tahap 2–4. Angka di sini sengaja 0 (belum ada yang disimpan).
+ * Beranda & Detail RS ada di HalamanJadwal.tsx (Tahap 3.4b); halaman LKK & Akun di file ini.
  *
  * UI: ui-ux-pro-max (Active State, Deep Linking, Empty States, badge bukan tombol,
  * <nav>/<button> semantik), design-system (semua warna lewat token).
@@ -14,7 +13,6 @@ import React, { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   AlertCircle,
-  Building2,
   Check,
   Clock,
   ClipboardCheck,
@@ -76,7 +74,7 @@ class BatasKesalahan extends React.Component<{ children: React.ReactNode }, { ru
 
 /* ---------- Bagian kecil ---------- */
 
-const KeadaanKosong: React.FC<{
+export const KeadaanKosong: React.FC<{
   ikon: React.ComponentType<{ size?: number; 'aria-hidden'?: boolean }>;
   judul: string;
   pesan: string;
@@ -107,7 +105,7 @@ export const ChipSync: React.FC<{ state: SyncState }> = ({ state }) => {
   );
 };
 
-const Statistik: React.FC = () => {
+export const Statistik: React.FC = () => {
   const { ringkasan: r, siap } = useSinkron();
   const butir = [
     { jenis: 'wait', ikon: Clock, label: 'Di perangkat', angka: r.tersimpan },
@@ -290,34 +288,7 @@ export const KerangkaTera: React.FC = () => {
 
 /* ---------- Halaman ---------- */
 
-export const HalamanBeranda: React.FC = () => (
-  <>
-    <h1 className="t-judul-layar">Beranda</h1>
-    <div className="mt-4"><Statistik /></div>
-    <div className="t-belah mt-6">
-      <section aria-labelledby="judul-rs">
-        <h2 id="judul-rs" className="t-judul-bagian">Rumah sakit aktif</h2>
-        <div className="mt-3">
-          <KeadaanKosong
-            ikon={Building2}
-            judul="Belum ada jadwal"
-            pesan="Hubungi Admin Teknik agar jadwal dikirim ke aplikasi ini."
-          />
-        </div>
-      </section>
-      <aside className="t-ringkasan" aria-labelledby="judul-ringkasan">
-        <h2 id="judul-ringkasan" className="t-judul-bagian">Ringkasan</h2>
-        <div className="t-kartu mt-3">
-          <p className="t-teks-2 text-[15px]">
-            Pilih rumah sakit di daftar untuk melihat alat PO, jumlah yang sudah dikerjakan, dan sisanya.
-          </p>
-        </div>
-      </aside>
-    </div>
-  </>
-);
-
-const BarisLkk: React.FC<{ l: LkkLokal }> = React.memo(({ l }) => (
+export const BarisLkk: React.FC<{ l: LkkLokal }> = React.memo(({ l }) => (
   <li className="t-lkk-baris">
     <div className="t-lkk-utama">
       <p className="t-lkk-nomor tabular truncate" title={l.noLabel || undefined}>{l.noLabel || 'Nomor label belum diisi'}</p>

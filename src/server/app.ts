@@ -6,6 +6,7 @@ import { requireAuth, requireAuthTera, requireRole, OFFICIAL_ROLES } from "../mi
 import type { AuthRequest, UserRole } from "../middleware/auth.js";
 import { registerSphTransisiRoutes } from "./sphTransisiRoutes.js";
 import { registerTeraSyncRoutes } from "./teraSyncRoutes.js";
+import { registerTeraJadwalRoutes } from "./teraJadwalRoutes.js";
 
 export interface IdempotencyRecord {
   statusCode: number;
@@ -485,6 +486,9 @@ export function createApp() {
 
   // --- API: TERA SMK — SINKRON LKK (Tahap 2.2): terima LKK, cadangan draft, tarik status, log error ---
   registerTeraSyncRoutes(app, { rateLimitKey });
+
+  // --- API: TERA SMK — PUSH JADWAL (Tahap 3.2): push, cabut, status, tarik jadwal untuk teknisi ---
+  registerTeraJadwalRoutes(app, { rateLimitKey });
 
   // --- API: ADMIN LABELS (Protected by requireAuth with Pagination for ALL labels) ---
   app.get("/api/labels", requireAuth, async (req: AuthRequest, res) => {

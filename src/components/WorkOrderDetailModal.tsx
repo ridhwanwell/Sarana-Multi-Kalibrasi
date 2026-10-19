@@ -27,6 +27,7 @@ import { formatRupiah, formatIndonesianDate, getUrgencyInfo, generateWhatsAppMes
 import { exportBapToExcel } from '../utils/bapExcelExport';
 import { createBapFromSchedule } from '../utils/bapHelpers';
 import confetti from 'canvas-confetti';
+import { TeraPushPanel } from './TeraPushPanel';
 
 interface WorkOrderDetailModalProps {
   schedule: CalibrationSchedule | null;
@@ -255,6 +256,9 @@ export const WorkOrderDetailModal: React.FC<WorkOrderDetailModalProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Tera SMK: Push jadwal ke tablet teknisi (Tahap 3.3b) — hanya Admin Teknik & Developer */}
+          <TeraPushPanel schedule={schedule} />
 
           {/* Progress Bar & Quick Actions */}
           <div className="bg-[#EEEEEE]/40 p-4 rounded-xl border border-[#DCDFE3]">

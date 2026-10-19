@@ -113,7 +113,7 @@ function pesanIdb(e: DOMException | null | undefined): string {
 }
 
 /** Jalankan satu transaksi; selesai hanya bila SEMUA perubahan tertulis. */
-async function tx<T>(
+export async function tx<T>(
   laci: string[],
   mode: IDBTransactionMode,
   kerja: (stores: Record<string, IDBObjectStore>) => T | Promise<T>
@@ -136,7 +136,7 @@ async function tx<T>(
   });
 }
 
-const minta = <T>(r: IDBRequest<T>): Promise<T> =>
+export const minta = <T>(r: IDBRequest<T>): Promise<T> =>
   new Promise((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
 
 const sekarang = () => new Date().toISOString();
