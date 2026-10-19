@@ -5,6 +5,7 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 import { requireAuth, requireAuthTera, requireRole, OFFICIAL_ROLES } from "../middleware/auth.js";
 import type { AuthRequest, UserRole } from "../middleware/auth.js";
 import { registerSphTransisiRoutes } from "./sphTransisiRoutes.js";
+import { registerTeraSyncRoutes } from "./teraSyncRoutes.js";
 
 export interface IdempotencyRecord {
   statusCode: number;
@@ -481,6 +482,9 @@ export function createApp() {
       return res.status(500).json({ error: "Server belum bisa menyimpan kata sandi. Coba lagi sebentar." });
     }
   });
+
+  // --- API: TERA SMK — SINKRON LKK (Tahap 2.2): terima LKK, cadangan draft, tarik status, log error ---
+  registerTeraSyncRoutes(app, { rateLimitKey });
 
   // --- API: ADMIN LABELS (Protected by requireAuth with Pagination for ALL labels) ---
   app.get("/api/labels", requireAuth, async (req: AuthRequest, res) => {

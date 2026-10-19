@@ -219,8 +219,9 @@ Pengembangan dilakukan langsung di project Supabase produksi (keputusan pemilik 
 | F4.11 | Tombol **"Backup ke file"** (JSON) + impor kembali oleh Developer | File bisa dipulihkan di perangkat lain |
 | F4.12 | **Uji wajib**: sinyal putus di tengah kirim, tab/aplikasi ditutup paksa, HP mati/baterai habis, 50 LKK sekaligus, sinyal putus-sambung, **memori HP hampir penuh** | Semua skenario: 0 data hilang, 0 dobel |
 | F4.13 | Konflik: LKK yang sudah dikunci Penyelia tidak bisa ditimpa kiriman teknisi | Kiriman ditolak dengan alasan jelas, salinan lokal disimpan untuk Developer |
-| F4.14 | Nomor label ganda dalam satu BO (dari dua perangkat) | **Diterima**, diberi peringatan di Selia (tidak ditolak diam-diam) |
+| F4.14 | Nomor label ganda (dari dua perangkat) *(diubah 19 Okt 2026 atas permintaan pemilik produk; sebelumnya "diterima + peringatan")* | **Ditolak** dengan pesan jelas *"Nomor stiker … sudah dipakai LKK lain"*; LKK **tetap aman di perangkat** (merah, bisa diperbaiki), salinan kiriman disimpan untuk Developer; tidak dikirim ulang terus-menerus sampai nomor diperbaiki |
 | F4.15 | Pembaruan versi aplikasi tidak boleh menghapus data lokal | Uji: update versi saat ada LKK 🟡 → data tetap |
+| F4.16 | **Cadangan draft ke server** *(ditambah 19 Okt 2026, permintaan pemilik produk)*: draft yang belum "Selesai" ikut dicadangkan otomatis (maks tiap 60 s & saat aplikasi ditutup) ke `tera_lkk_drafts` | Draft bisa dipulihkan Developer dari server bila perangkat bermasalah; cadangan tidak masuk Selia/BAP/tagihan |
 
 ### F5 · Mesin Hitung & Template
 | ID | Kebutuhan | Kriteria terima |
@@ -241,7 +242,7 @@ Selia memakai **halaman Selia yang sudah ada** di Manajemen Aset, ditingkatkan u
 | F6.2 | **Edit** isian LKK yang masuk (bukan membuat dari awal) | Setiap perubahan tercatat (F7) |
 | F6.3 | Kembalikan untuk revisi + alasan wajib | Status 🟣; teknisi melihat alasan; setelah revisi, kirim lagi |
 | F6.4 | **ACC** per LKK | Hanya bila lengkap & tanpa peringatan pemblokir (nomor ganda, kalibrator expired, lingkungan di luar batas); penanda AI lain ditandai *"Sudah saya periksa"*; nama penyelia = akun yang ACC; snapshot dibekukan; LKK terkunci |
-| F6.5 | Peringatan nomor label ganda dalam satu BO | Muncul di daftar & sebelum ACC |
+| F6.5 | Daftar **kiriman ditolak karena nomor ganda** (dan LKK yang menunggu perbaikan nomor) | Penyelia melihat nomor, teknisi, waktu; bisa mengoreksi nomor LKK yang keliru (dicatat di riwayat) |
 | F6.6 | **Kunci pasca-ACC + koreksi dengan izin Developer**: "Buka koreksi" (alasan wajib) → betulkan → ACC ulang → PDF versi baru, nomor sama; PDF lama disimpan "digantikan"; **QR otomatis menampilkan versi terbaru** | Database menolak perubahan LKK ACC tanpa "Buka koreksi"; semua tercatat |
 | F6.7 | **Bantuan AI pra-penyeliaan** (asinkron setelah 🟢): kuning = mendekati batas toleransi (bawaan ≥ 80%); merah = melewati toleransi, lingkungan di luar batas, kalibrator expired, kemungkinan salah ketik. Warna ditentukan **perhitungan deterministik**; AI hanya membantu keterangan. Tidak mengubah data, tidak memutuskan LAIK, tidak memeriksa copy-paste | Penyelia sampai ke angka bermasalah ≤ 1 klik; pemindai mati → sinkron tetap 🟢 |
 
@@ -564,7 +565,7 @@ Kerjakan berurutan; tiap tahap selesai bila **kriteria terima terpenuhi & pemili
 - RLS per peran (Lampiran A); teknisi hanya melihat jadwal & LKK yang ditugaskan.
 - Trigger audit pada `tera_lkk`; `tera_audit_log` & `tera_ai_flag_acks` tanpa UPDATE/DELETE.
 - Kunci pasca-ACC lewat trigger; perubahan hanya setelah fungsi Developer `buka_koreksi(lkk_id, alasan)`.
-- Nomor label ganda dalam satu BO → **peringatan**, bukan penolakan.
+- Nomor label ganda → **ditolak** (indeks unik `no_label`), salinan kiriman disimpan di `tera_sync_conflicts`, data tetap aman di perangkat (diubah 19 Okt 2026).
 - Penautan ke `labels` hanya oleh fungsi server saat ACC (bukan dari browser).
 - Data `is_test = true` dikecualikan dari BAP, penagihan, dan laporan.
 

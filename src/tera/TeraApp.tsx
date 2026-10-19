@@ -4,6 +4,7 @@
  * Tahap 1.3: login teknisi, pengalihan per role, wajib ganti kata sandi saat login pertama.
  * Tahap 1.4a: tampilan Ocean (token di tera-tema.css), logo Tera SMK, mode gelap otomatis.
  * Tahap 1.4b: kerangka HP/tablet (header, tab bawah, menu samping) ada di TeraKerangka.tsx.
+ * Tahap 2.4: kurir kirim otomatis + papan status dipasang lewat SinkronKonteks.tsx.
  *
  * Aturan akses (CLAUDE.md 3A.4 & 6):
  * - Belum login            -> form login (cukup ketik nama akun, "@tera.smk" ditambahkan otomatis)
@@ -22,6 +23,7 @@ import { AlertCircle, Check, Circle, Eye, EyeOff, Loader2, Lock, LogOut, User } 
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 import { HalamanAkun, HalamanBeranda, HalamanLkk, KerangkaTera } from './TeraKerangka';
+import { SinkronProvider } from './SinkronKonteks';
 import './tera-tema.css';
 
 const DOMAIN_TERA = '@tera.smk';
@@ -334,14 +336,16 @@ const GantiSandiPertama: React.FC = () => {
 /* ---------- Layar kerja: kerangka + 3 halaman (rute /tera, /tera/lkk, /tera/akun) ---------- */
 
 const LayarKerja: React.FC = () => (
-  <Routes>
-    <Route element={<KerangkaTera />}>
-      <Route index element={<HalamanBeranda />} />
-      <Route path="lkk" element={<HalamanLkk />} />
-      <Route path="akun" element={<HalamanAkun />} />
-      <Route path="*" element={<Navigate to="/tera/" replace />} />
-    </Route>
-  </Routes>
+  <SinkronProvider>
+    <Routes>
+      <Route element={<KerangkaTera />}>
+        <Route index element={<HalamanBeranda />} />
+        <Route path="lkk" element={<HalamanLkk />} />
+        <Route path="akun" element={<HalamanAkun />} />
+        <Route path="*" element={<Navigate to="/tera/" replace />} />
+      </Route>
+    </Routes>
+  </SinkronProvider>
 );
 
 /* ---------- PWA: kartu identitas + penjaga gudang (Tahap 1.5a) ---------- */
