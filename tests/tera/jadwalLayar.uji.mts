@@ -11,7 +11,7 @@ const akar = fileURLToPath(new URL('../../', import.meta.url));
 const ASAL = 'http://localhost:9996';
 const keluar = process.env.TERA_FOTO_DIR || '';
 
-const ikon = ['AlertCircle','Building2','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff'];
+const ikon = ['AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
 const stubIkon = ikon.map((n) => `export const ${n} = (p) => React.createElement('svg', { 'data-ikon': '${n}', width: p.size || 24, height: p.size || 24, className: p.className, 'aria-hidden': 'true' });`).join('\n');
 const stubRouter = `
 import React from 'react';
@@ -31,10 +31,11 @@ const plugin = {
   setup(b: any) {
     b.onResolve({ filter: /^lucide-react$/ }, () => ({ path: 'lucide', namespace: 'stub' }));
     b.onResolve({ filter: /^react-router-dom$/ }, () => ({ path: 'router', namespace: 'stub' }));
+    b.onResolve({ filter: /^html5-qrcode$/ }, () => ({ path: 'qr', namespace: 'stub' }));
     b.onResolve({ filter: /lib\/AuthContext$/ }, () => ({ path: 'auth', namespace: 'stub' }));
     b.onResolve({ filter: /lib\/apiClient$/ }, () => ({ path: 'api', namespace: 'stub' }));
     b.onLoad({ filter: /.*/, namespace: 'stub' }, (a: any) => ({
-      contents: a.path === 'lucide' ? `import React from 'react';\n${stubIkon}` : a.path === 'router' ? stubRouter : a.path === 'auth' ? stubAuth : stubApi,
+      contents: a.path === 'lucide' ? `import React from 'react';\n${stubIkon}` : a.path === 'router' ? stubRouter : a.path === 'auth' ? stubAuth : a.path === 'qr' ? 'export class Html5Qrcode {} export const Html5QrcodeSupportedFormats = {};' : stubApi,
       loader: 'js', resolveDir: akar,
     }));
   },
@@ -158,7 +159,8 @@ cek('Detail: rentang stiker utama & cadangan', /095\.0001 – 095\.0010/.test(te
 cek('Detail: daftar LKK RS ini (3)', await p.evaluate(() => document.querySelectorAll('.t-lkk-baris').length) === 3);
 cek('Detail: tautan kembali ke Beranda', await p.evaluate(() => (document.querySelector('a.t-kembali') as HTMLAnchorElement).getAttribute('href')) === '/tera/');
 await p.getByRole('button', { name: /Alat tambahan/ }).click();
-cek('Detail: "+ Alat tambahan" memberi tahu fitur belum aktif', /Fitur ini aktif setelah template alat tersedia/.test(await p.evaluate(() => document.body.innerText)));
+cek('Detail: "+ Alat tambahan" membuka lembar pilih jenis alat (4.3b; uji lengkap di test:tera:mulai-lkk)', await tunggu(p, () => /Pilih jenis alat tambahan/.test(document.querySelector('.t-lembar')?.textContent || '')));
+await p.keyboard.press('Escape');
 // alat selesai → chip "Selesai"
 await p.evaluate(async () => { const t = (window as any).tera; for (const n of ['095.0008', '095.0009', '095.0010']) await t.buatLkk({ pemilik: 'u-t', bo: '095', noLabel: n, jadwalId: 'j1', poItemRef: 'B', templateKode: 'UJI', templateVersi: 1 }); });
 cek('alat terpenuhi → chip Selesai (ikon + tulisan)', await tunggu(p, () => { const c = [...document.querySelectorAll('.t-alat-baris')].find((e) => /Timbangan Bayi/.test(e.textContent || '')); return !!c && /Selesai/.test(c.textContent || '') && !!c.querySelector('svg[data-ikon="Check"]'); }, 7000));

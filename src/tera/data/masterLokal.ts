@@ -112,6 +112,17 @@ export async function templateTerbaru(kodeAlat: string): Promise<TemplateAlat | 
   return semua.sort((a, b) => b.versi - a.versi)[0] ?? null;
 }
 
+/** Semua jenis alat yang punya template di perangkat (versi tertinggi tiap jenis) + template bawaan kode. */
+export async function daftarTemplateTerbaru(): Promise<TemplateAlat[]> {
+  const lokal = (await tx(['template'], 'readonly', (s) => minta(s.template.getAll()) as Promise<TemplateLokal[]>)).map((t) => t.definition);
+  const per = new Map<string, TemplateAlat>();
+  for (const t of [...TEMPLATE_BAWAAN, ...lokal]) {
+    const lama = per.get(t.kode_alat);
+    if (!lama || t.versi > lama.versi) per.set(t.kode_alat, t);
+  }
+  return [...per.values()].sort((x, y) => x.nama.localeCompare(y.nama));
+}
+
 /** Template versi tertentu (untuk membuka LKK lama). */
 export async function templateVersi(kodeAlat: string, versi: number): Promise<TemplateAlat | null> {
   const t = (await tx(['template'], 'readonly', (s) => minta(s.template.get(`${kodeAlat}@${versi}`)))) as TemplateLokal | undefined;
