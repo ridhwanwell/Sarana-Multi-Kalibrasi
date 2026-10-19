@@ -1,7 +1,7 @@
 # Tahap 4 · Langkah 4.0 — Tinjauan budget U95 Sphygmomanometer (PRD 11.45)
 
 > 19 Okt 2026, ±14.30 WIB. **Versi 2 — dari zip LKK** (`Tera_SMK_1_Dokumen_Logo_Master.zip`), menggantikan versi 1 yang memakai salinan Google Drive.
-> Status: **usulan, menunggu persetujuan Ridhwan**. Belum ada rumus yang diubah.
+> Status: **DISETUJUI Ridhwan 19 Okt 13.51** (K1 = 2 mmHg, K2 = 102, U1–U5 + U7 setuju, U6 = (b) ikut MK). Golden v2 sudah dibuat (bagian 6).
 > Sumber: `_referensi/master-lkk-v12/Master Sphygmomanometer.xlsx`, `_referensi/golden/Master_Sphygmomanometer_golden_1.xlsx` & `_2.xlsx`, `_referensi/metode-mk/MK_090_SPHYGMOMANOMETER_NON_OTOMATIS.pdf` (hal. 405–407). File Excel/PDF tidak di-commit (repo publik).
 > Cara hitung ulang: golden file dihitung ulang penuh dengan LibreOffice (`calculateAll`), lalu ditiru dengan skrip Python; hasil skrip = Excel sampai 4 angka (4,101 · 4,253 · 4,730 · 5,527 · 6,572 · 132,08).
 
@@ -54,3 +54,31 @@ Perbaikan PRD 11.43 sudah ada di golden: rujukan satu sel (`A1` bukan `A1:J1`) d
 - **U5 (baru)** Keputusan titik = **|koreksi| + U95 ≤ 4 mmHg** (T3).
 - **U6 (baru, pilih)** Total nilai tepat 70: **(a)** Laik seperti Master (≥ 70), atau **(b)** ikut MK (> 70 → akurasi wajib lolos).
 - **U7 (baru)** U95 > 1,5 mmHg → penanda kuning di Selia (T5), tidak memengaruhi Laik.
+
+## 6. Keputusan & golden file versi 2 (19 Okt 2026, ±14.10)
+Keputusan Ridhwan: **K1** resolusi 2 mmHg · **K2** D27 = 102 · **U1–U5 + U7** setuju · **U6 = (b)**: Laik Pakai bila total **> 70** (pas 70 = Tidak Laik).
+
+File baru (tidak di-commit, ada di `_referensi/golden/`): `Master_Sphygmomanometer_golden_1_v2.xlsx`, `…_golden_2_v2.xlsx`. File asli tidak diubah. Dibuat dengan LibreOffice (bukan openpyxl), lalu dihitung ulang penuh. Kotak/gambar (5 drawing), sel gabungan, dan area cetak tetap sama.
+
+| Sheet!sel | Sebelum | Sesudah | Keputusan |
+|---|---|---|---|
+| Input 1!E19 | 10 | 2 | K1 |
+| Input 2!D27 (golden 2 saja) | 12 | 102 | K2 |
+| Ketidakpastian!N37:O42 | selisih terbesar (dikoreksi nol) | `STDEV(run 1–3)` (= STDEV.S) | U1 |
+| Ketidakpastian!AM37:AN42 | k dari Veff | 2 | U2 |
+| Budget, 12 sel k | k dari Veff | 2 | U2 (budget ikut) |
+| View Report!N/P/R/T 23–28 | `ABS(C+U)` | `ABS(C)+U` | U5 |
+| View Report!C33 | `AE5>=AE6` | `AE5>AE6` | U6 |
+| View Report!AD6 | Ambang Laik Pakai (≥) | (>) | U6 |
+
+Kolom derajat bebas (vi = 5) & Veff dibiarkan (tidak dipakai lagi untuk k).
+
+Hasil (dicek dengan skrip Python terpisah: selisih maks 5·10⁻¹⁵; Budget = Ketidakpastian di 12 blok):
+| | U95 (mmHg) | Titik lolos | Skor | Kesimpulan |
+|---|---|---|---|---|
+| Golden 1 v2 | 0,82–2,79 (titik 0 tampil "1") | 9/12 (gagal: 100 turun, 150 naik ‑ koreksi 4,33, 150 turun) | 10+30+30+30 = 100 | Laik Pakai |
+| Golden 2 v2 | 0,82–1,95 | 11/12 (gagal: 150 turun) | 100 | Laik Pakai |
+
+Catatan: teks gabungan di Report All (mis. "( 27.8±0.5 )") memakai titik karena dihitung di LibreOffice berbahasa Inggris; di Excel Indonesia menjadi koma. Bukan perubahan rumus.
+
+Berikutnya: template JSON Sphygmomanometer + mesin hitung bersama (perangkat & server) + test golden v2 (angka di tabel ini = target test).
