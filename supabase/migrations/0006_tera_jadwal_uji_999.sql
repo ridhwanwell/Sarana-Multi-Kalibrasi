@@ -3,7 +3,11 @@
 -- Supabase : qr-label-kalibrasi (PRODUKSI)
 -- Dibuat   : 19 Oktober 2026 (Tahap 3.5)
 -- Persetujuan: Ridhwan "setuju BO 999" (19 Okt 2026 12.40) untuk MEMBUAT jadwal uji ini di tabel
---              produksi jadwal_kalibrasi. Skrip belum dijalankan; menunggu "lanjutkan" untuk isi konkret ini.
+--              produksi jadwal_kalibrasi. Isi konkret disetujui lewat "lanjutkan" (19 Okt 2026 12.59).
+-- Dijalankan: 19 Okt 2026 ±13.00 WIB oleh Claude lewat sambungan Supabase (execute_sql, blok 2 lalu blok 3).
+--             Sebelumnya diuji kering (dibatalkan otomatis; tabel tetap 2 baris). CEK 9/9 true:
+--             3 baris, 32 kolom, kolom turunan terisi trigger, 10 unit PO, TECH-011 tertaut ke ridhwan@tera.smk,
+--             belum ada Push. BERSIHKAN (blok 4a) dijalankan setelah uji 3.5 selesai.
 --
 -- Perumpamaan: selembar surat tugas LATIHAN yang diselipkan di map surat tugas asli. Tertulis jelas
 -- "DATA UJI", nomor BO 999 (nomor yang tidak pernah dipakai RS sungguhan), dan akan dicabut lagi
