@@ -2,8 +2,11 @@
 -- MIGRASI 0007 — TEMPLATE ALAT & TABEL TITIK KALIBRATOR (TAHAP 4.2)
 -- Supabase : qr-label-kalibrasi (PRODUKSI)
 -- Dibuat   : 19 Oktober 2026 (Tahap 4.2 Tera SMK)
--- Disetujui: (menunggu "lanjutkan" dari Ridhwan)
--- Dijalankan: (belum)
+-- Disetujui: Ridhwan ("aniutkan" = lanjutkan, 19 Okt 2026 14.12 WIB)
+-- Dijalankan: 19 Okt 2026 ±14.13 WIB oleh Claude lewat sambungan Supabase (apply_migration
+--             "tera_0007_template_kalibrator", blok 2 tanpa begin/commit karena dibungkus otomatis).
+--             BLOK 1: false/false/false/true. CEK 9/9 true (+ berlaku_sampai CAL-037 = 2027-03-04);
+--             isi definition di database = template di kode (dibandingkan sebagai jsonb: true).
 -- Uji kering: 19 Okt 2026 ±14.25 WIB di produksi, dibungkus DO + RAISE (pasti batal; dicek: tabel & fungsi tidak ada setelahnya).
 --             CEK 8/8 true; perilaku 8/8: ubah isi template ditolak · ubah "aktif" boleh · dua versi aktif ditolak ·
 --             kop JSON ≠ kolom ditolak · ubah titik kalibrator ditolak · titik rusak ditolak · kalibrator fiktif ditolak ·
