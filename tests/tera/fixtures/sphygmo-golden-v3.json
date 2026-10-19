@@ -1,9 +1,9 @@
 {
- "sumber": "_referensi/golden/Master_Sphygmomanometer_golden_{1,2}_v2.xlsx (Master v12 + keputusan U95 19 Okt 2026), dihitung ulang penuh LibreOffice",
+ "sumber": "_referensi/golden/Master_Sphygmomanometer_golden_{1,2}_v3.xlsx (Master v12 + keputusan U95 + T6–T8 ikut MK, 19 Okt 2026), dihitung ulang penuh LibreOffice; angka sama dengan v2",
  "dibuat": "2026-10-19",
  "kasus": [
   {
-   "nama": "golden_1_v2",
+   "nama": "golden_1_v3",
    "data": {
     "identitas": {
      "resolusi": 2,
@@ -350,7 +350,7 @@
    }
   },
   {
-   "nama": "golden_2_v2",
+   "nama": "golden_2_v3",
    "data": {
     "identitas": {
      "resolusi": 2,

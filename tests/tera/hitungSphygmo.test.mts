@@ -1,6 +1,6 @@
-// Uji mesin hitung Sphygmomanometer terhadap golden file v2 (Tahap 4.1, PRD F5.5).
+// Uji mesin hitung Sphygmomanometer terhadap golden file v3 (Tahap 4.1, PRD F5.5).
 // Jalankan: npm run test:tera:hitung
-// Fixture = angka saja (tanpa nama RS/teknisi) dari _referensi/golden/*_v2.xlsx yang dihitung ulang penuh.
+// Fixture = angka saja (tanpa nama RS/teknisi) dari _referensi/golden/*_v3.xlsx yang dihitung ulang penuh.
 import { readFileSync } from 'node:fs';
 import { hitungLkk, kalibratorDi, bulatExcel, type TitikKalibrator, type DataLkk } from '../../src/tera/shared/hitung.ts';
 import { TEMPLATE_SPHYGMOMANOMETER as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
@@ -9,7 +9,7 @@ let lulus = 0, gagal = 0;
 const cek = (n: string, ok: boolean, d = '') => { ok ? lulus++ : gagal++; if (!ok || process.env.RINCI) console.log((ok ? '✅ ' : '❌ ') + n + (ok ? '' : '  — ' + d)); };
 const sama = (a: number | null, b: number | null, tol = 1e-9) => a !== null && b !== null && Math.abs(a - b) <= tol;
 
-const fx = JSON.parse(readFileSync(new URL('./fixtures/sphygmo-golden-v2.json', import.meta.url), 'utf8'));
+const fx = JSON.parse(readFileSync(new URL('./fixtures/sphygmo-golden-v3.json', import.meta.url), 'utf8'));
 
 for (const kasus of fx.kasus) {
   const h = hitungLkk(T, kasus.data, kasus.kalibrator);
@@ -96,13 +96,18 @@ const dataDasar = (): DataLkk => ({
 
 { const d = dataDasar(); (d.lajuBuang as any).waktu = 10; d.bocor = { bacaan: 235 };
   const h = hitungLkk(T, d, kal0);
-  cek('batas persis seperti Excel: laju buang 10 detik → Tidak Laik (<10), bocor 15 → Laik (≤15)', h.ujiAmbang.lajuBuang.hasil === 'Tidak Laik' && h.ujiAmbang.bocor.hasil === 'Laik'); }
+  cek('T6/T7 ikut MK: laju buang 10 detik → Laik (≤ 10), bocor 15 → Tidak Laik (< 15)', h.ujiAmbang.lajuBuang.hasil === 'Laik' && h.ujiAmbang.bocor.hasil === 'Tidak Laik'); }
 
 cek('ROUND Excel: 2,345 → 2,35; 1,005 → 1,01; −2,345 → −2,35', bulatExcel(2.345, 2) === 2.35 && bulatExcel(1.005, 2) === 1.01 && bulatExcel(-2.345, 2) === -2.35);
 
 { const tJson = JSON.parse(JSON.stringify(T));
   const a = hitungLkk(T, fx.kasus[0].data, fx.kasus[0].kalibrator), b = hitungLkk(tJson, fx.kasus[0].data, fx.kasus[0].kalibrator);
   cek('template tetap benar setelah disimpan sebagai JSON (untuk database)', JSON.stringify(a) === JSON.stringify(b)); }
+
+
+{ const sql = readFileSync(new URL('../../supabase/migrations/0007_tera_template_kalibrator.sql', import.meta.url), 'utf8');
+  const m = sql.match(/'(\{"kode_alat":"sphygmomanometer"[^']*)'::jsonb/);
+  cek('isi template di migrasi 0007 = template di kode', !!m && JSON.stringify(JSON.parse(m[1])) === JSON.stringify(T)); }
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 if (gagal) process.exit(1);

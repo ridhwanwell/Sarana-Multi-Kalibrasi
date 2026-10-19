@@ -94,3 +94,8 @@ Temuan baru (belum diubah, menunggu keputusan):
 | T6 | Batas laju buang | `< 10` detik | `≤ 10` detik (90.10.2) |
 | T7 | Batas bocor | `≤ 15` mmHg | `< 15` mmHg (90.10.1) |
 | T8 | Teks sertifikat Report All A83 | "Toleransi Akurasi Tekanan **± 3** mmHg" | ± 4 mmHg (View Report sudah ± 4) |
+
+## 8. T6–T8 ikut MK & langkah 4.2 (19 Okt 2026, ±14.30)
+Keputusan Ridhwan 14.05: **T6, T7, T8 ikut MK 090**.
+- Template: bocor `< 15` mmHg, laju buang `≤ 10` detik. Golden **v3** (`_referensi/golden/*_v3.xlsx`, dari v2): View Report N10/P10 `<15`, N15/P15 `<=10`; teks Report All A66 "< 15", **A83 "± 4 mmHg"**, Input 2 G14, View Report A11/AD3/AD4. Angka hasil v3 = v2 (golden tidak tepat di batas). Fixture → `sphygmo-golden-v3.json`; uji 59/59 (+1 penjaga: isi template di SQL 0007 = template di kode).
+- Migrasi `0007_tera_template_kalibrator.sql` (4 blok) ditulis & diuji kering (CEK 8/8, perilaku 8/8, dibatalkan). **Belum dijalankan — menunggu "lanjutkan".**

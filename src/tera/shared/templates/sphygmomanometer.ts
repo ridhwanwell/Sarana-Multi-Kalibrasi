@@ -11,7 +11,7 @@ export const TEMPLATE_SPHYGMOMANOMETER: TemplateAlat = {
   kode_alat: 'sphygmomanometer',
   nama: 'Sphygmomanometer',
   versi: 1,
-  sumber: 'Master Sphygmomanometer.xlsx (v12) + keputusan U95 19 Okt 2026',
+  sumber: 'Master Sphygmomanometer.xlsx (v12) + keputusan U95 & T6–T8 (ikut MK) 19 Okt 2026',
   metode: 'KMK-MK-090.0',
   kop: 'NON_KAN',
   keselamatan_listrik: 'tidak_ada',
@@ -29,10 +29,10 @@ export const TEMPLATE_SPHYGMOMANOMETER: TemplateAlat = {
   ],
   pilihanFisik: ['Baik', 'Tidak Baik'],
   ujiAmbang: [
-    // View Report N10: ABS(250 − bacaan 60 detik) ≤ 15
-    { id: 'bocor', jenis: 'selisih_setting', judul: 'Kebocoran Tekanan', satuan: 'mmHg', setting: 250, banding: '<=', batas: 15 },
-    // View Report N15: waktu turun 260 → 15 mmHg < 10 detik
-    { id: 'lajuBuang', jenis: 'nilai', judul: 'Laju Buang Cepat', satuan: 'detik', banding: '<', batas: 10 },
+    // T7 (ikut MK 90.10.1): ABS(250 − bacaan 60 detik) < 15  (Excel lama: ≤ 15)
+    { id: 'bocor', jenis: 'selisih_setting', judul: 'Kebocoran Tekanan', satuan: 'mmHg', setting: 250, banding: '<', batas: 15 },
+    // T6 (ikut MK 90.10.2): waktu turun 260 → 15 mmHg ≤ 10 detik  (Excel lama: < 10)
+    { id: 'lajuBuang', jenis: 'nilai', judul: 'Laju Buang Cepat', satuan: 'detik', banding: '<=', batas: 10 },
   ],
   kinerja: [
     {
