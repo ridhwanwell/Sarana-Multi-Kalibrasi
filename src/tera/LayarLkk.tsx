@@ -20,6 +20,7 @@ import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
 import { ambilLkk, bolehDiubah, simpanIsian, type LkkLokal } from './data/teraDb';
+import { buatJejakHitung } from './shared/jejak';
 import { buatSnapshot, daftarKalibrator, templateVersi, type KalibratorLokal } from './data/masterLokal';
 import type { TemplateAlat } from './shared/hitung';
 import {
@@ -383,14 +384,14 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
     const s = isiRef.current;
     setSimpan({ k: 'menyimpan' });
     antrean.current = antrean.current
-      .then(() => simpanIsian(lkk.id, { data: s.data, tanggalKalibrasi: s.tanggal, calibratorSnapshot: s.snapshot }))
+      .then(() => simpanIsian(lkk.id, { data: s.data, tanggalKalibrasi: s.tanggal, calibratorSnapshot: s.snapshot, results: buatJejakHitung(tpl, s.data, s.snapshot) as unknown as Record<string, unknown> | null }))
       .then(() => { setSimpan({ k: 'tersimpan', waktu: new Date() }); })
       .catch((e: any) => {
         kotor.current = true;       // dicoba lagi pada pemicu berikutnya
         setSimpan({ k: 'galat', pesan: String(e?.message || 'Isian belum tersimpan di perangkat.') });
       });
     return antrean.current;
-  }, [kunci, lkk.id]);
+  }, [kunci, lkk.id, tpl]);
 
   const ubah = useCallback((f: (i: IsiKerja) => IsiKerja) => {
     if (kunci) return;

@@ -243,7 +243,8 @@ await p.getByRole('button', { name: /^Kembali$/ }).click();
 cek('Kembali → bagian Lingkungan; Lanjut → Fisik', /Bagian 2 dari 6/.test(await teks(p)));
 l = await bacaLkk(p, id);
 cek('LKK masih draft & versi draft naik (tiap auto-save tercatat)', l.syncState === 'draft' && l.draftVersion > 5, JSON.stringify({ s: l.syncState, v: l.draftVersion }));
-cek('hasil hitung & kiriman BELUM dibuat di langkah ini (results null, clientVersion 0)', l.results === null && l.clientVersion === 0);
+cek('jejak hitung ikut tersimpan di perangkat (belum lengkap → kesimpulan null) & belum dikirim (clientVersion 0)',
+  !!l.results && (l.results as any).skema === 1 && (l.results as any).lengkap === false && (l.results as any).kesimpulan === null && l.clientVersion === 0, JSON.stringify(l.results)?.slice(0, 200));
 
 // ---------- 6. Tanggal pelaksanaan diubah → alat standar expired ----------
 await ke(p, 1);
