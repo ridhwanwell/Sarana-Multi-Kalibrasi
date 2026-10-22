@@ -8,10 +8,10 @@
  *
  * Murni (tanpa jaringan/database). Tidak pernah melempar galat.
  */
-import type { TemplateAlat } from './hitung.ts';
-import { buatJejakHitung, VERSI_MESIN_HITUNG, type JejakHitung } from './jejak.ts';
-import { periksaIsian } from './isian.ts';
-import { jsonKanonik } from './segel.ts';
+import type { TemplateAlat } from './hitung.js';
+import { buatJejakHitung, VERSI_MESIN_HITUNG, type JejakHitung } from './jejak.js';
+import { periksaIsian } from './isian.js';
+import { jsonKanonik } from './segel.js';
 
 export type KodePenanda =
   | 'jejak_beda'          // hasil hitung tablet ≠ hitung ulang server

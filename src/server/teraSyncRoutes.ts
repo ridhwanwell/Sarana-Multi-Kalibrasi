@@ -28,6 +28,8 @@ import {
   POLA_UUID, POLA_BO, POLA_LABEL, POLA_TANGGAL, POLA_CHECKSUM,
   type PaketLkk, type PaketDraft,
 } from "../tera/shared/segel.js";
+import { periksaPaketServer } from "../tera/shared/periksaServer.js";
+import type { TemplateAlat } from "../tera/shared/hitung.js";
 
 const ROLE_ISI_LKK = ['teknisi', 'admin_utama'] as const;
 const BATAS_DATA_BYTE = 1_500_000;      // 1 LKK (isian + hasil + snapshot) maks ±1,5 MB
@@ -146,6 +148,29 @@ async function rpcBerbatas(nama: string, args: Record<string, unknown>) {
   }
 }
 
+/**
+ * Pemeriksaan server (Tahap 4.4a): hitung ulang dengan mesin yang sama, catat hasilnya.
+ * TIDAK PERNAH menggagalkan penerimaan — LKK sudah tersimpan; bila pemeriksaan gagal, hanya dicatat di log
+ * (LKK tanpa catatan pemeriksaan tidak boleh di-ACC, ditangani di tahap ACC).
+ */
+async function periksaDanCatat(paket: PaketLkk, clientVersion: number): Promise<void> {
+  try {
+    const { data: tpl } = await supabaseAdmin.from('tera_device_templates')
+      .select('definition').eq('kode_alat', paket.templateKode).eq('versi', paket.templateVersi).maybeSingle();
+    const h = periksaPaketServer((tpl?.definition ?? null) as TemplateAlat | null, {
+      data: paket.data, results: paket.results, calibratorSnapshot: paket.calibratorSnapshot,
+      tanggalKalibrasi: paket.tanggalKalibrasi, templateKode: paket.templateKode, templateVersi: paket.templateVersi,
+    });
+    const { error } = await supabaseAdmin.from('tera_lkk_pemeriksaan').upsert({
+      lkk_id: paket.id, client_version: clientVersion, mesin_hitung: h.mesinHitung, jejak_cocok: h.jejakCocok,
+      boleh_acc: h.bolehAcc, penanda: h.penanda, kesimpulan_server: h.kesimpulanServer, diperiksa_at: new Date().toISOString(),
+    }, { onConflict: 'lkk_id,client_version' });
+    if (error) console.error('[Tera] simpan pemeriksaan gagal:', error.message);
+  } catch (e: any) {
+    console.error('[Tera] pemeriksaan server gagal:', e?.message);
+  }
+}
+
 const PESAN_SERVER_SIBUK = "Server tidak merespons. Data aman di perangkat, akan dicoba lagi otomatis.";
 
 // ---------------------------------------------------------------------------
@@ -222,6 +247,7 @@ export function registerTeraSyncRoutes(app: Express, deps: TeraSyncDeps) {
       }
 
       const h = data as any;
+      if (h.hasil === 'diterima') await periksaDanCatat(paket, paket.clientVersion);
       if (h.hasil === 'diterima' || h.hasil === 'sudah_diterima') {
         return res.json({
           hasil: h.hasil,

@@ -252,3 +252,11 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - src/tera/shared/periksaServer.ts: periksaPaketServer(tpl, paket) menghitung ulang jejak dengan mesin yang sama, membandingkan (jsonKanonik), lalu memberi penanda: jejak_beda, jejak_hilang, template_beda, standar_expired, lingkungan_luar, data_belum_lengkap, template_rusak. Semua memblokir ACC; LKK tetap disimpan.
 - Uji: tests/tera/periksaServer.test.mts (12 lulus), script test:tera:periksa-server. Cek tipe berkas baru bersih. Build Vite lokal tidak bisa jalan (registry npm tidak terjangkau di sesi ini) — dicek lewat build Vercel.
 - BELUM dipasang ke rute /api/tera/lkk. Langkah 4.4a-2 perlu tabel baru tera_lkk_pemeriksaan (migrasi 0010) — dijelaskan dulu, tunggu "lanjutkan". Migrasi kalibrator termohigrometer/stopwatch bergeser ke 0011.
+
+### Hasil 4.4a-2 (22 Okt ±21.15) — pemeriksaan server terpasang
+- Migrasi 0010 DIJALANKAN (setelah "lanjutkan"): tabel tera_lkk_pemeriksaan (lkk_id, client_version, mesin_hitung, jejak_cocok, boleh_acc, penanda, kesimpulan_server). Backup: backup.b20261022_tera_lkk_sebelum_0010 (8 baris). CEK: ada, RLS aktif, 0 kebijakan. Rollback = blok 4 (drop table, masih kosong saat dibuat).
+- src/server/teraSyncRoutes.ts: setelah LKK diterima (hasil "diterima"), server memuat template dari tera_device_templates, menghitung ulang, lalu mencatat ke tera_lkk_pemeriksaan. TIDAK PERNAH menggagalkan penerimaan (galat hanya dicatat di log). LKK tanpa catatan pemeriksaan tidak boleh di-ACC (diterapkan di tahap ACC).
+- Impor di jejak.ts/periksaServer.ts diganti ke .js (sama dengan modul shared lain yang dipakai server).
+- Uji: periksaServer 13 lulus (termasuk template DB v2 = template tablet).
+- KEPUTUSAN RIDHWAN 22 Okt: layar Penyelia (Selia) dibuat di halaman Selia/dashboard Manajemen Aset (/admin), BUKAN di Tera SMK.
+- Langkah berikutnya: 4.4b-1 server/ API Selia (daftar LKK + penanda + detail, kembalikan, ACC); 4.4b-2 layar Selia di Manajemen Aset. Migrasi kalibrator termohigrometer/stopwatch = 0011.

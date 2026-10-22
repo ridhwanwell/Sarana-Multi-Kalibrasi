@@ -10,7 +10,7 @@
  * yang sama persis (tidak ada jam/acak), sehingga server bisa menghitung ulang dan membandingkan.
  * Tidak pernah melempar galat pada data kosong/rusak (hasilnya `lengkap: false`).
  */
-import { hitungLkk, type DataLkk, type HasilLkk, type TemplateAlat, type TitikKalibrator } from './hitung.ts';
+import { hitungLkk, type DataLkk, type HasilLkk, type TemplateAlat, type TitikKalibrator } from './hitung.js';
 
 /** Naik bila rumus/susunan jejak berubah. Dicatat di setiap jejak. */
 export const VERSI_MESIN_HITUNG = 1;

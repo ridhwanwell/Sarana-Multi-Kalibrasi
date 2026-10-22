@@ -81,5 +81,12 @@ const paket = (d = dasar()) => ({
   const a = JSON.stringify(periksaPaketServer(T, paket())), b = JSON.stringify(periksaPaketServer(T, paket()));
   cek('deterministik (dua kali sama)', a === b);
 }
+{
+  // Template yang dibaca server dari database (salinan baris v2) harus menghasilkan jejak SAMA dengan template di tablet
+  const tplDb = JSON.parse(readFileSync(new URL('./fixtures/sphygmo-template-db-v2.json', import.meta.url), 'utf8'));
+  const p = paket();
+  const h = periksaPaketServer(tplDb, p);
+  cek('template dari database v2 = template tablet (jejak cocok)', h.jejakCocok && h.bolehAcc, JSON.stringify(h.penanda));
+}
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

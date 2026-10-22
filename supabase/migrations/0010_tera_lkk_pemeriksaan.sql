@@ -1,7 +1,7 @@
 -- 0010: tabel catatan pemeriksaan server atas setiap LKK yang diterima (Tahap 4.4a-2).
 -- Tabel BARU berawalan tera_; tabel lama tidak disentuh. Pola akses = tabel tera_ lain: RLS aktif tanpa kebijakan
 -- (hanya server dengan kunci service role yang membaca/menulis).
--- STATUS: DRAF — belum dijalankan. Tunggu kata "lanjutkan" dari pemilik proyek.
+-- STATUS: DIJALANKAN 22 Okt 2026 setelah "lanjutkan" (CEK: ada=true, rls=true, kebijakan=0).
 
 -- ===== BLOK 1: BACKUP =====
 -- Tabel baru, tidak ada data lama yang berubah. Cadangan tera_lkk tetap diambil sebagai pengaman:
