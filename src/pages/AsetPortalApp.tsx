@@ -17,6 +17,7 @@ import { downloadSphPdf } from '../utils/sphPdfExport';
 import { TabletLoanManager } from '../components/TabletLoanManager';
 import { TemplateSettings } from '../components/TemplateSettings';
 import { SeliaDashboard } from '../components/SeliaDashboard';
+import { NilaiKalibratorTera } from '../components/NilaiKalibratorTera';
 import { LabelModuleView } from '../components/LabelModuleView';
 import { HospitalBillingManager } from '../components/HospitalBillingManager';
 import { CheckSyncModal } from '../components/CheckSyncModal';
@@ -95,7 +96,7 @@ function AsetPortalMain() {
   const { user, isAdmin, role, logout } = useAuth();
   
   // Navigation State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sph' | 'labels' | 'schedules' | 'billing' | 'selia' | 'calibrators' | 'tablets' | 'financial' | 'masters' | 'templates' | 'aspak'>(
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sph' | 'labels' | 'schedules' | 'billing' | 'selia' | 'calibrators' | 'tablets' | 'financial' | 'masters' | 'templates' | 'aspak' | 'nilaiTera'>(
     () => (new URLSearchParams(window.location.search).get('modul') === 'label' ? 'labels' : 'dashboard')
   );
   const [slideDirection, setSlideDirection] = useState<number>(1);
@@ -1308,6 +1309,15 @@ function AsetPortalMain() {
               {...pageMotion(slideDirection)}
             >
               <TemplateSettings />
+            </motion.div>
+          )}
+
+          {activeTab === 'nilaiTera' && (
+            <motion.div
+              key="tab-nilai-tera"
+              {...pageMotion(slideDirection)}
+            >
+              <NilaiKalibratorTera />
             </motion.div>
           )}
 

@@ -32,7 +32,7 @@ import { useAuth } from '../lib/AuthContext';
 import { subscribePendingCount } from '../lib/offlineQueue';
 import { useTheme } from '../lib/theme';
 
-export type AppTab = 'dashboard' | 'sph' | 'labels' | 'schedules' | 'billing' | 'selia' | 'calibrators' | 'tablets' | 'financial' | 'masters' | 'templates' | 'aspak';
+export type AppTab = 'dashboard' | 'sph' | 'labels' | 'schedules' | 'billing' | 'selia' | 'calibrators' | 'tablets' | 'financial' | 'masters' | 'templates' | 'aspak' | 'nilaiTera';
 
 interface NavbarProps {
   activeTab: AppTab;
@@ -63,7 +63,7 @@ interface TabItem {
 const NAV_GROUPS: { title: string; ids: AppTab[] }[] = [
   { title: 'Ringkasan', ids: ['dashboard', 'labels', 'selia', 'aspak'] },
   { title: 'Operasional', ids: ['sph', 'schedules', 'billing'] },
-  { title: 'Aset & Keuangan', ids: ['calibrators', 'tablets', 'financial'] },
+  { title: 'Aset & Keuangan', ids: ['calibrators', 'nilaiTera', 'tablets', 'financial'] },
   { title: 'Tim', ids: ['masters'] }
 ];
 
@@ -136,6 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'calibrators', label: 'Aset Alat Kalibrator', sublabel: 'Standar Uji & Ketertelusuran', icon: Wrench,
       badgeVal: expiringCalibratorsCount > 0 ? `${expiringCalibratorsCount} Perlu Uji` : `${calibrators.length} Unit`,
       badgeTone: expiringCalibratorsCount > 0 ? 'warn' : 'muted' },
+    { id: 'nilaiTera', label: 'Nilai Kalibrator Tera', sublabel: 'Koreksi & U95 (khusus Developer)', icon: ShieldCheck },
     { id: 'tablets', label: 'Peminjaman Tablet', sublabel: '6 Unit Tablet Kalibrasi', icon: Tablet,
       badgeVal: borrowedTabletsCount > 0 ? `${borrowedTabletsCount} Dipinjam` : '6 Siap',
       badgeTone: borrowedTabletsCount > 0 ? 'warn' : 'ok' },
@@ -151,7 +152,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     ? ['dashboard', 'labels', 'sph', 'schedules', 'billing', 'financial', 'masters']
     : role === 'admin_teknik'
     ? ['dashboard', 'labels', 'schedules', 'billing', 'selia', 'calibrators', 'tablets', 'masters', 'aspak']
-    : ['dashboard', 'labels', 'sph', 'schedules', 'billing', 'selia', 'calibrators', 'tablets', 'financial', 'masters', 'templates', 'aspak'];
+    : ['dashboard', 'labels', 'sph', 'schedules', 'billing', 'selia', 'calibrators', 'tablets', 'financial', 'masters', 'templates', 'aspak', 'nilaiTera'];
 
   const visibleNavTabs = allNavTabs.filter(tab => allowedTabs.includes(tab.id));
   const tabById = useMemo(() => {
