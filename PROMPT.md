@@ -18,12 +18,12 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 7. Setelah tiap langkah: perbarui STATUS TERAKHIR di PROMPT.md (repo + Project). Commit & push ke `main` dengan pengaman CLAUDE.md 2A.2 (cek produksi READY sesudah push).
 
 **⭐ PERUBAHAN 22 Oktober 2026, 19.11 WIB (instruksi Ridhwan) — berlaku di atas tabel di bawah:**
-1. **Langsung ke `main`**, `tera-dev` tidak dipakai lagi. Tahap 4.0–4.3c yang masih di `tera-dev` (commit `fad15f0`) digabung ke `main` **sekali**, setelah Ridhwan membalas "lanjutkan" untuk dokumen baru ini (isinya halaman Tera SMK saja; migrasi belum dijalankan).
+1. **Langsung ke `main`**, `tera-dev` tidak dipakai lagi. ✅ **Sudah digabung 22 Okt 19.2x**: Tahap 4.0–4.3c + dokumen baru masuk `main` (merge commit `882cddd`); deployment produksi **READY**, uji cepat OK (`/api/health` 200 database supabase, `/087.0031`, `/tera/`, `/admin/login` terbuka; service worker Tera hanya di `/tera/`). Cabang `tera-dev` dibiarkan, tidak dipakai.
 2. **Cakupan awal 5 alat**: Sphygmomanometer (**diulang**), Kelistrikan, Timbangan Bayi Digital, Suction Pump, Thermohygrometer — lengkap sampai Tahap 10. Alat lain = Tahap 11: Ridhwan mengunggah satu per satu **Master Excel + Metode Kerja (MK) + Report All**, baru dibuatkan template.
 3. **Sphygmomanometer diulang** menunggu Master Excel yang disesuaikan Ridhwan → template v2, golden file, spesifikasi Report All dibuat ulang. Mesin hitung (`hitung.ts`), layar LKK 4.3c, sinkron, dll. dipakai ulang (berbasis template).
 4. **Yang boleh jalan sambil menunggu master baru** (tidak bergantung isi master): migrasi `0008` kalibrator pelengkap lingkungan (stopwatch & termohigrometer — termohigrometer juga salah satu dari 5 alat), Selia (4.4), mesin PDF (4.5, tanpa kop dulu), QR/verifikasi/Drive (4.6), Buka koreksi (4.7).
 5. **Yang saya butuhkan dari Ridhwan**: (a) Master Sphygmomanometer yang sudah disesuaikan; (b) untuk Kelistrikan, Timbangan Bayi Digital, Suction Pump, Thermohygrometer: Master Excel + MK + Report All (bisa menyusul, sebelum alat itu dikerjakan di Tahap 6); (c) jawaban kop KAN (PRD 12.8); (d) T12, T13, T14, T16 & termohigrometer "rekomendasi" (belum dijawab).
-6. **Langkah berikutnya**: Ridhwan balas "lanjutkan" → Claude menggabungkan `tera-dev` ke `main`, cek produksi, lalu kerjakan 4.3c-2 (migrasi `0008`, dijelaskan dulu).
+6. **Jadwal Ridhwan**: Minggu 25 Okt mengunggah Master Sphygmomanometer yang disesuaikan + file kop. Sampai itu, fokus GitHub/kode: berikutnya 4.3c-2 (migrasi `0008` kalibrator termohigrometer & stopwatch, dijelaskan dulu, tunggu "lanjutkan").
 
 **Per 20 Oktober 2026, 01.57 WIB (riwayat; cabang `tera-dev` kini diganti `main`)**
 
