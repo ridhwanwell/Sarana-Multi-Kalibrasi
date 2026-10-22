@@ -6,12 +6,12 @@
 | Produk | **Tera SMK**: TERA, Teknologi Evaluasi & Rekam Alkes |
 | Slogan | *Tertelusur · Efisien · Rapi · Akurat* |
 | Pemilik produk | Ridhwan (Developer, PT SMK) |
-| Dibangun dengan | **Claude Code** menulis kode, menguji build, dan commit ke cabang **`tera-dev`**; Claude menggabungkan ke `main` hanya setelah pemilik produk mengecek Preview & membalas "oke"; SQL dijalankan setelah persetujuan (CLAUDE.md 2A) |
+| Dibangun dengan | **Claude Code** menulis kode, menguji build, dan **commit + push langsung ke `main`** *(diubah 22 Okt 2026; sebelumnya cabang `tera-dev`)* dengan pengaman CLAUDE.md 2A; SQL & pengaturan Vercel dijalankan setelah "lanjutkan" |
 | Rumah kode | Repo GitHub **`ridhwanwell/qrcode-smk`** · Vercel project **`qrcode-smk`** · Supabase project **`qr-label-kalibrasi`** |
 | Dokumen pendamping | `CLAUDE.md` (aturan kerja & desain — WAJIB dibaca bersama PRD ini) |
 | Acuan data | Paket **143 Master LKK v12** (`LKK-143_.zip`) |
 | Domain | **saranamultikalibrasi.com** — dua PWA: **Manajemen Aset SMK** (`/admin`) & **Tera SMK** (`/tera`) |
-| Status | **Draf 3 — Perencanaan (18 Oktober 2026)**. Belum ada kode. Mulai kerja hanya setelah pemilik produk bilang "lanjutkan". |
+| Status | **Draf 4 (22 Oktober 2026)** — Tahap 0–3 selesai; Tahap 4 berjalan (4.0–4.3c). **Cakupan awal dipersempit jadi 5 alat** (lihat 4.3 & 11.48). |
 
 > **Cara membaca:** PRD ini menjelaskan **APA** yang dibangun dan **kapan dianggap selesai** (kriteria terima). **BAGAIMANA** bekerja, aturan desain, dan larangan ada di `CLAUDE.md`. Jika PRD dan CLAUDE.md bertentangan, **tanyakan ke pemilik produk**.
 
@@ -21,6 +21,7 @@
 |---|---|---|
 | Draf 1 | Oktober 2026 | Draf awal (aplikasi tablet Expo) |
 | Draf 2 | 15 Oktober 2026 | Kalibrator expired, AI pra-penyeliaan, snapshot kalibrator, tanda tangan Manajer Teknik, koreksi pasca-ACC dengan izin Developer, backup terverifikasi |
+| **Draf 4** | **22 Oktober 2026** | **Cakupan awal 5 alat** (Sphygmomanometer — diulang, Kelistrikan, Timbangan Bayi Digital, Suction Pump, Thermohygrometer) sampai Tahap 10; alat lain menyusul satu per satu setelah pemilik produk mengunggah Master Excel + Metode Kerja + Report All. **Kerja langsung ke `main`** (tanpa `tera-dev`). Lihat 4.3, 9, 11.48–11.50 |
 | **Draf 3** | **18 Oktober 2026** | **Platform pindah ke PWA di dalam website `qrcode-smk` yang sudah berjalan.** Tambah: role Teknisi, push jadwal, nomor label scan/ketik, label cadangan & alat tambahan, dua mode sertifikat (Tera SMK / link Google Drive), kop KAN vs Non-KAN, BAP & BASTP otomatis, sambungan ke penagihan, aturan database tunggal, **dua PWA di satu domain** (Manajemen Aset SMK & Tera SMK). Semua keputusan Draf 2 tetap berlaku |
 
 ---
@@ -159,7 +160,7 @@ Pengembangan dilakukan langsung di project Supabase produksi (keputusan pemilik 
 | F0.3 | **Backup** (dump skema + data tabel yang disentuh) **sebelum setiap migrasi** | File backup tercatat sebelum migrasi dijalankan |
 | F0.4 | Semua migrasi diberikan sebagai SQL 4 blok (BACKUP · PERUBAHAN · CEK · BATALKAN) untuk dijalankan pemilik produk di Supabase SQL Editor, dan disimpan sebagai file bernomor | Ada di folder `supabase/migrations/` |
 | F0.5 | **Data uji** memakai BO khusus **`999`** dan ditandai `is_test = true` | Data uji tidak muncul di laporan, BAP, penagihan sungguhan; bisa dihapus bersih |
-| F0.6 | Tampilan baru diuji dulu di **Vercel Preview** dari cabang **`tera-dev`**, bukan langsung di website utama | Setiap tahap punya link preview sebelum digabung ke `main` |
+| F0.6 | *(diubah 22 Okt 2026)* Kerja langsung di **`main`** dengan pengaman CLAUDE.md 2A.2: build/uji lolos sebelum push, produksi dicek READY + uji cepat sesudah push, Promote deployment lama bila bermasalah | Tiap push: produksi READY & QR lama tetap terbuka |
 | F0.7 | **Audit kode tanpa mengubah apa pun** (Fase 0): petakan modul, alur label/QR, API server, RLS, bucket penyimpanan | Laporan `docs/audit-fase0.md` disetujui pemilik produk |
 | F0.9 | **File referensi perusahaan** (Master LKK, kop, contoh BAP/BASTP, sertifikat kalibrator, golden file) disimpan di `_referensi/` dan **tidak boleh masuk repo publik** | Selama repo publik: `_referensi/` ada di `.gitignore`; dicek sebelum setiap commit |
 | F0.8 | Acuan struktur database = **database langsung** (bukan `supabase_schema.sql` di repo yang sudah usang) | Struktur diambil dari database saat audit |
@@ -384,6 +385,8 @@ Tab bawah (HP): **Beranda · LKK · Akun**. Tablet landscape: menu samping + daf
 
 ## 9. TAHAPAN (MENGIKUTI ALUR WORKFLOW)
 
+> **Cakupan awal (Draf 4, 22 Okt 2026): 5 alat** — **Sphygmomanometer** (diulang setelah Master Excel disesuaikan pemilik produk), **Kelistrikan**, **Timbangan Bayi Digital**, **Suction Pump**, **Thermohygrometer**. Semua tahap 0–10 harus selesai untuk 5 alat ini. Setelah dinyatakan aman, pemilik produk mengunggah **satu per satu**: Master Excel, Metode Kerja (MK Kemenkes) & contoh sertifikat **Report All**; baru dibuatkan lembar kerjanya di Tera SMK (satu alat = satu template JSON, tanpa mengubah mesin). Di tabel di bawah, "alat bertahap" pada Tahap 6 berarti **4 alat lain dari 5 itu**; kelompok alat selebihnya masuk **Tahap 11 (Perluasan alat)**.
+
 Kerjakan berurutan; tiap tahap selesai bila **kriteria terima terpenuhi & pemilik produk bilang "lanjutkan"**.
 
 | Tahap | Isi | Selesai bila |
@@ -394,11 +397,12 @@ Kerjakan berurutan; tiap tahap selesai bila **kriteria terima terpenuhi & pemili
 | **3** | Push jadwal: label cadangan, mode sertifikat, tombol Push, RS & alat PO muncul di Tera SMK | F2 lolos |
 | **4** | **Alat percontohan Sphygmomanometer**: isi LKK (scan/ketik label, alat tambahan, kalibrator expired) → Selesai → Selia (edit/kembalikan/ACC) → **PDF Non-KAN** → **QR** + salinan Drive → koreksi pasca-ACC | F3, F5.5, F6.1–F6.6, F7, F8, F9 lolos untuk Sphygmomanometer; budget U95 sudah ditinjau & disetujui (11.45) |
 | **5** | **BAP & BASTP otomatis** + sambungan ke penagihan | F10, F11 lolos dengan BO uji 999 |
-| **6** | **Alat KAN pertama** (Timbangan Bayi Digital) untuk menguji kop KAN, lalu alat bertahap per kelompok: tekanan/aliran → suhu → kelistrikan/sinyal → volume/massa → cahaya → radiologi | Tiap alat lolos F5.5 & F8.1 |
+| **6** | **4 alat lain**: Timbangan Bayi Digital (alat KAN pertama, uji kop KAN bila kop sudah diputuskan — 12.8), Thermohygrometer, Suction Pump, Kelistrikan | Tiap alat lolos F5.5 & F8.1 (golden file Excel) |
 | **7** | Pemindai AI pra-penyeliaan & highlight | F6.7 lolos |
 | **8** | Menu pengaturan lengkap di Manajemen Aset SMK | F12 lolos |
 | **9** | Backup mingguan terverifikasi + log | F13 lolos |
-| **10** | Uji lapangan di HP & tablet kantor, kurangi akun `admin_utama` menjadi Ridhwan saja | Semua uji Lampiran D lolos |
+| **10** | Uji lapangan di HP & tablet kantor, kurangi akun `admin_utama` menjadi Ridhwan saja | Semua uji Lampiran D lolos (untuk 5 alat) |
+| **11** | **Perluasan alat**: tiap alat baru setelah pemilik produk mengunggah Master Excel + MK + Report All → template JSON + golden file + PDF disetujui | Per alat: lolos F5.5 & F8.1 |
 
 ---
 
@@ -478,6 +482,9 @@ Kerjakan berurutan; tiap tahap selesai bila **kriteria terima terpenuhi & pemili
 | 11.45 | **U95 Sphygmomanometer (4,1–6,6 mmHg) lebih besar dari toleransi ±3 mmHg** → budget ketidakpastian **ditinjau & dibetulkan di proyek website oleh Claude di Project website** pada awal Tahap 4, usulan perbaikan disetujui pemilik produk dulu |
 | 11.46 | **Logo**: Tera SMK memakai **logo Tera SMK** (dari pemilik produk); Manajemen Aset SMK memakai **logo PT SMK** |
 | 11.47 | **Memakai Claude Code** *(diubah 18 Okt 2026; sebelumnya: tanpa Claude Code, kode disalin manual)*. Claude commit & push **hanya ke `tera-dev`**; **merge ke `main` oleh Claude hanya setelah pemilik produk mengecek Preview & membalas "oke"** *(diubah 19 Okt 2026)*; SQL & pengaturan Vercel dijelaskan dulu dan dijalankan setelah "lanjutkan"; **struktur tabel dirancang Claude** (CLAUDE.md 2A) |
+| 11.48 | **Cakupan awal 5 alat** *(22 Okt 2026)*: Sphygmomanometer, Kelistrikan, Timbangan Bayi Digital, Suction Pump, Thermohygrometer — selesai sampai Tahap 10. Alat lain menyusul satu per satu setelah pemilik produk mengunggah Master Excel + Metode Kerja + Report All (Tahap 11) |
+| 11.49 | **Sphygmomanometer diulang** *(22 Okt 2026)*: Master Excel akan disesuaikan pemilik produk dulu → template, golden file & spesifikasi Report All dibuat ulang dari master baru. Mesin hitung, layar LKK, sinkron, Selia, PDF, QR yang berbasis template tetap dipakai ulang. Bagian yang tidak bergantung pada isi master (Selia, mesin PDF, QR/verifikasi, Buka koreksi, kalibrator lingkungan) boleh jalan lebih dulu |
+| 11.50 | **Kerja langsung ke `main`, tanpa `tera-dev`** *(22 Okt 2026, menggantikan 11.47)*: Claude commit & push ke `main` setelah build & uji lolos; tidak perlu kata "oke" per merge. Pengaman tetap: tidak ada `push --force`; cek deployment produksi READY + uji cepat (scan QR lama, `/admin/login`, `/tera/`) setiap kali push; masalah → tawarkan *Promote* deployment sebelumnya; kode Tera SMK terisolasi (`src/tera/`, `api/tera*`) agar modul lama tak tersentuh; migrasi tetap 4 blok + "lanjutkan"; pengaturan Vercel, domain, format link QR tidak pernah diubah; `_referensi/`, `.env`, data pelanggan tidak ikut commit; data uji hanya BO 999 `is_test` |
 | 11.44 | Repo `qrcode-smk` **tetap publik selama pengembangan**, dijadikan Private setelah koding selesai. Selama publik: `_referensi/`, `.env`, dan data pelanggan **wajib** dikecualikan lewat `.gitignore` (F0.9) |
 
 ---
@@ -492,6 +499,8 @@ Kerjakan berurutan; tiap tahap selesai bila **kriteria terima terpenuhi & pemili
 | 12.4 | Label status **"Cadangan Laik Pakai"** (586 label) di database — artinya apa, dan apakah sama dengan label cadangan di Draf 3? | Dibahas di audit Fase 0 sebelum mengubah apa pun |
 | 12.5 | Telepon kop berbeda: (0851) **1234570** vs (0851) **11234570**; "Kenari 3" vs "Kenari 03"; email kedua "**a**ptsaranamultikalibrasi" | Kop dipakai apa adanya dulu (11.33); diperbaiki belakangan |
 | 12.6 | Nomor WhatsApp PT SMK: **(0851) 1123-4570** (kop sertifikat & BASTP) atau (0851) 1234570 (kop surat)? | (0851) 1123-4570 |
+| 12.8 | **Kop KAN** untuk Timbangan Bayi Digital — kop resmi (PDF) belum dipakai (hasil percobaan 19 Okt kurang baik). Pakai apa untuk 5 alat awal? | Sertifikat tanpa kop dulu (isi saja), kop dipasang setelah file PDF kop resmi diunggah & disetujui |
+| 12.9 | Tahap 4 (4.0–4.3c) yang masih di `tera-dev`: digabung ke `main` sekarang? | Ya, begitu pemilik produk membalas "lanjutkan" di bawah aturan baru (isinya hanya halaman Tera SMK; migrasi belum dijalankan) |
 | 12.7 | Sel **D27 = 12** di file uji `Master_Sphygmomanometer_2.xlsx` (titik 100 mmHg, I Turun) — salah ketik? | Dibetulkan pemilik produk sebelum jadi golden file |
 ---
 
