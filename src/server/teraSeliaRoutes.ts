@@ -3,11 +3,14 @@
  *
  *  GET /api/tera/selia/lkk        -> daftar LKK yang masuk (+ jumlah penanda merah dari pemeriksaan server)
  *  GET /api/tera/selia/lkk/:id    -> satu LKK lengkap: isian, jejak hitung, snapshot kalibrator, hasil pemeriksaan server
+ *  POST /api/tera/selia/lkk/:id/kembalikan  -> kembalikan ke teknisi (alasan wajib) — fungsi database tera_kembalikan_lkk
+ *  POST /api/tera/selia/lkk/:id/acc         -> ACC (ditolak bila ada penanda merah / belum diperiksa server) — tera_acc_lkk
  *
  * Perumpamaan: meja Penyelia di kantor. Penyelia melihat tumpukan LKK yang sudah diterima loket, tiap lembar
- * diberi stiker penanda hasil periksa ulang petugas loket (4.4a). Kembalikan & ACC dibuat di langkah berikutnya.
+ * diberi stiker penanda hasil periksa ulang petugas loket (4.4a). Penyelia bisa mengembalikan atau meng-ACC.
  *
- * Keamanan: hanya admin_teknik & admin_utama (dicek di server). Hanya MEMBACA; tidak ada tulis.
+ * Keamanan: hanya admin_teknik & admin_utama (dicek di server). Nama & ID penyelia diambil dari akun yang login
+ * (bukan dari isi kiriman). Perubahan status dilakukan fungsi database yang utuh (kunci baris + riwayat tak bisa diubah).
  */
 import type { Express, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
@@ -160,4 +163,38 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
       return res.status(503).json({ error: PESAN_SIBUK });
     }
   });
+
+  // --- Aksi: kembalikan & ACC -----------------------------------------------------
+  const namaPenyelia = async (req: AuthRequest): Promise<string> => {
+    const { data } = await berbatas((sg) => supabaseAdmin.from('profiles').select('full_name').eq('id', req.user.id).maybeSingle().abortSignal(sg));
+    const n = (data as any)?.full_name;
+    return typeof n === 'string' && n.trim() ? n.trim().slice(0, 120) : String(req.user?.email || 'Penyelia').slice(0, 120);
+  };
+
+  const jalankanAksi = async (req: AuthRequest, res: Response, fungsi: 'tera_kembalikan_lkk' | 'tera_acc_lkk') => {
+    res.setHeader('Cache-Control', 'no-store');
+    const id = String(req.params.id || '').toLowerCase();
+    if (!POLA_UUID.test(id)) return res.status(400).json({ error: 'ID LKK tidak sah.' });
+    const args: Record<string, unknown> = { p_id: id, p_user: req.user.id };
+    if (fungsi === 'tera_kembalikan_lkk') {
+      const alasan = req.body?.alasan;
+      if (typeof alasan !== 'string' || alasan.trim().length < 3) return res.status(400).json({ hasil: 'ditolak', alasan: 'Alasan pengembalian wajib diisi (min. 3 huruf).' });
+      if (alasan.length > 1000) return res.status(400).json({ hasil: 'ditolak', alasan: 'Alasan terlalu panjang (maks 1000 huruf).' });
+      args.p_alasan = alasan;
+    }
+    try {
+      args.p_nama = await namaPenyelia(req);
+      const { data, error } = await berbatas((sg) => supabaseAdmin.rpc(fungsi, args).abortSignal(sg));
+      if (error || !data) { console.error(`[Tera/Selia] ${fungsi}:`, error?.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      const h = data as any;
+      const ok = ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan'].includes(h.hasil);
+      return res.status(ok ? 200 : 409).json(h);
+    } catch (e: any) {
+      console.error(`[Tera/Selia] ${fungsi}:`, e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    }
+  };
+
+  app.post("/api/tera/selia/lkk/:id/kembalikan", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_kembalikan_lkk'));
+  app.post("/api/tera/selia/lkk/:id/acc", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_acc_lkk'));
 }

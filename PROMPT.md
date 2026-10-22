@@ -266,3 +266,9 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Pemeriksaan hanya dianggap berlaku bila client_version-nya sama dengan versi LKK; null = belum diperiksa = belum boleh ACC.
 - KEPUTUSAN RIDHWAN 22 Okt: layar Selia = SATU HALAMAN panjang dari atas ke bawah (scroll), TIDAK memilih halaman/bagian satu-satu seperti di Tera. Letaknya di Selia dashboard Manajemen Aset.
 - Langkah berikutnya: 4.4b-2 aksi Kembalikan & ACC (perlu migrasi 0011: tabel riwayat tera_lkk_riwayat + fungsi ubah status — dijelaskan dulu, tunggu "lanjutkan"), lalu 4.4b-3 layar Selia satu halaman. Migrasi kalibrator termohigrometer/stopwatch = 0012.
+
+### Hasil 4.4b-2 (22 Okt ±21.35) — Kembalikan & ACC + riwayat (migrasi 0011)
+- Migrasi 0011 DIJALANKAN (setelah "lanjutkan"): tera_lkk +4 kolom (acc_oleh, acc_oleh_nama, acc_at, revisi); tabel tera_lkk_riwayat (tak bisa UPDATE/DELETE/TRUNCATE); fungsi tera_kembalikan_lkk & tera_acc_lkk (kunci baris, hanya service role). Backup: backup.b20261022_tera_lkk_sebelum_0011 (8 baris). CEK 6/6 benar. Uji fungsi 11/11 di transaksi yang dibatalkan (BO 999 palsu): ACC ditolak tanpa pemeriksaan / dengan penanda merah, ACC ok, ACC ulang idempoten, kembalikan wajib alasan, riwayat tak bisa diubah/dihapus. Tidak ada data tersisa.
+- Rute: POST /api/tera/selia/lkk/:id/kembalikan (alasan wajib) dan /acc. Nama penyelia dari akun login.
+- Belum ada: PDF, QR, Drive saat ACC (4.5/4.6); Buka koreksi (4.7). ACC sekarang hanya mengunci status & mencatat.
+- Langkah berikutnya: 4.4b-3 layar Selia SATU HALAMAN panjang (scroll) di Manajemen Aset. Migrasi kalibrator termohigrometer/stopwatch = 0012.
