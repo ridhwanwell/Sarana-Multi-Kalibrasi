@@ -699,6 +699,20 @@ html.tera-aktif body {
 /* Isian */
 .t-isian-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .t-isian { min-width: 0; }
+/* Dropdown Baik / Tidak Baik */
+.t-pilih { position: relative; }
+.t-pilih select {
+  flex: 1; min-width: 0; min-height: 48px; padding: 0 40px 0 40px; appearance: none; -webkit-appearance: none;
+  background: transparent; color: var(--t-text); font-size: 16px; font-weight: 500; outline: none; cursor: pointer; border-radius: var(--t-radius-ctl);
+}
+.t-pilih select:disabled { cursor: default; opacity: 1; -webkit-text-fill-color: var(--t-text); }
+.t-ikon-pilih { position: absolute; left: 12px; display: grid; place-items: center; pointer-events: none; color: var(--t-text-2); }
+.t-panah-pilih { position: absolute; right: 12px; pointer-events: none; color: var(--t-text-2); }
+.t-pilih[data-nada="baik"] { background: var(--t-ok-bg); border-color: var(--t-ok-text); }
+.t-pilih[data-nada="baik"] select, .t-pilih[data-nada="baik"] .t-ikon-pilih { color: var(--t-ok-text); }
+.t-pilih[data-nada="tidak"] { background: var(--t-danger-bg); border-color: var(--t-danger-line); }
+.t-pilih[data-nada="tidak"] select, .t-pilih[data-nada="tidak"] .t-ikon-pilih { color: var(--t-danger-text); font-weight: 700; }
+.t-pilih[data-kunci="true"] { background: var(--t-bg); border-color: var(--t-border); }
 .t-kotak[data-kunci="true"] { background: var(--t-bg); border-color: var(--t-border); }
 .t-kotak input[type="date"] { min-width: 0; }
 .t-segmen { display: grid; gap: 8px; margin-top: 4px; }

@@ -16,7 +16,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock, Minus } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Loader2, Lock, Minus } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
@@ -125,6 +125,30 @@ const Segmen: React.FC<{ label: string; opsi: OpsiSegmen[]; nilai: unknown; onPi
     })}
   </div>
 );
+
+interface PilihanDropdownProps { id: string; label: string; opsi: [string, string]; nilai: unknown; kunci: boolean; onPilih: (v: string) => void; sembunyikanLabel?: boolean }
+
+/**
+ * Dropdown Baik / Tidak Baik (permintaan Ridhwan 22 Okt 2026). Dropdown bawaan perangkat (nyaman di HP/tablet),
+ * tinggi ≥ 48 px, font 16 px. Tidak Baik = warna merah + ikon tanda seru + tulisan (bukan warna saja).
+ */
+const Dropdown: React.FC<PilihanDropdownProps> = ({ id, label, opsi, nilai, kunci, onPilih, sembunyikanLabel }) => {
+  const tidak = nilai === opsi[1];
+  const sah = nilai === opsi[0] || nilai === opsi[1];
+  return (
+    <div className="t-isian">
+      {sembunyikanLabel ? null : <label htmlFor={id} className="t-label">{label}</label>}
+      <div className="t-kotak t-pilih" data-nada={tidak ? 'tidak' : sah ? 'baik' : undefined} data-kunci={kunci ? 'true' : undefined}>
+        <span className="t-ikon-pilih" aria-hidden="true">{tidak ? <AlertCircle size={18} /> : <Check size={18} />}</span>
+        <select id={id} value={sah ? (nilai as string) : ''} disabled={kunci} aria-label={sembunyikanLabel ? label : undefined} onChange={(e) => onPilih(e.target.value)}>
+          {!sah && <option value="" disabled>Pilih…</option>}
+          {opsi.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <ChevronDown size={20} aria-hidden="true" className="t-panah-pilih" />
+      </div>
+    </div>
+  );
+};
 
 /* ---------- Pilih alat standar ---------- */
 
@@ -309,20 +333,17 @@ const BagianLingkungan: React.FC<BagianProps & { keIdentitas: () => void }> = ({
 const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
   const fisik = (isi.data.fisik ?? {}) as Peta;
   const [baik, tidak] = tpl.pilihanFisik;
-  const opsi: OpsiSegmen[] = [{ nilai: baik, label: baik, nada: 'baik' }, { nilai: tidak, label: tidak, nada: 'tidak' }];
   const simpan = (id: string, sisi: 'fisik' | 'fungsi', v: unknown) => ubahData('fisik', id, { ...(fisik[id] ?? {}), [sisi]: v });
   return (
     <>
-      <p className="t-ket">Periksa tiap bagian alat: kondisi fisiknya dan cara kerjanya.</p>
+      <p className="t-ket">Periksa tiap bagian alat: kondisi fisiknya dan cara kerjanya. Pilihan awal Baik; ubah ke Tidak Baik bila ada yang tidak sesuai.</p>
       <ul className="t-fisik-daftar mt-3">
         {tpl.fisik.map((f) => (
           <li key={f.id} className="t-kartu">
             <h3 className="t-judul-kecil">{f.judul}</h3>
             <div className="t-isian-grid mt-2">
-              <div className="t-isian"><span className="t-label">Fisik</span>
-                <Segmen label={`${f.judul} — Fisik`} opsi={opsi} nilai={fisik[f.id]?.fisik} kunci={kunci} onPilih={(v) => simpan(f.id, 'fisik', v)} /></div>
-              <div className="t-isian"><span className="t-label">Fungsi</span>
-                <Segmen label={`${f.judul} — Fungsi`} opsi={opsi} nilai={fisik[f.id]?.fungsi} kunci={kunci} onPilih={(v) => simpan(f.id, 'fungsi', v)} /></div>
+              <Dropdown id={`fisik-${f.id}-fisik`} label="Fisik" opsi={[baik, tidak]} nilai={fisik[f.id]?.fisik} kunci={kunci} onPilih={(v) => simpan(f.id, 'fisik', v)} />
+              <Dropdown id={`fisik-${f.id}-fungsi`} label="Fungsi" opsi={[baik, tidak]} nilai={fisik[f.id]?.fungsi} kunci={kunci} onPilih={(v) => simpan(f.id, 'fungsi', v)} />
             </div>
           </li>
         ))}
@@ -330,13 +351,13 @@ const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
       {(tpl.fisikTambahan?.length ?? 0) > 0 && (
         <>
           <h3 className="t-judul-kecil mt-6">Butir lain yang diperiksa</h3>
-          <p className="t-ket">Satu pilihan untuk tiap butir.</p>
+          <p className="t-ket">Satu pilihan untuk tiap butir (awalnya Baik).</p>
           <ul className="t-fisik-daftar mt-3">
             {tpl.fisikTambahan!.map((f) => (
               <li key={f.id} className="t-kartu">
                 <h4 className="t-judul-kecil">{f.judul}</h4>
                 <div className="mt-2">
-                  <Segmen label={f.judul} opsi={opsi} nilai={((isi.data.fisikTambahan ?? {}) as Peta)[f.id]} kunci={kunci} onPilih={(v) => ubahData('fisikTambahan', f.id, v)} />
+                  <Dropdown id={`fisik-lain-${f.id}`} label={f.judul} sembunyikanLabel opsi={[baik, tidak]} nilai={((isi.data.fisikTambahan ?? {}) as Peta)[f.id]} kunci={kunci} onPilih={(v) => ubahData('fisikTambahan', f.id, v)} />
                 </div>
               </li>
             ))}
@@ -623,7 +644,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
     ubah((i) => ({ ...i, snapshot: { ...(i.snapshot ?? {}), [def.peran]: jepretStandar(def, p, buatSnapshot) } }));
   }, [ubah]);
 
-  // Saat dibuka: resolusi bawaan template terisi; alat standar yang satu-satunya berlaku terpilih otomatis (A1.4, A1.5)
+  // Saat dibuka: resolusi bawaan template terisi; fisik & fungsi bawaan Baik; alat standar yang satu-satunya berlaku terpilih otomatis (A1.4, A1.5)
   useEffect(() => {
     if (kunci) return;
     ubah((i) => {
@@ -631,6 +652,26 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
       const iden = (i.data.identitas ?? {}) as Peta;
       if (iden.resolusi === undefined || iden.resolusi === null) {
         hasil = { ...hasil, data: { ...hasil.data, identitas: { ...iden, resolusi: tpl.identitas.resolusi.pilihan[0] } } };
+      }
+      // Fisik & fungsi: pilihan awal selalu "Baik" (permintaan Ridhwan 22 Okt 2026); hanya yang masih kosong yang diisi
+      const bawaan = tpl.pilihanFisik[0];
+      const fisikLama = (hasil.data.fisik ?? {}) as Peta;
+      const fisikBaru: Peta = { ...fisikLama };
+      let ubahFisik = false;
+      for (const f of tpl.fisik) {
+        const b = (fisikLama[f.id] ?? {}) as Peta;
+        const fisikIsi = typeof b.fisik === 'string' && b.fisik ? b.fisik : bawaan;
+        const fungsiIsi = typeof b.fungsi === 'string' && b.fungsi ? b.fungsi : bawaan;
+        if (fisikIsi !== b.fisik || fungsiIsi !== b.fungsi) { fisikBaru[f.id] = { ...b, fisik: fisikIsi, fungsi: fungsiIsi }; ubahFisik = true; }
+      }
+      const tambahLama = (hasil.data.fisikTambahan ?? {}) as Peta;
+      const tambahBaru: Peta = { ...tambahLama };
+      let ubahTambah = false;
+      for (const f of tpl.fisikTambahan ?? []) {
+        if (typeof tambahLama[f.id] !== 'string' || !tambahLama[f.id]) { tambahBaru[f.id] = bawaan; ubahTambah = true; }
+      }
+      if (ubahFisik || ubahTambah) {
+        hasil = { ...hasil, data: { ...hasil.data, ...(ubahFisik ? { fisik: fisikBaru } : {}), ...(ubahTambah ? { fisikTambahan: tambahBaru } : {}) } };
       }
       for (const d of daftarStandar(tpl)) {
         if (hasil.snapshot?.[d.peran]) continue;

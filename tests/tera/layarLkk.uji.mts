@@ -11,7 +11,7 @@ const akar = fileURLToPath(new URL('../../', import.meta.url));
 const ASAL = 'http://localhost:9994';
 const keluar = process.env.TERA_FOTO_DIR || '';
 
-const ikon = ['AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','Minus','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
+const ikon = ['AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','Minus','ChevronDown','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
 const stubIkon = ikon.map((n) => `export const ${n} = (p) => React.createElement('svg', { 'data-ikon': '${n}', width: p.size || 24, height: p.size || 24, className: p.className, 'aria-hidden': 'true', viewBox: '0 0 24 24' }, React.createElement('circle', { cx: 12, cy: 12, r: 8 }));`).join('\n');
 const stubRouter = `
 import React from 'react';
@@ -225,19 +225,21 @@ cek('dibetulkan → merah hilang, bagian 2 lengkap', await tunggu(p, () => /Bagi
 
 // ---------- 5. Fisik & fungsi ----------
 await ke(p, 3);
-const baik = (n: string, sisi: string, nilai: string) => p.getByRole('radiogroup', { name: `${n} — ${sisi}` }).getByRole('radio', { name: nilai, exact: true });
-cek('3 item × (Fisik, Fungsi) + 5 butir lain = 11 pilihan Baik / Tidak Baik', await p.getByRole('radiogroup').count() === 11 && await p.getByRole('radio', { name: 'Baik', exact: true }).count() === 11);
-cek('tombol segmen ≥ 48 px', await p.evaluate(() => [...document.querySelectorAll('.t-segmen button')].every((b) => b.getBoundingClientRect().height >= 47.5)));
-for (const n of ['Badan dan Permukaan', 'Level Cairan', 'Tabung dan Selang']) { await baik(n, 'Fisik', 'Baik').click(); }
-await baik('Badan dan Permukaan', 'Fungsi', 'Baik').click();
-await baik('Level Cairan', 'Fungsi', 'Baik').click();
-cek('baru sebagian terisi → kurang menyebut item yang belum', /Tabung dan Selang: pilih kondisi Fisik dan Fungsi/.test(await teks(p)));
-await baik('Tabung dan Selang', 'Fungsi', 'Tidak Baik').click();
-cek('"Tidak Baik" terpilih: warna + ikon tanda seru + tulisan', await p.evaluate(() => { const b = document.querySelector('[role="radio"][aria-checked="true"][data-nada="tidak"]'); return !!b && !!b.querySelector('svg[data-ikon="AlertCircle"]') && /Tidak Baik/.test(b.textContent || ''); }));
+const IDF = ['badan', 'level_cairan', 'tabung_selang'].flatMap((k) => [`fisik-${k}-fisik`, `fisik-${k}-fungsi`]);
+const IDL = ['gauge', 'konektor', 'label', 'manset', 'titik_nol'].map((k) => `fisik-lain-${k}`);
+cek('3 item × (Fisik, Fungsi) + 5 butir lain = 11 dropdown Baik / Tidak Baik (bukan tombol)', await p.locator('.t-lkk-isi select').count() === 11 && await p.locator('.t-segmen').count() === 0);
+cek('pilihan dropdown hanya "Baik" dan "Tidak Baik"', await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi select')].every((s) => [...(s as HTMLSelectElement).options].map((o) => o.value).join('|') === 'Baik|Tidak Baik')));
+cek('PILIHAN AWAL selalu Baik: 11 dropdown = Baik tanpa disentuh', await p.evaluate((ids) => ids.every((x) => (document.getElementById(x) as HTMLSelectElement).value === 'Baik'), [...IDF, ...IDL]));
+cek('pilihan awal Baik ikut TERSIMPAN di perangkat (bukan hanya tampilan)', await dataTersimpan(p, id, (x) => ['badan', 'level_cairan', 'tabung_selang'].every((k) => x.data.fisik?.[k]?.fisik === 'Baik' && x.data.fisik?.[k]?.fungsi === 'Baik') && ['gauge', 'konektor', 'label', 'manset', 'titik_nol'].every((k) => x.data.fisikTambahan?.[k] === 'Baik')));
+cek('dropdown ≥ 48 px, font ≥ 16 px', await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi select')].every((s) => s.getBoundingClientRect().height >= 47.5 && parseFloat(getComputedStyle(s).fontSize) >= 16)));
+cek('tiap dropdown punya nama untuk pembaca layar (label / aria-label)', await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi select')].every((s) => !!(s.getAttribute('aria-label') || document.querySelector(`label[for="${s.id}"]`)))));
+cek('"Baik" bawaan: warna hijau + ikon centang + tulisan', await p.evaluate(() => { const b = document.querySelector('.t-pilih[data-nada="baik"]'); return !!b && !!b.querySelector('svg[data-ikon="Check"]'); }));
+await p.selectOption('#fisik-tabung_selang-fungsi', 'Tidak Baik');
+cek('"Tidak Baik" dipilih: merah + ikon tanda seru + tulisan', await p.evaluate(() => { const b = document.querySelector('.t-pilih[data-nada="tidak"]'); return !!b && !!b.querySelector('svg[data-ikon="AlertCircle"]') && (b.querySelector('select') as HTMLSelectElement).value === 'Tidak Baik'; }));
 cek('fisik tersimpan dengan teks persis "Baik" / "Tidak Baik"', await dataTersimpan(p, id, (x) => x.data.fisik?.badan?.fisik === 'Baik' && x.data.fisik?.tabung_selang?.fungsi === 'Tidak Baik' && x.data.fisik?.level_cairan?.fungsi === 'Baik'));
-cek('butir lain ditampilkan terpisah, belum diisi → kurang menyebutnya', /Butir lain yang diperiksa/.test(await teks(p)) && /Manset \(bagus, bersih, tidak sobek\): pilih kondisi/.test(await teks(p)));
-for (const n of ['Gauge/indikator', 'Konektor', 'Label/plakat/stiker terbaca', 'Manset', 'Titik nol']) await p.getByRole('radiogroup', { name: n }).getByRole('radio', { name: 'Baik', exact: true }).click();
-cek('butir lain tersimpan sebagai teks persis "Baik"', await dataTersimpan(p, id, (x) => ['gauge', 'konektor', 'label', 'manset', 'titik_nol'].every((k) => x.data.fisikTambahan?.[k] === 'Baik')));
+await p.selectOption('#fisik-lain-manset', 'Tidak Baik');
+await p.selectOption('#fisik-lain-manset', 'Baik');
+cek('butir lain: ditampilkan terpisah, bisa diubah dan dikembalikan, tersimpan "Baik"', /Butir lain yang diperiksa/.test(await teks(p)) && await dataTersimpan(p, id, (x) => x.data.fisikTambahan?.manset === 'Baik'));
 cek('semua bagian 1–3 lengkap, tidak ada daftar kurang', await tunggu(p, () => document.querySelectorAll('.t-bagian-btn[data-lengkap="true"]').length === 3) && !/Belum lengkap di bagian ini/.test(await teks(p)));
 await p.getByRole('button', { name: /Lanjut/ }).click();
 cek('Lanjut dari Fisik → Kinerja', /Bagian 4 dari 6 · Kinerja/.test(await teks(p)));
