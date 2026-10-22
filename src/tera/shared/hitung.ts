@@ -11,18 +11,20 @@
  *  - Data belum lengkap TIDAK error: nilai = null (layar menampilkan "-"), hasil = '-'.
  *  - Angka tidak dibulatkan di tengah hitungan (sama seperti Excel); pembulatan hanya untuk cetak.
  *
- * Rumus (keputusan Ridhwan 19 Okt 2026, docs/tahap4-u95-sphygmomanometer.md):
+ * Rumus (Master Sphygmomanometer revisi 22 Okt 2026, _referensi/sphygmo-v4/ — menggantikan versi 19 Okt):
  *  - Pembacaan standar terkoreksi = bacaan + koreksi kalibrator (per titik & arah)
  *  - Rata-rata = AVERAGE(run), Koreksi = rata-rata − setting
- *  - u Tipe A = STDEV.S(run) / √n (U1)
+ *  - u Tipe A ('selisih_maks_dari_nol') = selisih terbesar antar-run, setelah tiap run dikurangi run
+ *    yang sama di titik nol, dibagi √3 (Ketidakpastian!N:Q). Cara lama ('stdev') = STDEV.S/√n tetap tersedia.
  *  - u sertifikat = U95 kalibrator / 2
  *  - u zero error = selisih terbesar |turun − naik| per run di titik nol / √3 (dipakai di semua titik)
  *  - u resolusi = resolusi × 0,5 / pembagi (Analog √6, Digital √3)
  *  - u drift = 0,5 × drift / √3
- *  - uc = √Σu², U95 = k × uc dengan k = 2 tetap (U2)
- *  - U95 laporan = batas minimum CMC (≤ 1 → 1), dipakai juga untuk keputusan (sama seperti Excel)
- *  - Titik Laik bila |koreksi| + U95 laporan ≤ toleransi (U5)
- *  - Kesimpulan dari skor (U6: Laik Pakai bila total > ambang)
+ *  - uc = √Σu²; veff = uc⁴ / Σ(uᵢ⁴/vᵢ); k = polinom veff (Ketidakpastian!AM) atau k tetap
+ *  - U95 = k × uc; U95 laporan = batas minimum (≤ 1 → 1), dipakai juga untuk keputusan (sama seperti Excel)
+ *  - Titik Laik bila |koreksi| + U95 laporan ≤ toleransi
+ *  - Fisik: butir utama (2 kotak per baris) + butir tambahan MK 90.7.7 (1 kotak) dibagi SEMUA kotak
+ *  - Kesimpulan dari skor (Laik Pakai bila total ≥ 70, keputusan Ridhwan 22 Okt 2026)
  */
 
 // ───────────────────────────── Bentuk template ─────────────────────────────
@@ -42,6 +44,14 @@ export interface KinerjaNaikTurun {
   k: number;
   /** U95 ≤ nilai ini dilaporkan sebagai nilai ini (CMC). null = tanpa batas. */
   u95MinimumLaporan: number | null;
+  /** Cara menghitung u Tipe A. */
+  tipeA: 'stdev' | 'selisih_maks_dari_nol';
+  /** 'tetap' = pakai k; 'veff' = k dari derajat kebebasan efektif (Welch–Satterthwaite + polinom Excel). */
+  kMetode: 'tetap' | 'veff';
+  /** Derajat kebebasan tiap komponen (Ketidakpastian!R, W, Z, AC, AH). Dipakai bila kMetode = 'veff'. */
+  derajatBebas: { tipeA: number; sertifikat: number; zero: number; resolusi: number; drift: number };
+  /** Peringatan bila U95 laporan melebihi nilai ini (MK 090 butir 90.10.3: 1,5). null = tanpa. */
+  u95Maksimum: number | null;
   /** Pembagi resolusi per jenis skala (Analog √6 segitiga, Digital √3 persegi). */
   pembagiResolusi: Record<JenisSkala, number>;
   toleransi: number;
@@ -75,6 +85,8 @@ export interface TemplateAlat {
   keselamatan_listrik: 'tidak_ada' | 'wajib' | 'pilihan';
   identitas: { resolusi: { satuan: string; pilihan: number[] }; jenisSkala: JenisSkala[] };
   fisik: { id: string; judul: string }[];
+  /** Butir tambahan satu kotak (MK 090 butir 90.7.7); data.fisikTambahan[id]. Opsional. */
+  fisikTambahan?: { id: string; judul: string }[];
   /** Pilihan isian fisik & fungsi; yang pertama = "baik". */
   pilihanFisik: [string, string];
   ujiAmbang: UjiAmbang[];
@@ -90,6 +102,7 @@ export type Angka = number | null | undefined;
 export interface DataLkk {
   identitas?: { resolusi?: Angka; jenisSkala?: string | null };
   fisik?: Record<string, { fisik?: string | null; fungsi?: string | null }>;
+  fisikTambahan?: Record<string, string | null>;
   /** Uji ambang: per id, isian `bacaan` (selisih_setting) atau `waktu`/`nilai`. */
   [ujiId: string]: unknown;
   kinerja?: Record<string, Record<string, { naik?: Angka[]; turun?: Angka[] }>>;
@@ -118,6 +131,8 @@ export interface HasilTitik {
   uResolusi: number | null;
   uDrift: number | null;
   uc: number | null;
+  vEff: number | null;
+  k: number | null;
   u95: number | null;
   u95Laporan: number | null;
   u95Cetak: number | null;
@@ -127,9 +142,11 @@ export interface HasilTitik {
 export interface HasilLkk {
   fisik: { jumlahBaik: number; jumlahItem: number; nilai: number };
   ujiAmbang: Record<string, { nilaiUkur: number | null; hasil: Vonis }>;
-  kinerja: Record<string, { titik: HasilTitik[]; jumlahLaik: number; jumlahDinilai: number }>;
+  kinerja: Record<string, { titik: HasilTitik[]; jumlahLaik: number; jumlahDinilai: number; u95Melebihi: boolean }>;
   skor: { rincian: { dari: string; nilai: number }[]; total: number };
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai';
+  /** Peringatan untuk penyelia (bukan kekurangan data), mis. U95 melebihi 1,5 mmHg. */
+  peringatan: string[];
   /** Pesan kekurangan data (bahasa awam), untuk ringkasan sebelum "Selesai". */
   kurang: string[];
 }
@@ -146,6 +163,12 @@ export function stdevS(x: number[]): number {
   if (x.length < 2) return 0;
   const m = rataRata(x);
   return Math.sqrt(x.reduce((a, b) => a + (b - m) ** 2, 0) / (x.length - 1));
+}
+
+/** Faktor cakupan dari derajat kebebasan efektif (polinom di Ketidakpastian!AM). */
+export function faktorKDariVeff(v: number): number | null {
+  if (!Number.isFinite(v) || v <= 0) return null;
+  return 1.95996 + 2.37356 / v + 2.818745 / v ** 2 + 2.546662 / v ** 3 + 1.7861829 / v ** 4 + 0.245458 / v ** 5 + 1.000764 / v ** 6;
 }
 
 export function bandingkan(nilai: number, banding: Banding, batas: number): boolean {
@@ -202,7 +225,7 @@ export function hitungNaikTurun(
   kalibrator: TitikKalibrator[],
   resolusi: number | null,
   jenisSkala: JenisSkala | null,
-): { titik: HasilTitik[]; jumlahLaik: number; jumlahDinilai: number } {
+): { titik: HasilTitik[]; jumlahLaik: number; jumlahDinilai: number; u95Melebihi: boolean } {
   const n = k.pengulangan;
   const terkoreksi = (titik: number, arah: 'naik' | 'turun'): number[] | null => {
     const run = runLengkap(isian?.[String(titik)]?.[arah], n);
@@ -222,22 +245,44 @@ export function hitungNaikTurun(
     : null;
 
   const titik: HasilTitik[] = [];
-  let jumlahLaik = 0, jumlahDinilai = 0;
+  let jumlahLaik = 0, jumlahDinilai = 0, u95Melebihi = false;
   for (const t of k.titik) {
     for (const arah of ['naik', 'turun'] as const) {
       const x = terkoreksi(t, arah);
       const kal = kalibratorDi(kalibrator, t, arah);
       const rr = x ? rataRata(x) : null;
       const kor = rr !== null ? rr - t : null;
-      const uA = x ? stdevS(x) / Math.sqrt(n) : null;
+      let uA: number | null = null;
+      if (x) {
+        if (k.tipeA === 'stdev') uA = stdevS(x) / Math.sqrt(n);
+        else {
+          const z = arah === 'naik' ? zNaik : zTurun;
+          if (z) {
+            const d = x.map((v, i) => v - z[i]);
+            let m = 0;
+            for (let i = 0; i < d.length; i++) for (let j = i + 1; j < d.length; j++) m = Math.max(m, Math.abs(d[j] - d[i]));
+            uA = m / Math.sqrt(3);
+          }
+        }
+      }
       const uStd = kal ? kal.u95 / 2 : null;
       const uDrift = kal ? (0.5 * kal.drift) / Math.sqrt(3) : null;
       const lengkap = uA !== null && uStd !== null && uZero !== null && uRes !== null && uDrift !== null;
       const uc = lengkap ? Math.sqrt(uA! ** 2 + uStd! ** 2 + uZero! ** 2 + uRes! ** 2 + uDrift! ** 2) : null;
-      const u95 = uc !== null ? k.k * uc : null;
+      let vEff: number | null = null, kk: number | null = k.k;
+      if (k.kMetode === 'veff') {
+        kk = null;
+        if (lengkap && uc! > 0) {
+          const v = k.derajatBebas;
+          const bawah = uA! ** 4 / v.tipeA + uStd! ** 4 / v.sertifikat + uZero! ** 4 / v.zero + uRes! ** 4 / v.resolusi + uDrift! ** 4 / v.drift;
+          if (bawah > 0) { vEff = uc! ** 4 / bawah; kk = faktorKDariVeff(vEff); }
+        }
+      }
+      const u95 = uc !== null && kk !== null ? kk * uc : null;
       const u95Lap = u95 === null ? null
         : k.u95MinimumLaporan !== null && Math.abs(u95) <= k.u95MinimumLaporan ? k.u95MinimumLaporan : u95;
       let hasil: Vonis = '-';
+      if (u95Lap !== null && k.u95Maksimum !== null && u95Lap > k.u95Maksimum) u95Melebihi = true;
       if (kor !== null && u95Lap !== null) {
         hasil = Math.abs(kor) + u95Lap <= k.toleransi ? 'Laik' : 'Tidak Laik';
         jumlahDinilai++;
@@ -245,11 +290,11 @@ export function hitungNaikTurun(
       }
       titik.push({
         titik: t, arah, rataRata: rr, koreksi: kor, uTipeA: uA, uSertifikat: uStd, uZero, uResolusi: uRes,
-        uDrift, uc, u95, u95Laporan: u95Lap, u95Cetak: u95Lap === null ? null : bulatExcel(u95Lap, k.desimalCetak), hasil,
+        uDrift, uc, vEff, k: kk, u95, u95Laporan: u95Lap, u95Cetak: u95Lap === null ? null : bulatExcel(u95Lap, k.desimalCetak), hasil,
       });
     }
   }
-  return { titik, jumlahLaik, jumlahDinilai };
+  return { titik, jumlahLaik, jumlahDinilai, u95Melebihi };
 }
 
 // ───────────────────────────── LKK lengkap ─────────────────────────────
@@ -273,8 +318,14 @@ export function hitungLkk(tpl: TemplateAlat, data: DataLkk, kalibrator: TitikKal
       else if (v.trim().toLowerCase() === baik) jumlahBaik++;
     }
   }
+  let jumlahItem = tpl.fisik.length * 2;
+  for (const it of tpl.fisikTambahan ?? []) {
+    const v = data.fisikTambahan?.[it.id];
+    if (typeof v !== 'string' || !v.trim()) kosong++;
+    else if (v.trim().toLowerCase() === baik) jumlahBaik++;
+    jumlahItem++;
+  }
   if (kosong) kurang.push(`${kosong} isian fisik & fungsi belum diisi`);
-  const jumlahItem = tpl.fisik.length * 2;
 
   const ujiAmbang: HasilLkk['ujiAmbang'] = {};
   for (const u of tpl.ujiAmbang) {
@@ -291,9 +342,11 @@ export function hitungLkk(tpl: TemplateAlat, data: DataLkk, kalibrator: TitikKal
     };
   }
 
+  const peringatan: string[] = [];
   const kinerja: HasilLkk['kinerja'] = {};
   for (const k of tpl.kinerja) {
     kinerja[k.id] = hitungNaikTurun(k, data.kinerja?.[k.id], kalibrator, resolusi, jenisSkala);
+    if (kinerja[k.id].u95Melebihi && k.u95Maksimum !== null) peringatan.push(`${k.judul}: ketidakpastian (U95) melebihi ${k.u95Maksimum} ${k.satuan}`);
     const belum = kinerja[k.id].titik.filter((t) => t.hasil === '-').length;
     if (belum) kurang.push(`${k.judul}: ${belum} titik belum lengkap`);
   }
@@ -312,5 +365,5 @@ export function hitungLkk(tpl: TemplateAlat, data: DataLkk, kalibrator: TitikKal
   const total = rincian.reduce((a, b) => a + b.nilai, 0);
   const kesimpulan = bandingkan(total, tpl.skor.laikBila.banding, tpl.skor.laikBila.batas) ? 'Laik Pakai' : 'Tidak Laik Pakai';
 
-  return { fisik: { jumlahBaik, jumlahItem, nilai: rincian.find((r) => r.dari === 'fisik')?.nilai ?? 0 }, ujiAmbang, kinerja, skor: { rincian, total }, kesimpulan, kurang };
+  return { fisik: { jumlahBaik, jumlahItem, nilai: rincian.find((r) => r.dari === 'fisik')?.nilai ?? 0 }, ujiAmbang, kinerja, skor: { rincian, total }, kesimpulan, peringatan, kurang };
 }

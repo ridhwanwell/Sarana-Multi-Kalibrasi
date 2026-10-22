@@ -35,18 +35,18 @@ const o: any = await p.evaluate(async () => {
   o.bawaan = [tplKode?.versi, tplKode?.toleransi ?? tplKode?.kinerja?.[0]?.toleransi];
   o.kalKosong = (await t.daftarKalibrator()).length;
 
-  // 2. Kiriman server: template v2 + kalibrator sah + kalibrator rusak dibuang
-  const v2 = { ...tplKode, versi: 2, nama: 'Sphygmomanometer' };
+  // 2. Kiriman server: template v3 + kalibrator sah + kalibrator rusak dibuang
+  const v3 = { ...tplKode, versi: 3, nama: 'Sphygmomanometer' };
   const sv = (body: any, status = 200) => async () => new Response(JSON.stringify(body), { status });
-  o.tarik1 = await t.tarikMaster(sv({ template: [{ kodeAlat: 'sphygmomanometer', versi: 2, definition: v2 }, { definition: { kode_alat: 'rusak' } }],
+  o.tarik1 = await t.tarikMaster(sv({ template: [{ kodeAlat: 'sphygmomanometer', versi: 3, definition: v3 }, { definition: { kode_alat: 'rusak' } }],
     kalibrator: [K(), K({ asetId: 'CAL-X', points: [{ titik: 'nol' }] }), K({ asetId: 'CAL-Y', berlakuSampai: null, points: [{ titik: 0, koreksiNaik: 0, koreksiTurun: 0, u95Naik: 0.2, u95Turun: 0.2 }] })] }));
   o.terbaru = (await t.templateTerbaru('sphygmomanometer')).versi;
-  o.v1Masih = (await t.templateVersi('sphygmomanometer', 1))?.versi;
+  o.v1Masih = (await t.templateVersi('sphygmomanometer', 2))?.versi;
   o.kal = (await t.daftarKalibrator('tekanan_mmhg')).map((k: any) => k.asetId);
 
   // 3. Isi template versi sama tidak bisa ditimpa
-  await t.tarikMaster(sv({ template: [{ definition: { ...v2, nama: 'PALSU' } }], kalibrator: [K()] }));
-  o.namaTetap = (await t.templateVersi('sphygmomanometer', 2)).nama;
+  await t.tarikMaster(sv({ template: [{ definition: { ...v3, nama: 'PALSU' } }], kalibrator: [K()] }));
+  o.namaTetap = (await t.templateVersi('sphygmomanometer', 3)).nama;
 
   // 4. Daftar kalibrator diganti utuh (CAL-Y dinonaktifkan di server)
   o.kalSetelah = (await t.daftarKalibrator()).map((k: any) => k.asetId);
@@ -74,9 +74,9 @@ const o: any = await p.evaluate(async () => {
   return o;
 });
 
-cek('belum pernah tarik → template bawaan kode v1 (toleransi 4), kalibrator kosong', o.bawaan[0] === 1 && o.bawaan[1] === 4 && o.kalKosong === 0, JSON.stringify(o.bawaan));
+cek('belum pernah tarik → template bawaan kode v2 (toleransi 4), kalibrator kosong', o.bawaan[0] === 2 && o.bawaan[1] === 4 && o.kalKosong === 0, JSON.stringify(o.bawaan));
 cek('tarik: 1 template baru, kalibrator rusak dibuang (2 sah)', o.tarik1.ok && o.tarik1.templateBaru === 1 && o.tarik1.kalibrator === 2, JSON.stringify(o.tarik1));
-cek('template terbaru = versi tertinggi (v2), v1 tetap bisa dibuka untuk LKK lama', o.terbaru === 2 && o.v1Masih === 1);
+cek('template terbaru = versi tertinggi (v3), v2 tetap bisa dibuka untuk LKK lama', o.terbaru === 3 && o.v1Masih === 2);
 cek('kalibrator tersimpan per parameter', JSON.stringify(o.kal) === '["CAL-037","CAL-Y"]', JSON.stringify(o.kal));
 cek('isi template versi yang sama tidak bisa ditimpa', o.namaTetap === 'Sphygmomanometer', o.namaTetap);
 cek('daftar kalibrator diganti utuh (yang dinonaktifkan hilang)', JSON.stringify(o.kalSetelah) === '["CAL-037"]', JSON.stringify(o.kalSetelah));

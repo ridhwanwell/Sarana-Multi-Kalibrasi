@@ -112,7 +112,7 @@ async function layar(o: Opsi = {}): Promise<{ p: Page; id: string }> {
     await w.master.simpanMasterServer({ kalibrator: kal, template: [] });
     let id = 'tidak-ada';
     if (!tanpa) {
-      const l = await w.tera.buatLkk({ pemilik: 'u-t', bo: '095', noLabel: '095.0001', templateKode: 'sphygmomanometer', templateVersi: 1, tanggalKalibrasi: '2026-10-20', jadwalId: 'j1', poItemRef: 'A', data: {} });
+      const l = await w.tera.buatLkk({ pemilik: 'u-t', bo: '095', noLabel: '095.0001', templateKode: 'sphygmomanometer', templateVersi: 2, tanggalKalibrasi: '2026-10-20', jadwalId: 'j1', poItemRef: 'A', data: {} });
       id = l.id;
       if (status) await w.tera.tx(['lkk'], 'readwrite', (s: any) => { s.lkk.put({ ...l, syncState: status, statusServer: status === 'diterima' ? 'submitted' : null }); });
     }
