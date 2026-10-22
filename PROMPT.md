@@ -247,3 +247,8 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Dijalankan di produksi setelah "lanjutkan": jadwal SCH-UJI-TERA-999 dan Push-nya aktif lagi (CEK 3/3 benar). Backup: backup.b20261022_jadwal_uji_999 dan backup.b20261022_tera_push_uji_999. Teknisi = ridhwan@tera.smk.
 - Hanya untuk uji LKK Sphygmomanometer (BO 999, is_test). Timbangan Bayi Digital di jadwal uji belum punya template.
 - Migrasi kalibrator termohigrometer/stopwatch bergeser ke nomor 0010.
+
+### Hasil 4.4a-1 (22 Okt ±21.10) — pemeriksa server (kode murni)
+- src/tera/shared/periksaServer.ts: periksaPaketServer(tpl, paket) menghitung ulang jejak dengan mesin yang sama, membandingkan (jsonKanonik), lalu memberi penanda: jejak_beda, jejak_hilang, template_beda, standar_expired, lingkungan_luar, data_belum_lengkap, template_rusak. Semua memblokir ACC; LKK tetap disimpan.
+- Uji: tests/tera/periksaServer.test.mts (12 lulus), script test:tera:periksa-server. Cek tipe berkas baru bersih. Build Vite lokal tidak bisa jalan (registry npm tidak terjangkau di sesi ini) — dicek lewat build Vercel.
+- BELUM dipasang ke rute /api/tera/lkk. Langkah 4.4a-2 perlu tabel baru tera_lkk_pemeriksaan (migrasi 0010) — dijelaskan dulu, tunggu "lanjutkan". Migrasi kalibrator termohigrometer/stopwatch bergeser ke 0011.
