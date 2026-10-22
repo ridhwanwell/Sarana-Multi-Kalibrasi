@@ -95,14 +95,13 @@ export function periksaPaketServer(tpl: TemplateAlat | null, m: MasukanPeriksa):
       }
     }
 
-    // Nilai kalibrator SEMENTARA (karangan untuk uji): hanya BO uji yang boleh di-ACC (keputusan Ridhwan 22 Okt 2026)
+    // Nilai kalibrator SEMENTARA (karangan, alat belum bersertifikat): HANYA info untuk Penyelia, TIDAK memblokir ACC
+    // dan TIDAK dicetak di sertifikat (keputusan Ridhwan 22 Okt 2026: dibypass).
     if (JSON.stringify(m.calibratorSnapshot ?? {}).includes('NILAI SEMENTARA')) {
       penanda.push({
         kode: 'standar_sementara',
-        teks: m.isTest === true
-          ? 'Memakai nilai kalibrator SEMENTARA (karangan uji). Boleh karena ini data uji BO 999.'
-          : 'Memakai nilai kalibrator SEMENTARA (karangan uji), bukan dari sertifikat. ACC ditolak sampai nilai kalibrator diganti nilai sertifikat.',
-        blokirAcc: m.isTest !== true,
+        teks: 'Info Penyelia: LKK ini memakai nilai kalibrator SEMENTARA (alat standar belum bersertifikat). Tidak memblokir ACC dan tidak tertulis di sertifikat.',
+        blokirAcc: false,
       });
     }
 

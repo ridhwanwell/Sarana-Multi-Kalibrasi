@@ -2,7 +2,7 @@
 -- Isi baris tera_calibrator_points tidak boleh diubah (trigger tera_kunci_isi_template): menyimpan = baris BARU,
 -- baris lama dinonaktifkan. Fungsi ini melakukannya utuh (nonaktifkan + tambah dalam satu transaksi, dikunci per alat+parameter).
 -- Hanya fungsi baru; tidak ada tabel/data yang diubah. Hanya server (service role) yang boleh memanggil.
--- STATUS: DRAF — tunggu "lanjutkan".
+-- STATUS: DIJALANKAN 22 Okt 2026 setelah "lanjutkan" (CEK: fungsi_ada=true, baris_aktif_tak_berubah=true).
 
 -- ===== BLOK 1: BACKUP =====
 create table if not exists backup.b20261022_tera_calibrator_points_sebelum_0013 as table public.tera_calibrator_points;

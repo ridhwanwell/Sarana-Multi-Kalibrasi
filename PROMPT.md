@@ -282,7 +282,7 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 
 ### Hasil halaman Nilai Kalibrator Tera (22 Okt ±22.10) — kode siap, migrasi 0013 MENUNGGU "lanjutkan"
 - Menu baru "Nilai Kalibrator Tera" di Manajemen Aset (grup Aset & Keuangan), hanya `admin_utama` (Developer); server juga menolak peran lain. Satu halaman panjang: satu kartu per nilai aktif (tabel titik koreksi/U95/drift, centang "satu arah", koma desimal), lencana kuning "NILAI SEMENTARA", dan bagian "Tambah nilai kalibrator baru" di bawah.
-- Menyimpan = baris BARU + yang lama dinonaktifkan (tabel tak bisa diubah). LKK lama tetap memakai fotokopinya. Menghapus tulisan "NILAI SEMENTARA" dari kolom sumber = ACC untuk BO sungguhan terbuka.
+- Menyimpan = baris BARU + yang lama dinonaktifkan (tabel tak bisa diubah). LKK lama tetap memakai fotokopinya. NILAI SEMENTARA hanya info Penyelia (tidak memblokir ACC, tidak dicetak).
 - File: `src/components/NilaiKalibratorTera.tsx`, `src/server/teraNilaiKalibratorRoutes.ts`, `src/tera/shared/nilaiKalibrator.ts` (+uji 12 lulus), `Navbar.tsx`, `AsetPortalApp.tsx`.
-- Migrasi `0013_tera_simpan_nilai_kalibrator.sql` = DRAF, BELUM dijalankan. Sebelum dijalankan, menyimpan memberi galat 503 (membaca daftar sudah jalan).
+- Migrasi `0013` DIJALANKAN (backup `backup.b20261022_tera_calibrator_points_sebelum_0013`; CEK true). KEPUTUSAN RIDHWAN 22 Okt: nilai sementara DIBYPASS — hanya info untuk Penyelia, tetap bisa ACC, TIDAK boleh tertulis di sertifikat (PDF 4.5 jangan mencetak kolom sumber/penanda).
 - Berikutnya: jalankan 0013 setelah "lanjutkan"; layar Selia satu halaman (4.4b-3).

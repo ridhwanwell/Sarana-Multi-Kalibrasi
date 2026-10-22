@@ -126,7 +126,7 @@ const Editor: React.FC<{
         <div className="sm:col-span-2 lg:col-span-3">
           <label className={label}>Sumber nilai (wajib)</label>
           <input className={kolom} value={isi.sumber} onChange={(e) => ubah('sumber', e.target.value)} aria-label="Sumber nilai" />
-          <p className="text-[11px] text-slate-500 mt-1">Contoh: "Sertifikat YK.05.02/E.IX/5376/2026" atau tautan datasheet. Selama tulisannya masih memuat <strong>NILAI SEMENTARA</strong>, ACC hanya boleh untuk BO 999 (data uji).</p>
+          <p className="text-[11px] text-slate-500 mt-1">Contoh: "Sertifikat YK.05.02/E.IX/5376/2026" atau tautan datasheet. Tulisan <strong>NILAI SEMENTARA</strong> hanya jadi info untuk Penyelia; tidak memblokir ACC dan tidak dicetak di sertifikat.</p>
         </div>
       </div>
 

@@ -95,7 +95,7 @@ const paket = (d = dasar()) => ({
   const uji = periksaPaketServer(T, { ...p, isTest: true });
   const nyata = periksaPaketServer(T, { ...p, isTest: false });
   cek('nilai sementara + BO uji → penanda tapi boleh ACC', uji.penanda.some((x) => x.kode === 'standar_sementara' && !x.blokirAcc) && uji.bolehAcc, JSON.stringify(uji.penanda));
-  cek('nilai sementara + BO sungguhan → ACC diblokir', nyata.penanda.some((x) => x.kode === 'standar_sementara' && x.blokirAcc) && !nyata.bolehAcc);
+  cek('nilai sementara + BO sungguhan → hanya info, tetap boleh ACC', nyata.penanda.some((x) => x.kode === 'standar_sementara' && !x.blokirAcc) && nyata.bolehAcc);
   cek('tanpa nilai sementara → tidak ada penanda itu', !periksaPaketServer(T, paket()).penanda.some((x) => x.kode === 'standar_sementara'));
 }
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
