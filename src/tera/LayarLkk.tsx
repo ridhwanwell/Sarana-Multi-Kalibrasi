@@ -20,6 +20,7 @@ import { AlertCircle, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Loade
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
+import { MulaiLkk } from './MulaiLkk';
 import { ambilLkk, bolehDiubah, simpanIsian, tandaiSelesai, type LkkLokal, type SyncState } from './data/teraDb';
 import { buatJejakHitung } from './shared/jejak';
 import type { Vonis } from './shared/hitung';
@@ -679,16 +680,23 @@ const DaftarBagian: React.FC<{
 
 /* ---------- Formulir ---------- */
 
-interface FormulirProps { lkk: LkkLokal; tpl: TemplateAlat; kalibrator: KalibratorLokal[]; namaRs: string; teknisi: string }
+interface FormulirProps { lkk: LkkLokal; tpl: TemplateAlat; kalibrator: KalibratorLokal[]; namaRs: string; teknisi: string; onMuatUlang: () => void }
 type Simpan = { k: 'diam' } | { k: 'menyimpan' } | { k: 'tersimpan'; waktu: Date } | { k: 'galat'; pesan: string };
 
-const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, teknisi }) => {
-  const { dorong } = useSinkron();
+const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, teknisi, onMuatUlang }) => {
+  const { dorong, daftar, jadwal } = useSinkron();
   const [selesaiLokal, setSelesaiLokal] = useState(false);
   const [status, setStatus] = useState<SyncState>(lkk.syncState);
+  const [gantiNomor, setGantiNomor] = useState(false);
+  // Keadaan TERBARU dari buku di perangkat (berubah sendiri saat server menolak/menerima), bukan foto saat layar dibuka.
+  const live = daftar.find((x) => x.id === lkk.id);
+  const ditolak = live?.syncState === 'ditolak';
+  const statusNyata: SyncState = selesaiLokal && live?.syncState === 'draft' ? status : (live?.syncState ?? status);
+  const jadwalLkk = jadwal.find((x) => x.jadwalId === lkk.jadwalId);
+  useEffect(() => { if (ditolak) setSelesaiLokal(false); }, [ditolak]);
   const [prosesSelesai, setProsesSelesai] = useState(false);
   const [galatSelesai, setGalatSelesai] = useState<string | null>(null);
-  const kunci = !bolehDiubah(lkk) || selesaiLokal;
+  const kunci = !bolehDiubah(live ?? lkk) || (selesaiLokal && !ditolak);
   const bagian = useMemo(() => daftarBagian(tpl), [tpl]);
   const [aktif, setAktif] = useState(0);
   const [isi, setIsi] = useState<IsiKerja>(() => ({ data: (lkk.data ?? {}) as Peta, tanggal: lkk.tanggalKalibrasi, snapshot: (lkk.calibratorSnapshot ?? null) as Peta | null }));
@@ -853,7 +861,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
       <header className="t-lkk-kepala">
         <h1 className="t-judul-layar t-rs-judul">{tpl.nama}</h1>
         <p className="t-ket tabular t-rs-judul">{lkk.noLabel || 'Nomor label belum diisi'} · {namaRs}{lkk.alatTambahan ? ' · alat tambahan' : ''}{lkk.isTest ? ' · data uji' : ''}</p>
-        <div className="t-lkk-status"><ChipSync state={status} /></div>
+        <div className="t-lkk-status"><ChipSync state={statusNyata} /></div>
         {/* Tinggi baris ini tetap supaya layar tidak bergeser saat status simpan berganti (ketukan tidak meleset) */}
         <p className="t-ket t-simpan" role="status" data-simpan={simpan.k}>
           {simpan.k === 'menyimpan' ? 'Menyimpan…'
@@ -866,6 +874,24 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
           </p>
         )}
       </header>
+
+      {ditolak && (
+        <div className="t-peringatan mt-3" role="alert">
+          <AlertCircle size={20} aria-hidden="true" className="shrink-0" />
+          <div className="min-w-0">
+            <p><strong>Ditolak server:</strong> {live?.alasanDitolak || 'Kiriman ditolak server.'}</p>
+            <p className="mt-1">Isinya aman di perangkat. Betulkan yang diminta, lalu tekan Selesai lagi di bagian terakhir. Bila nomor stiker yang bermasalah, ganti nomornya.</p>
+            {jadwalLkk
+              ? <button type="button" className="t-tombol t-tombol-kedua mt-2" onClick={() => { void simpanSekarang().then(() => setGantiNomor(true)); }}>Ganti nomor stiker</button>
+              : <p className="mt-1">Jadwal RS belum ada di perangkat. Buka aplikasi dengan internet sebentar agar jadwal ditarik, lalu coba lagi.</p>}
+          </div>
+        </div>
+      )}
+      {gantiNomor && jadwalLkk && (
+        <MulaiLkk jadwal={jadwalLkk} alat={null} templates={[tpl]} pemilik={lkk.pemilik} ganti={live ?? lkk}
+          onTutup={() => setGantiNomor(false)} onDibuat={() => { /* tidak dipakai pada mode ganti */ }}
+          onGanti={() => { setGantiNomor(false); onMuatUlang(); }} />
+      )}
 
       {kunci && (
         <p className="t-info mt-3" role="status">
@@ -887,7 +913,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
             {idBagian === 'kinerja' && <BagianKinerja {...sifat} />}
             {idBagian === 'kesimpulan' && <BagianKesimpulan {...sifat} keBagian={(id) => pindah(bagian.findIndex((b) => b.id === id))} />}
             {idBagian === 'ringkasan' && (
-              <BagianRingkasan {...sifat} lkk={lkk} namaRs={namaRs} status={status} terkunci={selesaiLokal} proses={prosesSelesai} galat={galatSelesai}
+              <BagianRingkasan {...sifat} lkk={lkk} namaRs={namaRs} status={statusNyata} terkunci={selesaiLokal} proses={prosesSelesai} galat={galatSelesai}
                 onSelesai={selesaikan} keBagian={(id) => pindah(bagian.findIndex((b) => b.id === id))} />
             )}
           </div>
@@ -933,6 +959,7 @@ export const LayarLkk: React.FC = () => {
   const { user } = useAuth();
   const { jadwal, siap } = useSinkron();
   const [muat, setMuat] = useState<Muat>({ k: 'memuat' });
+  const [muatUlang, setMuatUlang] = useState(0);
 
   useEffect(() => {
     let hidup = true;
@@ -956,7 +983,7 @@ export const LayarLkk: React.FC = () => {
       }
     })();
     return () => { hidup = false; };
-  }, [id, user?.id]);
+  }, [id, user?.id, muatUlang]);
 
   if (muat.k === 'memuat' || !siap) {
     return (
@@ -979,6 +1006,7 @@ export const LayarLkk: React.FC = () => {
       key={muat.lkk.id} lkk={muat.lkk} tpl={muat.tpl} kalibrator={muat.kalibrator}
       namaRs={j?.namaRs || (muat.lkk.bo ? `BO ${muat.lkk.bo}` : 'Rumah sakit belum diketahui')}
       teknisi={user?.fullName?.trim() || 'Teknisi'}
+      onMuatUlang={() => setMuatUlang((n) => n + 1)}
     />
   );
 };

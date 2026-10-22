@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle, Camera, Check, ChevronLeft, Keyboard, Loader2, Tag, X } from 'lucide-react';
 import { cleanLabelString } from '../lib/labelParser';
-import { buatLkk, daftarLkk, type LkkLokal } from './data/teraDb';
+import { buatLkk, daftarLkk, simpanIsian, type LkkLokal } from './data/teraDb';
 import type { HitunganAlat, JadwalLokal } from './data/jadwalLokal';
 import type { TemplateAlat } from './shared/hitung';
 import { cekNomorLabel, nomorDariKetikan, tanggalLokal, templateUntukAlat, type HasilCekNomor } from './shared/nomorLabel';
@@ -31,6 +31,9 @@ export interface MulaiLkkProps {
   pemilik: string;
   onTutup: () => void;
   onDibuat: (lkk: LkkLokal, template: TemplateAlat) => void;
+  /** Mengganti nomor stiker LKK yang SUDAH ADA (mis. ditolak server karena nomor ganda). Tidak membuat LKK baru. */
+  ganti?: LkkLokal;
+  onGanti?: () => void;
 }
 
 /* ---------- Pemindai kamera ---------- */
@@ -104,11 +107,11 @@ const Pemindai: React.FC<{ onHasil: (teks: string) => void; onKetik: () => void 
 
 /* ---------- Lembar ---------- */
 
-export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pemilik, onTutup, onDibuat }) => {
-  const tambahan = alat === null;
+export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pemilik, onTutup, onDibuat, ganti, onGanti }) => {
+  const tambahan = ganti ? ganti.alatTambahan : alat === null;
   const templatePo = alat ? templateUntukAlat(alat.nama, templates) : null;
-  const [langkah, setLangkah] = useState<Langkah>(tambahan ? 'jenis' : 'nomor');
-  const [template, setTemplate] = useState<TemplateAlat | null>(templatePo);
+  const [langkah, setLangkah] = useState<Langkah>(tambahan && !ganti ? 'jenis' : 'nomor');
+  const [template, setTemplate] = useState<TemplateAlat | null>(ganti ? (templates.find((t) => t.kode_alat === ganti.templateKode) ?? null) : templatePo);
   const [ketikan, setKetikan] = useState('');
   const [galat, setGalat] = useState<string | null>(null);
   const [hasil, setHasil] = useState<Extract<HasilCekNomor, { ok: true }> | null>(null);
@@ -153,7 +156,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
   };
 
   const simpan = async () => {
-    if (!hasil || !template || sibuk.current) return;
+    if (!hasil || (!ganti && !template) || sibuk.current) return;
     sibuk.current = true;
     setMenyimpan(true);
     setGalat(null);
@@ -165,6 +168,12 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
         setLangkah('nomor');
         return;
       }
+      if (ganti) {
+        // Ganti nomor pada LKK yang sudah ada: LKK kembali menjadi draft (antrean lama dibuang), isian tidak berubah.
+        await simpanIsian(ganti.id, { noLabel: hasil.nomor });
+        onGanti?.();
+        return;
+      }
       const lkk = await buatLkk({
         pemilik, bo: jadwal.bo, noLabel: hasil.nomor,
         templateKode: template.kode_alat, templateVersi: template.versi,
@@ -172,7 +181,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
         alatTambahan: tambahan, poItemRef: alat?.ref ?? null, jadwalId: jadwal.jadwalId,
         data: {},
       });
-      onDibuat(lkk, template);
+      onDibuat(lkk, template as TemplateAlat);
     } catch (e: any) {
       setGalat(String(e?.message || 'LKK belum bisa dibuat. Data di perangkat tetap aman. Coba lagi.'));
       setLangkah('konfirmasi');
@@ -188,7 +197,8 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
     ? (cadangan ? `Stiker cadangan ${cadangan.awal} – ${cadangan.akhir}` : 'Tidak ada stiker cadangan')
     : [utama && `Utama ${utama.awal} – ${utama.akhir}`, cadangan && `cadangan ${cadangan.awal} – ${cadangan.akhir}`].filter(Boolean).join(' · ');
 
-  const judul = langkah === 'jenis' ? 'Pilih jenis alat tambahan'
+  const judul = ganti && langkah === 'nomor' ? 'Ganti nomor stiker'
+    : langkah === 'jenis' ? 'Pilih jenis alat tambahan'
     : langkah === 'kamera' ? 'Scan stiker'
     : langkah === 'konfirmasi' ? 'Cek nomor stiker'
     : 'Nomor stiker alat';
@@ -197,7 +207,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
     <div className="t-lapis tera-root">
       <div className="t-lembar" role="dialog" aria-modal="true" aria-labelledby="judul-mulai-lkk">
         <div className="t-lembar-kepala">
-          {langkah === 'kamera' || (langkah === 'konfirmasi') || (langkah === 'nomor' && tambahan) ? (
+          {langkah === 'kamera' || (langkah === 'konfirmasi') || (langkah === 'nomor' && tambahan && !ganti) ? (
             <button type="button" className="t-tombol-ikon" aria-label="Kembali" onClick={() => {
               setGalat(null);
               setLangkah(langkah === 'nomor' ? 'jenis' : 'nomor');
@@ -277,7 +287,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
             {galat && <p className="t-pesan-error" role="alert"><AlertCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" /><span>{galat}</span></p>}
             <button type="button" className="t-tombol t-tombol-utama mt-3" onClick={() => void simpan()} disabled={menyimpan}>
               {menyimpan ? <Loader2 size={20} aria-hidden="true" className="t-putar" /> : <Check size={20} aria-hidden="true" />}
-              {menyimpan ? 'Menyimpan…' : 'Ya, sesuai — mulai LKK'}
+              {menyimpan ? 'Menyimpan…' : ganti ? 'Ya, sesuai — pakai nomor ini' : 'Ya, sesuai — mulai LKK'}
             </button>
             <button type="button" className="t-tombol t-tombol-kedua mt-2" onClick={mundur} disabled={menyimpan}>Ubah nomor</button>
           </div>
