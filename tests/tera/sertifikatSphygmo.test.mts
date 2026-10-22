@@ -80,7 +80,8 @@ if (kopPath && existsSync(kopPath)) {
   const doc = await PDFDocument.create();
   const f = { r: await doc.embedFont(StandardFonts.Helvetica), b: await doc.embedFont(StandardFonts.HelveticaBold), i: await doc.embedFont(StandardFonts.HelveticaOblique) };
   const TLuji = JSON.parse(JSON.stringify(TL).replace(/[^\u0000-\u00FF]/g, '?')); // font standar tidak punya semua simbol
-  await gambarSertifikat(doc, TLuji, isi, f, readFileSync(kopPath));
+  const fake = Array.from({ length: 25 }, (_, r) => Array.from({ length: 25 }, (_, c) => (r * 7 + c * 3) % 5 < 2));
+  await gambarSertifikat(doc, TLuji, isi, f, readFileSync(kopPath), { kotak: fake, contoh: true });
   const bytes = await doc.save();
   const cek2 = await PDFDocument.load(bytes);
   cek('PDF 3 halaman A4', cek2.getPageCount() === 3 && Math.abs(cek2.getPage(0).getWidth() - 595.2756) < 0.01);

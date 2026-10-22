@@ -13,7 +13,8 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 import { requireAuthTera, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { POLA_UUID } from "../tera/shared/segel.js";
-import { renderSertifikatPdf, type BahanPdf } from "../tera/pdf/renderSertifikat.js";
+import QRCode from 'qrcode';
+import { renderSertifikatPdf, type BahanPdf, type Tte } from "../tera/pdf/renderSertifikat.js";
 import { TATA_LETAK_SPHYGMOMANOMETER } from "../tera/pdf/tataLetakSphygmo.js";
 import { isianSphygmomanometer } from "../tera/pdf/formatSertifikat.js";
 
@@ -23,6 +24,15 @@ const BUCKET = 'tera-assets';
 const BASE_FONT = 'https://saranamultikalibrasi.com/tera/fonts';
 // Sementara (belum ada master tera_signatories): sesuai CLAUDE.md 9.6.
 const PENANDATANGAN = { nama: 'Hafizh Pasifianto Utomo, S.Tr.T.', jabatan: 'Manajer Teknik', jabatanEn: 'Technical Manager' };
+
+/** Matriks QR (true = gelap) dari alamat. Dibuat di server (tanpa gambar), digambar sebagai kotak vektor di PDF. */
+function matriksQr(url: string): boolean[][] {
+  const q: any = (QRCode as any).create(url, { errorCorrectionLevel: 'M' });
+  const n: number = q.modules.size;
+  const ambil = (r: number, c: number) => (typeof q.modules.get === 'function' ? !!q.modules.get(r, c) : !!q.modules.data[r * n + c]);
+  return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => ambil(r, c)));
+}
+const URL_VERIFIKASI = 'https://saranamultikalibrasi.com/verifikasi';
 
 let fontCache: { r: Uint8Array; b: Uint8Array; i: Uint8Array } | null = null;
 
@@ -99,7 +109,15 @@ export function registerTeraSertifikatRoutes(app: Express, deps: { rateLimitKey:
         },
         { toleransiTekanan: Number(kin.toleransi) || 0, ambangBocor: Number(uji.find((u) => u.id === 'bocor')?.batas) || 0, ambangLaju: Number(uji.find((u) => u.id === 'lajuBuang')?.batas) || 0 },
       );
-      const pdf = await renderSertifikatPdf(TATA_LETAK_SPHYGMOMANOMETER, isian, bahan);
+      // TTE: sebelum ACC = QR CONTOH (tidak menunjuk ke sertifikat sah); sesudah ACC = QR kode verifikasi sertifikat berlaku.
+      let tte: Tte;
+      if (r.status === 'approved') {
+        const sert = await supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi').eq('lkk_id', id).eq('status', 'berlaku').maybeSingle().abortSignal(ctrl.signal);
+        if (sert.error) { console.error('[Tera/PDF] sertifikat:', sert.error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+        const kode = (sert.data as any)?.kode_verifikasi;
+        tte = kode ? { kotak: matriksQr(`${URL_VERIFIKASI}/${kode}`), contoh: false } : { kotak: matriksQr(`${URL_VERIFIKASI}/CONTOH`), contoh: true };
+      } else tte = { kotak: matriksQr(`${URL_VERIFIKASI}/CONTOH`), contoh: true };
+      const pdf = await renderSertifikatPdf(TATA_LETAK_SPHYGMOMANOMETER, isian, bahan, tte);
       res.setHeader('Content-Type', 'application/pdf');
       const nama = `Sertifikat-${String(r.no_label).replace(/[^0-9.]/g, '')}${denganKop ? '' : '-tanpa-kop'}`;
       res.setHeader('Content-Disposition', `${denganKop ? 'inline' : 'attachment'}; filename="${nama}.pdf"`);

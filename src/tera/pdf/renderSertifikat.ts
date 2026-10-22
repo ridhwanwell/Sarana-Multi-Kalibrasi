@@ -8,6 +8,24 @@
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf } from './susunSertifikat.js';
 
+/** QR tanda tangan elektronik (TTE) di halaman 1, di ruang kosong atas nama Manajer Teknik. `kotak[baris][kolom]` true = gelap. */
+export interface Tte { kotak: boolean[][]; contoh: boolean }
+// Ruang kosong antara "Disetujui oleh, / Approved by" (y 605) dan nama (y 680) — posisi isi lain TIDAK digeser.
+const QR_X = 45, QR_Y_ATAS = 613, QR_UKURAN = 54, QR_TEPI = 2;
+
+function gambarTte(page: PDFPage, tte: Tte, huruf: HurufTerpasang, tinggi: number) {
+  const n = tte.kotak.length;
+  if (n === 0) return;
+  const dalam = QR_UKURAN - 2 * QR_TEPI, sel = dalam / n;
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+    if (!tte.kotak[r][c]) continue;
+    page.drawRectangle({ x: QR_X + QR_TEPI + c * sel, y: tinggi - (QR_Y_ATAS + QR_TEPI + (r + 1) * sel), width: sel + 0.02, height: sel + 0.02, color: rgb(0, 0, 0) });
+  }
+  const kiri = QR_X + QR_UKURAN + 6;
+  page.drawText('Tanda tangan elektronik', { x: kiri, y: tinggi - (QR_Y_ATAS + 24), size: 8.04, font: huruf.i, color: rgb(0, 0, 0) });
+  if (tte.contoh) page.drawText('TTE CONTOH', { x: kiri, y: tinggi - (QR_Y_ATAS + 38), size: 9.96, font: huruf.b, color: rgb(0, 0, 0) });
+}
+
 export interface BahanPdf { fontR: Uint8Array; fontB: Uint8Array; fontI: Uint8Array; kop: Uint8Array | null }
 export type HurufTerpasang = Record<GayaHuruf, PDFFont>;
 
@@ -34,7 +52,7 @@ function gambarHalaman(page: PDFPage, h: HalamanSusun, huruf: HurufTerpasang, ti
 }
 
 /** Gambar semua halaman ke dokumen yang sudah punya font (dipisah agar bisa diuji dengan font standar). */
-export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null): Promise<void> {
+export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null, tte?: Tte | null): Promise<void> {
   const { lebar, tinggi } = tl.ukuran;
   // kop = null → versi TANPA kop (untuk salinan Google Drive & komputer); isi tetap sama persis.
   const kopHalaman = kop ? (await doc.embedPdf(kop, [0]))[0] : null;
@@ -42,10 +60,11 @@ export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: I
     const page = doc.addPage([lebar, tinggi]);
     if (kopHalaman) page.drawPage(kopHalaman, { x: 0, y: 0, width: lebar, height: tinggi });
     gambarHalaman(page, h, huruf, tinggi);
+    if (tte && h.nomor === 1) gambarTte(page, tte, huruf, tinggi);
   }
 }
 
-export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: BahanPdf): Promise<Uint8Array> {
+export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: BahanPdf, tte?: Tte | null): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const fontkit = (await import('@pdf-lib/fontkit')).default; // dimuat saat dipakai (tes tanpa font tidak memerlukannya)
   doc.registerFontkit(fontkit);
@@ -59,6 +78,6 @@ export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: Ba
   doc.setTitle('Sertifikat Kalibrasi');
   doc.setProducer('PT Sarana Multi Kalibrasi');
   doc.setCreator('PT Sarana Multi Kalibrasi');
-  await gambarSertifikat(doc, tl, isian, huruf, bahan.kop);
+  await gambarSertifikat(doc, tl, isian, huruf, bahan.kop, tte);
   return doc.save();
 }
