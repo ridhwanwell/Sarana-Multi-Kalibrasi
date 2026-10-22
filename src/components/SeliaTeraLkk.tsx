@@ -8,7 +8,7 @@
  * Hanya untuk admin_teknik & admin_utama (server juga memeriksa). Penanda kuning/merah: warna + ikon + tulisan (CLAUDE.md 13.11).
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, Clock, Loader2, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Clock, FileText, Loader2, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 
@@ -103,6 +103,23 @@ export const SeliaTeraLkk: React.FC = () => {
       setDaftar(j.lkk || []); setTerpotong(!!j.terpotong);
     } catch { setGagalDaftar('Server tidak merespons. Coba lagi.'); }
   }, []);
+
+  const [pdfMemuat, setPdfMemuat] = useState(false);
+  const [pdfGalat, setPdfGalat] = useState<string | null>(null);
+  const lihatPdf = async (id: string) => {
+    setPdfMemuat(true); setPdfGalat(null);
+    const jendela = window.open('', '_blank'); // dibuka dulu supaya tidak diblokir Safari
+    try {
+      const r = await apiFetch(`/api/tera/selia/lkk/${id}/pdf`, { retries: 0, timeoutMs: 30000 });
+      if (!r.ok) { const j = await r.json().catch(() => null); jendela?.close(); setPdfGalat(j?.error || 'PDF belum bisa dibuat.'); }
+      else {
+        const url = URL.createObjectURL(await r.blob());
+        if (jendela) jendela.location.href = url; else window.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+      }
+    } catch { jendela?.close(); setPdfGalat('Server tidak merespons. Coba lagi.'); }
+    setPdfMemuat(false);
+  };
 
   const muatDetail = useCallback(async (id: string) => {
     setMemuatDetail(true); setGagalDetail(null);
@@ -221,7 +238,17 @@ export const SeliaTeraLkk: React.FC = () => {
                   <h3 className="text-lg font-black text-slate-900 break-words">{detail.lkk.namaAlat} · <span className="tabular-nums">{detail.lkk.noLabel}</span></h3>
                   <p className="text-xs text-slate-600 break-words">{detail.lkk.namaRs ?? `BO ${detail.lkk.bo}`}{detail.lkk.kota ? ` · ${detail.lkk.kota}` : ''} · Teknisi: {detail.lkk.teknisi ?? '-'} · Dikalibrasi {tglPendek(detail.lkk.tanggalKalibrasi)} · Diterima {tgl(detail.lkk.diterimaAt)} · Versi {detail.lkk.clientVersion}</p>
                 </div>
-                <Chip status={detail.lkk.status} />
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <Chip status={detail.lkk.status} />
+                  {detail.lkk.templateKode === 'sphygmomanometer' && (
+                    <button type="button" onClick={() => { void lihatPdf(detail.lkk.id); }} disabled={pdfMemuat}
+                      className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl border border-[#0B6FB3] text-[#0B6FB3] text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
+                      {pdfMemuat ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
+                      {pdfMemuat ? 'Membuat PDF…' : 'Lihat PDF pratinjau'}
+                    </button>
+                  )}
+                  {pdfGalat && <p className="text-[11px] text-[#991B1B] font-semibold max-w-[220px] text-right" role="alert">{pdfGalat}</p>}
+                </div>
               </header>
 
               {/* 1. Hasil periksa server + penanda */}

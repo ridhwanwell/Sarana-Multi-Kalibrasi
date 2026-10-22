@@ -9,6 +9,7 @@ import { registerTeraSyncRoutes } from "./teraSyncRoutes.js";
 import { registerTeraJadwalRoutes } from "./teraJadwalRoutes.js";
 import { registerTeraMasterRoutes } from "./teraMasterRoutes.js";
 import { registerTeraSeliaRoutes } from "./teraSeliaRoutes.js";
+import { registerTeraSertifikatRoutes } from "./teraSertifikatRoutes.js";
 import { registerTeraNilaiKalibratorRoutes } from "./teraNilaiKalibratorRoutes.js";
 
 export interface IdempotencyRecord {
@@ -495,6 +496,7 @@ export function createApp() {
   registerTeraMasterRoutes(app, { rateLimitKey });
   // --- API: TERA SMK — SELIA/PENYELIA (Tahap 4.4b-1): daftar & detail LKK (baca saja) ---
   registerTeraSeliaRoutes(app, { rateLimitKey });
+  registerTeraSertifikatRoutes(app, { rateLimitKey });
   // --- API: TERA SMK — NILAI KALIBRATOR (hanya Developer): baca & simpan versi baru ---
   registerTeraNilaiKalibratorRoutes(app, { rateLimitKey });
 

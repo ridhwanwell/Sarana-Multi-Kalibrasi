@@ -300,3 +300,11 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Uji `npm run test:tera:sertifikat` 24 lulus (PDF 3 halaman di atas kop asli, font standar). Uji visual dengan Carlito: dibuat di Python (reportlab) — tumpang-tindih dengan acuan rapat. Uji dengan Carlito di TS baru bisa saat build Vercel/route PDF (fontkit tidak ada di lingkungan ini).
 - BELUM: route server pembuat PDF + tombol di layar Selia, tempat penyimpanan font Carlito & kop (bucket tera-assets / dibundel) — menunggu keputusan Ridhwan; ACC → simpan PDF; QR tanda tangan (4.6).
 - Pertanyaan ke Ridhwan: (1) kotak label biru di halaman 1 tetap dipertahankan seperti contoh? (2) "kalibrasi ulang" = tanggal pelaksanaan + 1 tahun? (3) Nomor Order = nomor BO, Nomor Sertifikat = nomor label (mis. 200.0012)? (4) salah ketik di Excel ("Reading after 60 secon", "Standar Reading") dipertahankan atau dibetulkan? (5) simpan font & kop di mana?
+
+### Hasil 4.5b (22 Okt ±23.00) — route PDF pratinjau + tombol "Lihat PDF pratinjau" di Selia
+- Migrasi `0014` DIJALANKAN (setelah "lanjutkan" Ridhwan): bucket privat `tera-assets` (PDF saja, maks 5 MB, tanpa policy publik); CEK lolos. Kop TETAP ditempel apa adanya (embedPdf), tidak digambar ulang.
+- Font Carlito (OFL) ada di repo `public/tera/fonts/` (publik, diambil server lewat alamat situs); kop di bucket.
+- **LANGKAH RIDHWAN:** unggah `KOP_SERTIF_NON_KAN.pdf` ke Supabase → Storage → `tera-assets` → folder `kop/` (dan `KOP_SERTIF_KAN.pdf` ke folder yang sama untuk timbangan bayi nanti). Sebelum itu tombol PDF menampilkan "File kop belum ada".
+- Route `GET /api/tera/selia/lkk/:id/pdf` (admin_teknik/admin_utama; baca saja; tanggal terbit = hari ini untuk pratinjau; penandatangan sementara konstanta sampai ada master `tera_signatories`).
+- Keputusan Ridhwan: kalibrasi ulang = +1 tahun; Nomor Order = BO, Nomor Sertifikat = nomor label; salah ketik Excel DIBETULKAN ("Reading after 60 seconds", "Standard Reading") — teks perlu disetujui di PDF pratinjau; kotak biru label dipertahankan (bila tidak keberatan).
+- Berikutnya: cek PDF pratinjau dengan Carlito sebenarnya (bandingkan dengan contoh), betulkan salah ketik di tata letak, lalu ACC → simpan PDF, QR tanda tangan (4.6).
