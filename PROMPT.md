@@ -272,3 +272,10 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Rute: POST /api/tera/selia/lkk/:id/kembalikan (alasan wajib) dan /acc. Nama penyelia dari akun login.
 - Belum ada: PDF, QR, Drive saat ACC (4.5/4.6); Buka koreksi (4.7). ACC sekarang hanya mengunci status & mencatat.
 - Langkah berikutnya: 4.4b-3 layar Selia SATU HALAMAN panjang (scroll) di Manajemen Aset. Migrasi kalibrator termohigrometer/stopwatch = 0012.
+
+### Hasil 0012 (22 Okt ±21.50) — nilai kalibrator SEMENTARA + pengaman ACC
+- Migrasi 0012 DIJALANKAN (setelah "lanjutkan"): tera_calibrator_points +3 baris: CAL-027 suhu_c (5 titik), CAL-027 kelembaban_rh (6 titik), CAL-011 stopwatch waktu_s (4 titik, nomor sertifikat UJI-SEMENTARA-SW-001, berlaku s/d 2027-10-22). Semua sumber = "NILAI SEMENTARA (karangan untuk uji...)". Backup: backup.b20261022_tera_calibrator_points_sebelum_0012. CEK benar (3 baris; 5/6/4 titik; CAL-037 utuh). Rollback = blok 4 (delete where sumber like NILAI SEMENTARA%).
+- KEPUTUSAN RIDHWAN: boleh karangan (alat belum bersertifikat), nanti diganti sendiri lewat halaman Nilai Kalibrator Tera.
+- Pengaman: periksaPaketServer memberi penanda standar_sementara; ACC DIBLOKIR untuk BO selain 999 selama snapshot memuat "NILAI SEMENTARA". Uji periksaServer 16 lulus.
+- Tablet perlu menarik master baru (buka aplikasi saat online) agar Stopwatch & Termohigrometer muncul.
+- Berikutnya: halaman Nilai Kalibrator Tera (admin_utama) lalu layar Selia satu halaman.

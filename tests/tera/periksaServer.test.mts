@@ -88,5 +88,15 @@ const paket = (d = dasar()) => ({
   const h = periksaPaketServer(tplDb, p);
   cek('template dari database v2 = template tablet (jejak cocok)', h.jejakCocok && h.bolehAcc, JSON.stringify(h.penanda));
 }
+{
+  // Nilai kalibrator SEMENTARA: BO uji boleh ACC, BO sungguhan diblokir
+  const p = paket(); p.calibratorSnapshot = salin(p.calibratorSnapshot); p.calibratorSnapshot.stopwatch.sumber = 'NILAI SEMENTARA (karangan untuk uji)';
+  p.results = buatJejakHitung(T, p.data, p.calibratorSnapshot) as any;
+  const uji = periksaPaketServer(T, { ...p, isTest: true });
+  const nyata = periksaPaketServer(T, { ...p, isTest: false });
+  cek('nilai sementara + BO uji → penanda tapi boleh ACC', uji.penanda.some((x) => x.kode === 'standar_sementara' && !x.blokirAcc) && uji.bolehAcc, JSON.stringify(uji.penanda));
+  cek('nilai sementara + BO sungguhan → ACC diblokir', nyata.penanda.some((x) => x.kode === 'standar_sementara' && x.blokirAcc) && !nyata.bolehAcc);
+  cek('tanpa nilai sementara → tidak ada penanda itu', !periksaPaketServer(T, paket()).penanda.some((x) => x.kode === 'standar_sementara'));
+}
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

@@ -160,6 +160,7 @@ async function periksaDanCatat(paket: PaketLkk, clientVersion: number): Promise<
     const h = periksaPaketServer((tpl?.definition ?? null) as TemplateAlat | null, {
       data: paket.data, results: paket.results, calibratorSnapshot: paket.calibratorSnapshot,
       tanggalKalibrasi: paket.tanggalKalibrasi, templateKode: paket.templateKode, templateVersi: paket.templateVersi,
+      isTest: paket.bo === BO_UJI,
     });
     const { error } = await supabaseAdmin.from('tera_lkk_pemeriksaan').upsert({
       lkk_id: paket.id, client_version: clientVersion, mesin_hitung: h.mesinHitung, jejak_cocok: h.jejakCocok,

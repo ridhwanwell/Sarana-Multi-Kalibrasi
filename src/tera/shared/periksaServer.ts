@@ -20,6 +20,7 @@ export type KodePenanda =
   | 'standar_expired'     // alat standar expired pada tanggal pelaksanaan
   | 'lingkungan_luar'     // suhu/RH di luar batas
   | 'data_belum_lengkap'  // ada isian wajib yang kosong
+  | 'standar_sementara'    // alat standar bernilai SEMENTARA (karangan uji) — tidak boleh jadi sertifikat sungguhan
   | 'template_rusak';     // server tidak bisa menghitung (template rusak)
 
 export interface Penanda {
@@ -50,6 +51,8 @@ export interface MasukanPeriksa {
   tanggalKalibrasi: string | null;
   templateKode: string;
   templateVersi: number;
+  /** BO 999 (data uji). Nilai kalibrator sementara hanya boleh di-ACC bila true. */
+  isTest?: boolean;
 }
 
 export function periksaPaketServer(tpl: TemplateAlat | null, m: MasukanPeriksa): HasilPeriksaServer {
@@ -90,6 +93,17 @@ export function periksaPaketServer(tpl: TemplateAlat | null, m: MasukanPeriksa):
           blokirAcc: true,
         });
       }
+    }
+
+    // Nilai kalibrator SEMENTARA (karangan untuk uji): hanya BO uji yang boleh di-ACC (keputusan Ridhwan 22 Okt 2026)
+    if (JSON.stringify(m.calibratorSnapshot ?? {}).includes('NILAI SEMENTARA')) {
+      penanda.push({
+        kode: 'standar_sementara',
+        teks: m.isTest === true
+          ? 'Memakai nilai kalibrator SEMENTARA (karangan uji). Boleh karena ini data uji BO 999.'
+          : 'Memakai nilai kalibrator SEMENTARA (karangan uji), bukan dari sertifikat. ACC ditolak sampai nilai kalibrator diganti nilai sertifikat.',
+        blokirAcc: m.isTest !== true,
+      });
     }
 
     // Penanda dari kelengkapan: hanya yang merah (expired / lingkungan) memblokir ACC; kurang isian juga memblokir.
