@@ -1,0 +1,428 @@
+/**
+ * Selia — LKK digital Tera SMK (Manajemen Aset SMK, tab Selia).
+ *
+ * Perumpamaan: meja Penyelia. Tumpukan LKK yang sudah diterima loket ada di atas; LKK yang dipilih dibentangkan
+ * di bawahnya sebagai SATU lembar panjang (identitas → lingkungan → fisik → uji → kinerja → kalibrator → kesimpulan →
+ * hasil periksa server), dan tombol Kembalikan / ACC ada di paling bawah. Tidak ada pindah-pindah halaman/bagian.
+ *
+ * Hanya untuk admin_teknik & admin_utama (server juga memeriksa). Penanda kuning/merah: warna + ikon + tulisan (CLAUDE.md 13.11).
+ */
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Clock, Loader2, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
+import { apiFetch } from '../lib/apiClient';
+
+type Peta = Record<string, any>;
+interface Ringkas {
+  id: string; bo: string; noLabel: string; templateKode: string; status: string; namaRs: string | null; teknisi: string | null;
+  tanggalKalibrasi: string | null; alatTambahan: boolean; clientVersion: number; isTest: boolean; diterimaAt: string;
+  pemeriksaan: { jejakCocok: boolean; bolehAcc: boolean; kesimpulanServer: string | null; jumlahPenanda: number } | null;
+}
+interface Penanda { kode: string; teks: string; blokirAcc: boolean }
+interface Detail {
+  lkk: Peta; data: Peta | null; jejakHitung: Peta | null; calibratorSnapshot: Peta | null; template: Peta | null;
+  pemeriksaan: { jejakCocok: boolean; bolehAcc: boolean; kesimpulanServer: string | null; penanda: Penanda[]; diperiksaAt?: string } | null;
+}
+
+const STATUS: Record<string, { teks: string; kelas: string; ikon: React.ReactNode }> = {
+  submitted: { teks: 'Diterima server', kelas: 'bg-emerald-100 text-emerald-900 border-emerald-300', ikon: <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" /> },
+  under_review: { teks: 'Sedang diperiksa', kelas: 'bg-blue-100 text-blue-900 border-blue-300', ikon: <Clock className="w-3.5 h-3.5" aria-hidden="true" /> },
+  returned: { teks: 'Dikembalikan', kelas: 'bg-violet-100 text-violet-900 border-violet-300', ikon: <Undo2 className="w-3.5 h-3.5" aria-hidden="true" /> },
+  approved: { teks: 'Sudah ACC', kelas: 'bg-[#0B6FB3] text-white border-[#0B6FB3]', ikon: <Stamp className="w-3.5 h-3.5" aria-hidden="true" /> },
+  correction_open: { teks: 'Koreksi dibuka', kelas: 'bg-amber-100 text-amber-900 border-amber-300', ikon: <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" /> },
+};
+const Chip: React.FC<{ status: string }> = ({ status }) => {
+  const s = STATUS[status] || { teks: status, kelas: 'bg-slate-100 text-slate-800 border-slate-300', ikon: null };
+  return <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold ${s.kelas}`}>{s.ikon}{s.teks}</span>;
+};
+
+const fmt = (n: unknown, d = 2): string => (typeof n === 'number' && Number.isFinite(n) ? n.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: d }) : '-');
+const tgl = (s?: string | null) => { if (!s) return '-'; try { return new Date(s).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return s; } };
+const tglPendek = (s?: string | null) => { if (!s) return '-'; try { return new Date(s + (s.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return s; } };
+
+/** Kotak penanda kuning / merah / info — warna + ikon + tulisan. */
+const Tanda: React.FC<{ tingkat: 'merah' | 'kuning' | 'info'; judul: string; children?: React.ReactNode; periksa?: { sudah: boolean; ubah: () => void } }> = ({ tingkat, judul, children, periksa }) => {
+  const g = tingkat === 'merah'
+    ? { box: 'bg-[#FEE2E2] border-l-[3px] border-[#DC2626] text-[#991B1B]', ikon: <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-bold' }
+    : tingkat === 'kuning'
+    ? { box: 'bg-[#FEF3C7] border-l-[3px] border-[#D97706] text-[#92400E]', ikon: <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-semibold' }
+    : { box: 'bg-[#E6F3FC] border-l-[3px] border-[#0B6FB3] text-[#095C95]', ikon: <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-semibold' };
+  return (
+    <div className={`rounded-lg px-3 py-2 text-xs flex gap-2 ${g.box}`}>
+      {g.ikon}
+      <div className="min-w-0 flex-1">
+        <p className={g.tebal}>{judul}</p>
+        {children && <div className="mt-0.5 font-normal break-words">{children}</div>}
+      </div>
+      {periksa && (
+        <label className="shrink-0 flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer self-start">
+          <input type="checkbox" className="w-4 h-4" checked={periksa.sudah} onChange={periksa.ubah} />
+          {periksa.sudah ? <><CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />Sudah saya periksa</> : 'Sudah saya periksa'}
+        </label>
+      )}
+    </div>
+  );
+};
+
+const Bagian: React.FC<{ id: string; judul: string; children: React.ReactNode }> = ({ id, judul, children }) => (
+  <section aria-labelledby={id} className="space-y-3">
+    <h4 id={id} className="text-sm font-black text-[#1C658C] border-b border-[#DCDFE3] pb-1.5">{judul}</h4>
+    {children}
+  </section>
+);
+const Isian: React.FC<{ nama: string; nilai: React.ReactNode }> = ({ nama, nilai }) => (
+  <div className="min-w-0"><dt className="text-[11px] font-semibold text-slate-500">{nama}</dt><dd className="text-sm text-slate-800 break-words">{nilai ?? '-'}</dd></div>
+);
+
+type Saringan = 'semua' | 'merah' | 'menunggu' | 'acc';
+
+export const SeliaTeraLkk: React.FC = () => {
+  const { role } = useAuth();
+  const boleh = role === 'admin_teknik' || role === 'admin_utama';
+  const [daftar, setDaftar] = useState<Ringkas[] | null>(null);
+  const [terpotong, setTerpotong] = useState(false);
+  const [gagalDaftar, setGagalDaftar] = useState<string | null>(null);
+  const [saringan, setSaringan] = useState<Saringan>('semua');
+  const [pilihId, setPilihId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [gagalDetail, setGagalDetail] = useState<string | null>(null);
+  const [memuatDetail, setMemuatDetail] = useState(false);
+  const [diperiksa, setDiperiksa] = useState<Record<string, boolean>>({});
+  const [alasan, setAlasan] = useState('');
+  const [yakinAcc, setYakinAcc] = useState(false);
+  const [bekerja, setBekerja] = useState(false);
+  const [hasilAksi, setHasilAksi] = useState<{ ok: boolean; teks: string } | null>(null);
+  const bentang = useRef<HTMLDivElement | null>(null);
+
+  const muatDaftar = useCallback(async () => {
+    setGagalDaftar(null);
+    try {
+      const r = await apiFetch('/api/tera/selia/lkk', { retries: 1, timeoutMs: 20000 });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j) { setGagalDaftar(j?.error || 'Daftar LKK belum bisa dimuat.'); return; }
+      setDaftar(j.lkk || []); setTerpotong(!!j.terpotong);
+    } catch { setGagalDaftar('Server tidak merespons. Coba lagi.'); }
+  }, []);
+
+  const muatDetail = useCallback(async (id: string) => {
+    setMemuatDetail(true); setGagalDetail(null);
+    try {
+      const r = await apiFetch(`/api/tera/selia/lkk/${id}`, { retries: 1, timeoutMs: 20000 });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j) { setDetail(null); setGagalDetail(j?.error || 'LKK belum bisa dimuat.'); }
+      else setDetail(j);
+    } catch { setDetail(null); setGagalDetail('Server tidak merespons. Coba lagi.'); }
+    setMemuatDetail(false);
+  }, []);
+
+  useEffect(() => { if (boleh) void muatDaftar(); }, [boleh, muatDaftar]);
+
+  const pilih = (id: string) => {
+    setPilihId(id); setDetail(null); setAlasan(''); setYakinAcc(false); setHasilAksi(null);
+    void muatDetail(id);
+    setTimeout(() => bentang.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 60);
+  };
+
+  const tampil = useMemo(() => {
+    const d = daftar || [];
+    const f = d.filter((x) => {
+      if (saringan === 'merah') return !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x.pemeriksaan.jejakCocok;
+      if (saringan === 'menunggu') return x.status === 'submitted' || x.status === 'under_review';
+      if (saringan === 'acc') return x.status === 'approved';
+      return true;
+    });
+    const merah = (x: Ringkas) => (!x.pemeriksaan || !x.pemeriksaan.bolehAcc ? 0 : 1);
+    return [...f].sort((a, b) => merah(a) - merah(b));
+  }, [daftar, saringan]);
+
+  if (!boleh) return null;
+
+  const aksi = async (jenis: 'kembalikan' | 'acc') => {
+    if (!pilihId) return;
+    setBekerja(true); setHasilAksi(null);
+    try {
+      const r = await apiFetch(`/api/tera/selia/lkk/${pilihId}/${jenis}`, { method: 'POST', body: JSON.stringify(jenis === 'kembalikan' ? { alasan } : {}), retries: 0, timeoutMs: 20000 });
+      const j = await r.json().catch(() => null);
+      const ok = r.ok && j && ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan'].includes(j.hasil);
+      setHasilAksi({ ok: !!ok, teks: ok ? (jenis === 'acc' ? 'LKK sudah di-ACC dan tercatat di riwayat.' : 'LKK dikembalikan ke teknisi dan tercatat di riwayat.') : (j?.alasan || j?.error || 'Belum berhasil. Tidak ada yang berubah — coba lagi.') });
+      if (ok) { setYakinAcc(false); setAlasan(''); await Promise.all([muatDaftar(), muatDetail(pilihId)]); }
+    } catch { setHasilAksi({ ok: false, teks: 'Server tidak merespons. Belum ada yang berubah — coba lagi.' }); }
+    setBekerja(false);
+  };
+
+  const h: Peta | null = detail?.jejakHitung?.hasil ?? null;
+  const data: Peta = detail?.data ?? {};
+  const tpl: Peta = detail?.template ?? {};
+  const aturanKinerja: Peta = detail?.jejakHitung?.aturan?.kinerja ?? {};
+  const bisaAksi = detail && (detail.lkk.status === 'submitted' || detail.lkk.status === 'under_review');
+  const pem = detail?.pemeriksaan;
+
+  const kunci = (...p: string[]) => p.join(':');
+  const toggle = (k: string) => setDiperiksa((s) => ({ ...s, [k]: !s[k] }));
+
+  return (
+    <section aria-labelledby="selia-tera" className="bg-white rounded-2xl border border-[#DCDFE3] p-5 sm:p-6 space-y-6 mb-6">
+      <div>
+        <h2 id="selia-tera" className="text-xl font-black text-[#1C658C] flex items-center gap-2"><Stamp className="w-5 h-5" aria-hidden="true" />LKK Digital Tera SMK</h2>
+        <p className="text-sm text-slate-600 mt-1 leading-relaxed">Daftar LKK dari teknisi. Pilih satu, lalu seluruh isinya terbentang di bawah daftar (scroll ke bawah), dan tombol Kembalikan / ACC ada di paling bawah.</p>
+      </div>
+
+      {/* ───────── DAFTAR ───────── */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Saring daftar LKK">
+          {([['semua', 'Semua'], ['merah', 'Ada penanda merah'], ['menunggu', 'Menunggu diperiksa'], ['acc', 'Sudah ACC']] as [Saringan, string][]).map(([k, t]) => (
+            <button key={k} type="button" onClick={() => setSaringan(k)} aria-pressed={saringan === k}
+              className={`px-3 py-2 rounded-full text-xs font-semibold border cursor-pointer min-h-[40px] ${saringan === k ? 'bg-[#1C658C] text-white border-[#1C658C]' : 'bg-white text-slate-700 border-[#DCDFE3] hover:bg-[#EEF3F7]'}`}>{t}</button>
+          ))}
+          <button type="button" onClick={() => { void muatDaftar(); }} className="ml-auto px-3 py-2 rounded-full text-xs font-semibold border border-[#DCDFE3] text-slate-700 hover:bg-[#EEF3F7] cursor-pointer min-h-[40px]">Muat ulang</button>
+        </div>
+        {gagalDaftar && <p role="alert" className="text-sm text-rose-700 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" aria-hidden="true" />{gagalDaftar}</p>}
+        {daftar === null && !gagalDaftar && <p role="status" className="text-sm text-slate-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Memuat daftar LKK…</p>}
+        {daftar && tampil.length === 0 && <p className="text-sm text-slate-600">Belum ada LKK pada saringan ini.</p>}
+        <ul className="space-y-2">
+          {tampil.map((x) => {
+            const merah = !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x.pemeriksaan.jejakCocok;
+            return (
+              <li key={x.id}>
+                <button type="button" onClick={() => pilih(x.id)} aria-current={pilihId === x.id}
+                  className={`w-full text-left rounded-xl border px-3 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 cursor-pointer min-h-[56px] ${pilihId === x.id ? 'border-[#1C658C] bg-[#EEF3F7]' : 'border-[#DCDFE3] bg-white hover:bg-[#F6F9FB]'}`}>
+                  <span className="font-black text-sm text-slate-900 tabular-nums">{x.noLabel}</span>
+                  <span className="min-w-0 flex-1 text-xs text-slate-600 truncate">{x.templateKode} · {x.namaRs ?? `BO ${x.bo}`} · {x.teknisi ?? '-'} · {tglPendek(x.tanggalKalibrasi)}</span>
+                  {x.isTest && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800">Uji BO 999</span>}
+                  {x.alatTambahan && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">Alat tambahan</span>}
+                  {x.pemeriksaan && <span className={`shrink-0 text-[11px] font-bold ${x.pemeriksaan.kesimpulanServer === 'Tidak Laik Pakai' ? 'text-[#991B1B]' : 'text-[#166534]'}`}>{x.pemeriksaan.kesimpulanServer ?? '-'}</span>}
+                  {merah
+                    ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan ? 'Ada penanda merah' : 'Belum diperiksa server'}</span>
+                    : x.pemeriksaan && x.pemeriksaan.jumlahPenanda > 0
+                    ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#D97706]"><AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan.jumlahPenanda} info</span>
+                    : null}
+                  <Chip status={x.status} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {terpotong && <p className="text-xs text-slate-500">Hanya 300 LKK terbaru yang ditampilkan. Pakai saringan.</p>}
+      </div>
+
+      {/* ───────── LEMBAR PANJANG ───────── */}
+      <div ref={bentang} className="scroll-mt-20" />
+      {pilihId && (
+        <article aria-label="Isi LKK terpilih" className="border-t-2 border-[#1C658C]/30 pt-6 space-y-8">
+          {memuatDetail && <p role="status" className="text-sm text-slate-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Memuat isi LKK…</p>}
+          {gagalDetail && (
+            <p role="alert" className="text-sm text-rose-700 flex flex-wrap items-center gap-2"><AlertTriangle className="w-4 h-4" aria-hidden="true" />{gagalDetail}
+              <button type="button" className="underline font-semibold cursor-pointer" onClick={() => { void muatDetail(pilihId); }}>Coba lagi</button></p>
+          )}
+          {detail && (
+            <>
+              <header className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-black text-slate-900 break-words">{detail.lkk.namaAlat} · <span className="tabular-nums">{detail.lkk.noLabel}</span></h3>
+                  <p className="text-xs text-slate-600 break-words">{detail.lkk.namaRs ?? `BO ${detail.lkk.bo}`}{detail.lkk.kota ? ` · ${detail.lkk.kota}` : ''} · Teknisi: {detail.lkk.teknisi ?? '-'} · Dikalibrasi {tglPendek(detail.lkk.tanggalKalibrasi)} · Diterima {tgl(detail.lkk.diterimaAt)} · Versi {detail.lkk.clientVersion}</p>
+                </div>
+                <Chip status={detail.lkk.status} />
+              </header>
+
+              {/* 1. Hasil periksa server + penanda */}
+              <Bagian id="b-periksa" judul="1. Hasil periksa server">
+                {!pem && <Tanda tingkat="merah" judul="Belum diperiksa server">LKK ini belum punya hasil hitung ulang untuk versi ini. ACC ditolak sampai ada. Tunggu sebentar lalu muat ulang.</Tanda>}
+                {pem && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-600">Hitung ulang server: <strong className={pem.jejakCocok ? 'text-[#166534]' : 'text-[#991B1B]'}>{pem.jejakCocok ? 'COCOK dengan hitungan tablet' : 'BERBEDA dengan hitungan tablet'}</strong> · Kesimpulan server: <strong>{pem.kesimpulanServer ?? '-'}</strong> · Diperiksa {tgl(pem.diperiksaAt)}</p>
+                    {pem.penanda.length === 0 && <p className="text-xs text-[#166534] font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Tidak ada penanda.</p>}
+                    {pem.penanda.map((p, i) => (
+                      <Tanda key={i} tingkat={p.blokirAcc ? 'merah' : 'info'} judul={p.blokirAcc ? 'Memblokir ACC' : 'Info Penyelia'}
+                        periksa={{ sudah: !!diperiksa[kunci(detail.lkk.id, 'p', String(i))], ubah: () => toggle(kunci(detail.lkk.id, 'p', String(i))) }}>{p.teks}</Tanda>
+                    ))}
+                    {(h?.peringatan || []).map((t: string, i: number) => (
+                      <Tanda key={'w' + i} tingkat="kuning" judul="Peringatan hitungan" periksa={{ sudah: !!diperiksa[kunci(detail.lkk.id, 'w', String(i))], ubah: () => toggle(kunci(detail.lkk.id, 'w', String(i))) }}>{t}</Tanda>
+                    ))}
+                  </div>
+                )}
+              </Bagian>
+
+              {/* 2. Identitas */}
+              <Bagian id="b-identitas" judul="2. Identitas alat">
+                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {Object.entries(data.identitas ?? {}).map(([k, v]) => <Isian key={k} nama={k} nilai={v === null || v === '' ? '-' : String(v)} />)}
+                  <Isian nama="Template" nilai={`${detail.lkk.templateKode} v${detail.lkk.templateVersi}`} />
+                </dl>
+              </Bagian>
+
+              {/* 3. Lingkungan */}
+              <Bagian id="b-lingkungan" judul="3. Kondisi lingkungan">
+                <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Isian nama="Suhu awal (°C)" nilai={fmt(data.lingkungan?.suhuAwal, 1)} />
+                  <Isian nama="Suhu akhir (°C)" nilai={fmt(data.lingkungan?.suhuAkhir, 1)} />
+                  <Isian nama="Kelembapan awal (%RH)" nilai={fmt(data.lingkungan?.rhAwal, 1)} />
+                  <Isian nama="Kelembapan akhir (%RH)" nilai={fmt(data.lingkungan?.rhAkhir, 1)} />
+                </dl>
+              </Bagian>
+
+              {/* 4. Fisik & fungsi */}
+              <Bagian id="b-fisik" judul="4. Pemeriksaan fisik & fungsi">
+                <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#EEF3F7] text-[11px] text-slate-600"><tr><th className="p-2 text-left">Butir</th><th className="p-2 text-left">Fisik</th><th className="p-2 text-left">Fungsi</th></tr></thead>
+                    <tbody>
+                      {(tpl.fisik || []).map((b: Peta) => {
+                        const v = data.fisik?.[b.id] ?? {};
+                        return <tr key={b.id} className="border-t border-[#DCDFE3]"><td className="p-2">{b.judul}</td><td className={`p-2 ${v.fisik === 'Tidak Baik' ? 'font-bold text-[#991B1B]' : ''}`}>{v.fisik ?? '-'}</td><td className={`p-2 ${v.fungsi === 'Tidak Baik' ? 'font-bold text-[#991B1B]' : ''}`}>{v.fungsi ?? '-'}</td></tr>;
+                      })}
+                      {(tpl.fisikTambahan || []).map((b: Peta) => {
+                        const v = data.fisikTambahan?.[b.id];
+                        return <tr key={b.id} className="border-t border-[#DCDFE3]"><td className="p-2">{b.judul}</td><td colSpan={2} className={`p-2 ${v === 'Tidak Baik' ? 'font-bold text-[#991B1B]' : ''}`}>{v ?? '-'}</td></tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {h?.fisik && <p className="text-xs text-slate-600">Butir Baik: {h.fisik.jumlahBaik} dari {h.fisik.jumlahItem} · Nilai fisik: <strong>{fmt(h.fisik.nilai, 1)}</strong></p>}
+              </Bagian>
+
+              {/* 5. Uji ambang */}
+              {(tpl.ujiAmbang || []).length > 0 && (
+                <Bagian id="b-uji" judul="5. Uji lain">
+                  <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-[#EEF3F7] text-[11px] text-slate-600"><tr><th className="p-2 text-left">Uji</th><th className="p-2 text-left">Nilai ukur</th><th className="p-2 text-left">Batas</th><th className="p-2 text-left">Hasil</th></tr></thead>
+                      <tbody>
+                        {(tpl.ujiAmbang as Peta[]).map((u) => {
+                          const r = h?.ujiAmbang?.[u.id];
+                          const lewat = r?.hasil === 'Tidak Laik';
+                          return (
+                            <tr key={u.id} className={`border-t border-[#DCDFE3] ${lewat ? 'bg-[#FEE2E2] text-[#991B1B] font-bold' : ''}`}>
+                              <td className="p-2">{u.judul}</td>
+                              <td className="p-2 tabular-nums">{fmt(r?.nilaiUkur)} {u.satuan}</td>
+                              <td className="p-2 tabular-nums">{u.banding} {fmt(u.batas)} {u.satuan}</td>
+                              <td className="p-2">{lewat ? <span className="inline-flex items-center gap-1"><AlertCircle className="w-4 h-4" aria-hidden="true" />Melewati batas</span> : (r?.hasil ?? '-')}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Bagian>
+              )}
+
+              {/* 6. Kinerja + jejak hitung */}
+              {Object.keys(h?.kinerja ?? {}).map((kid) => {
+                const kin = h!.kinerja[kid];
+                const def = (tpl.kinerja || []).find((x: Peta) => x.id === kid) ?? {};
+                const tol: number | null = typeof aturanKinerja[kid]?.toleransi === 'number' ? aturanKinerja[kid].toleransi : null;
+                return (
+                  <Bagian key={kid} id={`b-kin-${kid}`} judul={`6. ${def.judul ?? kid} — jejak hitung`}>
+                    <p className="text-xs text-slate-600">Toleransi: ± {fmt(tol)} {def.satuan} · Titik Laik: {kin.jumlahLaik} dari {kin.jumlahDinilai}{kin.u95Melebihi ? ' · U95 melebihi batas laporan' : ''}</p>
+                    <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
+                      <table className="w-full text-xs tabular-nums">
+                        <thead className="bg-[#EEF3F7] text-[11px] text-slate-600">
+                          <tr>{['Titik', 'Arah', 'Bacaan', 'Rata-rata', 'Koreksi', 'u Tipe A', 'u Sert.', 'u Zero', 'u Resol.', 'u Drift', 'uc', 'v eff', 'k', 'U95', 'U95 lap.', 'Hasil'].map((c) => <th key={c} className="p-2 text-left whitespace-nowrap">{c}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                          {(kin.titik as Peta[]).map((t, i) => {
+                            const bacaan: unknown[] = data.kinerja?.[kid]?.[String(t.titik)]?.[t.arah] ?? [];
+                            const ukur = typeof t.koreksi === 'number' ? Math.abs(t.koreksi) + (typeof t.u95Laporan === 'number' ? t.u95Laporan : 0) : null;
+                            const lewat = t.hasil === 'Tidak Laik';
+                            const dekat = !lewat && tol !== null && ukur !== null && ukur >= 0.8 * tol;
+                            const k = kunci(detail.lkk.id, 'k', kid, String(i));
+                            return (
+                              <React.Fragment key={i}>
+                                <tr className={`border-t border-[#DCDFE3] ${lewat ? 'bg-[#FEE2E2] text-[#991B1B] font-bold' : dekat ? 'bg-[#FEF3C7] text-[#92400E]' : ''}`}>
+                                  <td className="p-2">{fmt(t.titik)}</td><td className="p-2">{t.arah}</td>
+                                  <td className="p-2 whitespace-nowrap">{bacaan.map((b) => fmt(b)).join('; ') || '-'}</td>
+                                  <td className="p-2">{fmt(t.rataRata, 3)}</td><td className="p-2">{fmt(t.koreksi, 3)}</td>
+                                  <td className="p-2">{fmt(t.uTipeA, 3)}</td><td className="p-2">{fmt(t.uSertifikat, 3)}</td><td className="p-2">{fmt(t.uZero, 3)}</td>
+                                  <td className="p-2">{fmt(t.uResolusi, 3)}</td><td className="p-2">{fmt(t.uDrift, 3)}</td><td className="p-2">{fmt(t.uc, 3)}</td>
+                                  <td className="p-2">{fmt(t.vEff, 1)}</td><td className="p-2">{fmt(t.k, 3)}</td><td className="p-2">{fmt(t.u95, 3)}</td><td className="p-2">{fmt(t.u95Laporan, 2)}</td>
+                                  <td className="p-2 whitespace-nowrap">{lewat ? 'Tidak Laik' : t.hasil}</td>
+                                </tr>
+                                {(lewat || dekat) && (
+                                  <tr><td colSpan={16} className="p-1.5">
+                                    <Tanda tingkat={lewat ? 'merah' : 'kuning'} judul={lewat ? 'Melewati batas' : 'Mendekati batas'}
+                                      periksa={{ sudah: !!diperiksa[k], ubah: () => toggle(k) }}>
+                                      Titik {fmt(t.titik)} {t.arah}: |koreksi| + U95 = {fmt(ukur, 2)} {def.satuan}; batas (toleransi) ± {fmt(tol)} {def.satuan}; selisih {fmt(tol !== null && ukur !== null ? tol - ukur : null, 2)}. Sumber batas: template {detail.lkk.templateKode} v{detail.lkk.templateVersi}.
+                                    </Tanda>
+                                  </td></tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Bagian>
+                );
+              })}
+
+              {/* 7. Alat standar */}
+              <Bagian id="b-kal" judul="7. Alat standar yang dipakai (fotokopi sertifikat di LKK)">
+                {detail.calibratorSnapshot && Object.keys(detail.calibratorSnapshot).length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-[#EEF3F7] text-[11px] text-slate-600"><tr><th className="p-2 text-left">Peran</th><th className="p-2 text-left">Alat</th><th className="p-2 text-left">No. sertifikat</th><th className="p-2 text-left">Berlaku sampai</th></tr></thead>
+                      <tbody>
+                        {Object.entries(detail.calibratorSnapshot).map(([peran, v]: [string, any]) => (
+                          <tr key={peran} className="border-t border-[#DCDFE3]">
+                            <td className="p-2">{peran}</td><td className="p-2">{v?.asetId ?? '-'} · {v?.nama ?? '-'}</td><td className="p-2 break-words">{v?.nomorSertifikat ?? '-'}</td><td className="p-2">{v?.berlakuSampai ? tglPendek(v.berlakuSampai) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p className="text-sm text-slate-600">Tidak ada alat standar tercatat.</p>}
+              </Bagian>
+
+              {/* 8. Kesimpulan */}
+              <Bagian id="b-kesimpulan" judul="8. Kesimpulan">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`px-4 py-2 rounded-full text-sm font-black border ${h?.kesimpulan === 'Tidak Laik Pakai' ? 'bg-[#FEE2E2] text-[#991B1B] border-[#DC2626]' : 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'}`}>{h?.kesimpulan ?? '-'}</span>
+                  {h?.skor && <span className="text-xs text-slate-600">Skor total {fmt(h.skor.total, 1)} (rincian: {(h.skor.rincian || []).map((r: Peta) => `${r.dari} ${fmt(r.nilai, 1)}`).join(', ')})</span>}
+                </div>
+              </Bagian>
+
+              {/* 9. Aksi */}
+              <Bagian id="b-aksi" judul="9. Keputusan Penyelia">
+                {!bisaAksi && <p className="text-sm text-slate-600">LKK berstatus <strong>{STATUS[detail.lkk.status]?.teks ?? detail.lkk.status}</strong>; tidak ada aksi yang tersedia di sini.</p>}
+                {bisaAksi && (
+                  <div className="space-y-4">
+                    {!pem?.bolehAcc && <Tanda tingkat="merah" judul="ACC belum bisa">Ada penanda yang memblokir ACC (lihat bagian 1). Kembalikan ke teknisi untuk diperbaiki.</Tanda>}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-[#DCDFE3] p-4 space-y-2">
+                        <label htmlFor="alasan-kembali" className="block text-xs font-bold text-slate-700">Alasan pengembalian (wajib)</label>
+                        <textarea id="alasan-kembali" value={alasan} onChange={(e) => setAlasan(e.target.value)} rows={3} maxLength={1000}
+                          className="w-full px-3 py-2 rounded-lg border border-[#7D8DA1] bg-white text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#398AB9]" placeholder="Contoh: bacaan titik 150 naik terlihat salah ketik" />
+                        <button type="button" disabled={bekerja} onClick={() => { void aksi('kembalikan'); }}
+                          className="px-4 py-2.5 rounded-lg text-xs font-bold bg-violet-700 hover:bg-violet-800 text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]">
+                          <Undo2 className="w-4 h-4" aria-hidden="true" />Kembalikan ke teknisi
+                        </button>
+                        {alasan.trim().length < 3 && <p className="text-[11px] text-slate-500">Isi alasan (min. 3 huruf) lalu tekan tombol.</p>}
+                      </div>
+                      <div className="rounded-xl border border-[#DCDFE3] p-4 space-y-2">
+                        <p className="text-xs font-bold text-slate-700">ACC</p>
+                        <p className="text-xs text-slate-600">ACC tercatat di riwayat (nama Anda dan waktunya) dan tidak bisa dibatalkan di layar ini.</p>
+                        {!yakinAcc
+                          ? <button type="button" disabled={bekerja} onClick={() => setYakinAcc(true)} className="px-4 py-2.5 rounded-lg text-xs font-bold bg-[#0B6FB3] hover:bg-[#095C95] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]"><Stamp className="w-4 h-4" aria-hidden="true" />ACC LKK ini</button>
+                          : (
+                            <div className="flex flex-wrap items-center gap-2" role="alertdialog" aria-label="Konfirmasi ACC">
+                              <span className="text-xs font-semibold text-slate-800">Yakin ACC {detail.lkk.noLabel}?</span>
+                              <button type="button" disabled={bekerja} onClick={() => { void aksi('acc'); }} className="px-4 py-2.5 rounded-lg text-xs font-bold bg-[#0B6FB3] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]">
+                                {bekerja ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="w-4 h-4" aria-hidden="true" />}Ya, ACC
+                              </button>
+                              <button type="button" disabled={bekerja} onClick={() => setYakinAcc(false)} className="px-4 py-2.5 rounded-lg text-xs font-semibold border border-[#DCDFE3] text-slate-700 cursor-pointer min-h-[44px]">Batal</button>
+                            </div>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div aria-live="polite" className="text-sm">
+                  {hasilAksi && <p className={`flex items-start gap-1.5 font-semibold ${hasilAksi.ok ? 'text-emerald-700' : 'text-rose-700'}`}>{hasilAksi.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />}{hasilAksi.teks}</p>}
+                </div>
+              </Bagian>
+            </>
+          )}
+        </article>
+      )}
+    </section>
+  );
+};

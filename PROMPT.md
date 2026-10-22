@@ -286,3 +286,10 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - File: `src/components/NilaiKalibratorTera.tsx`, `src/server/teraNilaiKalibratorRoutes.ts`, `src/tera/shared/nilaiKalibrator.ts` (+uji 12 lulus), `Navbar.tsx`, `AsetPortalApp.tsx`.
 - Migrasi `0013` DIJALANKAN (backup `backup.b20261022_tera_calibrator_points_sebelum_0013`; CEK true). KEPUTUSAN RIDHWAN 22 Okt: nilai sementara DIBYPASS — hanya info untuk Penyelia, tetap bisa ACC, TIDAK boleh tertulis di sertifikat (PDF 4.5 jangan mencetak kolom sumber/penanda).
 - Berikutnya: jalankan 0013 setelah "lanjutkan"; layar Selia satu halaman (4.4b-3).
+
+### Hasil 4.4b-3 (22 Okt ±22.30) — layar Selia LKK Tera, SATU halaman panjang
+- Di tab Selia (Manajemen Aset), bagian baru "LKK Digital Tera SMK" (`src/components/SeliaTeraLkk.tsx`) di atas dashboard Selia lama; hanya admin_teknik & admin_utama.
+- Daftar LKK (saringan: Semua / Ada penanda merah / Menunggu / Sudah ACC; merah diurutkan dulu). Pilih satu → seluruh isinya terbentang di bawah daftar dari atas ke bawah: 1 hasil periksa server + penanda, 2 identitas, 3 lingkungan, 4 fisik & fungsi, 5 uji lain, 6 kinerja + jejak hitung lengkap (bacaan, koreksi, semua komponen u, v eff, k, U95), 7 alat standar, 8 kesimpulan, 9 Kembalikan (alasan wajib) / ACC (konfirmasi "Ya, ACC").
+- Highlight 13.11: merah "Melewati batas", kuning "Mendekati batas" (≥ 80% toleransi), info biru untuk nilai kalibrator sementara; warna + ikon + tulisan; "Sudah saya periksa" per penanda (hanya di layar, belum disimpan ke riwayat).
+- Belum: "Ke penanda berikutnya", simpan "Sudah saya periksa" ke riwayat, tombol Buka koreksi (4.7). Uji layar nyata di browser belum bisa dijalankan di sini (node_modules tidak ada); build Vercel jadi pemeriksa.
+- Berikutnya: 4.5 PDF sertifikat.
