@@ -8,7 +8,7 @@
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf } from './susunSertifikat.js';
 
-export interface BahanPdf { fontR: Uint8Array; fontB: Uint8Array; fontI: Uint8Array; kop: Uint8Array }
+export interface BahanPdf { fontR: Uint8Array; fontB: Uint8Array; fontI: Uint8Array; kop: Uint8Array | null }
 export type HurufTerpasang = Record<GayaHuruf, PDFFont>;
 
 /** Batas kanan isi (poin) — sama dengan tepi kanan garis tabel di acuan. Isian yang kepanjangan diperkecil, tidak meluber. */
@@ -34,12 +34,13 @@ function gambarHalaman(page: PDFPage, h: HalamanSusun, huruf: HurufTerpasang, ti
 }
 
 /** Gambar semua halaman ke dokumen yang sudah punya font (dipisah agar bisa diuji dengan font standar). */
-export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array): Promise<void> {
+export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null): Promise<void> {
   const { lebar, tinggi } = tl.ukuran;
-  const [kopHalaman] = await doc.embedPdf(kop, [0]);
+  // kop = null → versi TANPA kop (untuk salinan Google Drive & komputer); isi tetap sama persis.
+  const kopHalaman = kop ? (await doc.embedPdf(kop, [0]))[0] : null;
   for (const h of susun(tl, isian)) {
     const page = doc.addPage([lebar, tinggi]);
-    page.drawPage(kopHalaman, { x: 0, y: 0, width: lebar, height: tinggi });
+    if (kopHalaman) page.drawPage(kopHalaman, { x: 0, y: 0, width: lebar, height: tinggi });
     gambarHalaman(page, h, huruf, tinggi);
   }
 }

@@ -104,21 +104,27 @@ export const SeliaTeraLkk: React.FC = () => {
     } catch { setGagalDaftar('Server tidak merespons. Coba lagi.'); }
   }, []);
 
-  const [pdfMemuat, setPdfMemuat] = useState(false);
+  // Pratinjau sertifikat DENGAN kop (tampil di layar Selia; kop ini juga yang tertaut ke QR).
+  // Salinan untuk Google Drive & komputer = TANPA kop (tombol Unduh).
+  const [pdfMemuat, setPdfMemuat] = useState<null | 'kop' | 'tanpa'>(null);
   const [pdfGalat, setPdfGalat] = useState<string | null>(null);
-  const lihatPdf = async (id: string) => {
-    setPdfMemuat(true); setPdfGalat(null);
-    const jendela = window.open('', '_blank'); // dibuka dulu supaya tidak diblokir Safari
+  const [pratinjauUrl, setPratinjauUrl] = useState<string | null>(null);
+  const bersihkanPratinjau = () => setPratinjauUrl((u) => { if (u) URL.revokeObjectURL(u); return null; });
+  const ambilPdf = async (id: string, denganKop: boolean) => {
+    setPdfMemuat(denganKop ? 'kop' : 'tanpa'); setPdfGalat(null);
     try {
-      const r = await apiFetch(`/api/tera/selia/lkk/${id}/pdf`, { retries: 0, timeoutMs: 30000 });
-      if (!r.ok) { const j = await r.json().catch(() => null); jendela?.close(); setPdfGalat(j?.error || 'PDF belum bisa dibuat.'); }
+      const r = await apiFetch(`/api/tera/selia/lkk/${id}/pdf${denganKop ? '' : '?kop=0'}`, { retries: 0, timeoutMs: 30000 });
+      if (!r.ok) { const j = await r.json().catch(() => null); setPdfGalat(j?.error || 'PDF belum bisa dibuat.'); }
       else {
         const url = URL.createObjectURL(await r.blob());
-        if (jendela) jendela.location.href = url; else window.location.href = url;
-        setTimeout(() => URL.revokeObjectURL(url), 120000);
+        if (denganKop) setPratinjauUrl((lama) => { if (lama) URL.revokeObjectURL(lama); return url; });
+        else {
+          const a = document.createElement('a'); a.href = url; a.download = `Sertifikat-${detail?.lkk.noLabel ?? ''}-tanpa-kop.pdf`; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
       }
-    } catch { jendela?.close(); setPdfGalat('Server tidak merespons. Coba lagi.'); }
-    setPdfMemuat(false);
+    } catch { setPdfGalat('Server tidak merespons. Coba lagi.'); }
+    setPdfMemuat(null);
   };
 
   const muatDetail = useCallback(async (id: string) => {
@@ -135,6 +141,7 @@ export const SeliaTeraLkk: React.FC = () => {
   useEffect(() => { if (boleh) void muatDaftar(); }, [boleh, muatDaftar]);
 
   const pilih = (id: string) => {
+    bersihkanPratinjau(); setPdfGalat(null);
     setPilihId(id); setDetail(null); setAlasan(''); setYakinAcc(false); setHasilAksi(null);
     void muatDetail(id);
     setTimeout(() => bentang.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 60);
@@ -241,15 +248,35 @@ export const SeliaTeraLkk: React.FC = () => {
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <Chip status={detail.lkk.status} />
                   {detail.lkk.templateKode === 'sphygmomanometer' && (
-                    <button type="button" onClick={() => { void lihatPdf(detail.lkk.id); }} disabled={pdfMemuat}
-                      className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl border border-[#0B6FB3] text-[#0B6FB3] text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
-                      {pdfMemuat ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
-                      {pdfMemuat ? 'Membuat PDF…' : 'Lihat PDF pratinjau'}
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, true); }} disabled={pdfMemuat !== null}
+                        className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl border border-[#0B6FB3] text-[#0B6FB3] text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
+                        {pdfMemuat === 'kop' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
+                        {pdfMemuat === 'kop' ? 'Membuat…' : 'Pratinjau sertifikat (dengan kop)'}
+                      </button>
+                      <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, false); }} disabled={pdfMemuat !== null}
+                        className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl border border-slate-400 text-slate-700 text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
+                        {pdfMemuat === 'tanpa' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
+                        {pdfMemuat === 'tanpa' ? 'Membuat…' : 'Unduh tanpa kop'}
+                      </button>
+                    </div>
                   )}
                   {pdfGalat && <p className="text-[11px] text-[#991B1B] font-semibold max-w-[220px] text-right" role="alert">{pdfGalat}</p>}
                 </div>
               </header>
+
+              {pratinjauUrl && (
+                <section aria-label="Pratinjau sertifikat dengan kop" className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#EEF3F7] text-xs">
+                    <p className="font-bold text-slate-800">Pratinjau sertifikat (dengan kop) — hanya untuk dilihat &amp; tertaut ke QR; salinan Drive/komputer tanpa kop</p>
+                    <div className="flex gap-2 shrink-0">
+                      <a href={pratinjauUrl} target="_blank" rel="noreferrer" className="font-bold text-[#0B6FB3] underline">Layar penuh</a>
+                      <button type="button" onClick={bersihkanPratinjau} className="font-bold text-slate-700 underline cursor-pointer">Tutup</button>
+                    </div>
+                  </div>
+                  <iframe title="Pratinjau sertifikat" src={pratinjauUrl} className="w-full h-[70vh] min-h-[420px] bg-slate-100" />
+                </section>
+              )}
 
               {/* 1. Hasil periksa server + penanda */}
               <Bagian id="b-periksa" judul="1. Hasil periksa server">

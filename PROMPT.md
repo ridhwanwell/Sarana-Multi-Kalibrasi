@@ -308,3 +308,8 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Route `GET /api/tera/selia/lkk/:id/pdf` (admin_teknik/admin_utama; baca saja; tanggal terbit = hari ini untuk pratinjau; penandatangan sementara konstanta sampai ada master `tera_signatories`).
 - Keputusan Ridhwan: kalibrasi ulang = +1 tahun; Nomor Order = BO, Nomor Sertifikat = nomor label; salah ketik Excel DIBETULKAN ("Reading after 60 seconds", "Standard Reading") — teks perlu disetujui di PDF pratinjau; kotak biru label dipertahankan (bila tidak keberatan).
 - Berikutnya: cek PDF pratinjau dengan Carlito sebenarnya (bandingkan dengan contoh), betulkan salah ketik di tata letak, lalu ACC → simpan PDF, QR tanda tangan (4.6).
+
+### Hasil 4.5c (22 Okt ±23.10) — pratinjau sertifikat DENGAN kop di layar Selia + unduh TANPA kop
+- KEPUTUSAN RIDHWAN 22 Okt: sertifikat ada 2 versi. (1) DENGAN kop: hanya untuk pratinjau di Selia dan yang tertaut ke QR. (2) TANPA kop: salinan yang diunggah ke Google Drive dan disimpan di komputer (lokal). Isi kedua versi sama persis.
+- Selia: tombol "Pratinjau sertifikat (dengan kop)" → PDF tampil langsung di bawah kepala LKK (iframe, + "Layar penuh"); tombol "Unduh tanpa kop". Route `GET /api/tera/selia/lkk/:id/pdf` (`?kop=0` = tanpa kop; tanpa kop tidak butuh file kop di bucket).
+- Berikutnya: saat ACC → buat kedua versi; versi dengan kop disimpan (tertaut QR), versi tanpa kop → Google Drive (OAuth server) + unduhan lokal; QR tanda tangan (4.6).

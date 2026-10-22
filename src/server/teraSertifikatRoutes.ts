@@ -73,14 +73,20 @@ export function registerTeraSertifikatRoutes(app: Express, deps: { rateLimitKey:
         : { data: [], error: null };
       const alamat = [(rs.data as any)?.[0]?.alamat, (rs.data as any)?.[0]?.kota ?? (push.data as any)?.kota].filter(Boolean).join(', ');
 
-      const kopPath = 'kop/KOP_SERTIF_NON_KAN.pdf'; // Sphygmomanometer = Non-KAN (CLAUDE.md 9.5)
-      const kop = await supabaseAdmin.storage.from(BUCKET).download(kopPath);
-      if (kop.error || !kop.data) {
-        console.error('[Tera/PDF] kop:', kop.error?.message);
-        return res.status(503).json({ error: 'File kop sertifikat belum ada di penyimpanan (tera-assets/kop). Hubungi Developer.' });
+      // ?kop=0 → versi TANPA kop (salinan Google Drive & komputer). Dengan kop hanya untuk pratinjau Selia & tautan QR.
+      const denganKop = req.query.kop !== '0';
+      let kopBytes: Uint8Array | null = null;
+      if (denganKop) {
+        const kopPath = 'kop/KOP_SERTIF_NON_KAN.pdf'; // Sphygmomanometer = Non-KAN (CLAUDE.md 9.5)
+        const kop = await supabaseAdmin.storage.from(BUCKET).download(kopPath);
+        if (kop.error || !kop.data) {
+          console.error('[Tera/PDF] kop:', kop.error?.message);
+          return res.status(503).json({ error: 'File kop sertifikat belum ada di penyimpanan (tera-assets/kop). Hubungi Developer.' });
+        }
+        kopBytes = new Uint8Array(await kop.data.arrayBuffer());
       }
       const font = await ambilFont(ctrl.signal);
-      const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: new Uint8Array(await kop.data.arrayBuffer()) };
+      const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: kopBytes };
 
       const def = (tpl.data as any)?.definition ?? {};
       const kin = (def.kinerja ?? []).find((k: any) => k.id === 'tekanan') ?? {};
@@ -95,7 +101,8 @@ export function registerTeraSertifikatRoutes(app: Express, deps: { rateLimitKey:
       );
       const pdf = await renderSertifikatPdf(TATA_LETAK_SPHYGMOMANOMETER, isian, bahan);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="Sertifikat-${String(r.no_label).replace(/[^0-9.]/g, '')}.pdf"`);
+      const nama = `Sertifikat-${String(r.no_label).replace(/[^0-9.]/g, '')}${denganKop ? '' : '-tanpa-kop'}`;
+      res.setHeader('Content-Disposition', `${denganKop ? 'inline' : 'attachment'}; filename="${nama}.pdf"`);
       return res.status(200).send(Buffer.from(pdf));
     } catch (e: any) {
       console.error('[Tera/PDF]', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
