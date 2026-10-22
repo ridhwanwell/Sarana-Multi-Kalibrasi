@@ -24,8 +24,8 @@ export function daftarBagian(tpl: Pick<TemplateAlat, 'keselamatan_listrik'>): De
     { id: 'lingkungan', nama: 'Kondisi lingkungan', tersedia: true },
     { id: 'fisik', nama: 'Fisik & fungsi', tersedia: true },
     ...(tpl.keselamatan_listrik !== 'tidak_ada' ? [{ id: 'keselamatan' as const, nama: 'Keselamatan listrik', tersedia: false }] : []),
-    { id: 'kinerja', nama: 'Kinerja', tersedia: false },
-    { id: 'kesimpulan', nama: 'Kesimpulan', tersedia: false },
+    { id: 'kinerja', nama: 'Kinerja', tersedia: true },
+    { id: 'kesimpulan', nama: 'Kesimpulan', tersedia: true },
     { id: 'ringkasan', nama: 'Ringkasan & Selesai', tersedia: false },
   ];
 }
@@ -252,6 +252,28 @@ export function periksaIsian(tpl: TemplateAlat, isi: IsiKerja): Kurang[] {
     const baris = fisik[f.id] ?? {};
     const ok = (x: unknown) => typeof x === 'string' && (tpl.pilihanFisik as string[]).includes(x);
     if (!ok(baris.fisik) || !ok(baris.fungsi)) kurang.push({ bagian: 'fisik', teks: `${f.judul}: pilih kondisi Fisik dan Fungsi` });
+  }
+  const tambahan = (data.fisikTambahan && typeof data.fisikTambahan === 'object' ? data.fisikTambahan : {}) as Peta;
+  for (const f of tpl.fisikTambahan ?? []) {
+    if (typeof tambahan[f.id] !== 'string' || !(tpl.pilihanFisik as string[]).includes(tambahan[f.id])) kurang.push({ bagian: 'fisik', teks: `${f.judul}: pilih kondisi` });
+  }
+
+  // 5. Kinerja: uji ambang (bocor, laju buang, ...) lalu bacaan naik/turun tiap titik
+  for (const u of tpl.ujiAmbang) {
+    const isiU = (data[u.id] && typeof data[u.id] === 'object' ? data[u.id] : {}) as Peta;
+    const nilai = u.jenis === 'selisih_setting' ? isiU.bacaan : (isiU.waktu ?? isiU.nilai);
+    if (!angkaSah(nilai)) kurang.push({ bagian: 'kinerja', teks: `${u.judul} belum diisi` });
+  }
+  const kin = (data.kinerja && typeof data.kinerja === 'object' ? data.kinerja : {}) as Peta;
+  for (const k of tpl.kinerja) {
+    for (const t of k.titik) {
+      const baris = (kin[k.id]?.[String(t)] ?? {}) as Peta;
+      const arahKurang = (['naik', 'turun'] as const).filter((a) => {
+        const run = baris[a];
+        return !Array.isArray(run) || run.length < k.pengulangan || !run.slice(0, k.pengulangan).every(angkaSah);
+      });
+      if (arahKurang.length) kurang.push({ bagian: 'kinerja', teks: `${k.judul}: titik ${t} ${k.satuan} — bacaan ${arahKurang.join(' & ')} belum lengkap` });
+    }
   }
   return kurang;
 }

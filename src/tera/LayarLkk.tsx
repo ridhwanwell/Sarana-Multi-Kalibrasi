@@ -6,8 +6,9 @@
  * ulang halaman atau HP mati tidak menghilangkan isian. Tiga "fotokopi sertifikat" alat standar dijepret ke
  * LKK saat dipilih (snapshot), sehingga hitungan tidak berubah walau master kalibrator nanti diperbarui.
  *
- * Bagian: Identitas alat (+ pilih alat standar) → Kondisi lingkungan → Fisik & fungsi.
- * Kinerja, Kesimpulan, Ringkasan & Selesai dibuka di langkah berikutnya (4.3d).
+ * Bagian: Identitas alat (+ pilih alat standar) → Kondisi lingkungan → Fisik & fungsi → Kinerja → Kesimpulan.
+ * Ringkasan & Selesai dibuka di langkah berikutnya (4.3d-3). Hitungan Laik/Tidak Laik berjalan di belakang layar
+ * (shared/jejak.ts → hitung.ts) dan hanya DITAMPILKAN di sini; tidak ada rumus di komponen.
  *
  * Tidak ada rumus di komponen: hitungan lingkungan ada di shared/lingkungan.ts, aturan kelengkapan di shared/isian.ts.
  * UI: ui-ux-pro-max (label di atas kotak, galat di bawah kotak saat pindah kotak, ≥ 48 px, inputmode, safe area,
@@ -15,12 +16,13 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock, Minus } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
 import { ambilLkk, bolehDiubah, simpanIsian, type LkkLokal } from './data/teraDb';
 import { buatJejakHitung } from './shared/jejak';
+import type { Vonis } from './shared/hitung';
 import { buatSnapshot, daftarKalibrator, templateVersi, type KalibratorLokal } from './data/masterLokal';
 import type { TemplateAlat } from './shared/hitung';
 import {
@@ -190,7 +192,8 @@ const KartuStandar: React.FC<KartuStandarProps> = ({ def, pilihan, snap, tanggal
 
 interface BagianProps {
   tpl: TemplateAlat; isi: IsiKerja; kunci: boolean; kurang: Kurang[];
-  ubahData: (kunci: 'identitas' | 'lingkungan' | 'fisik', bidang: string, nilai: unknown) => void;
+  ubahData: (blok: string, bidang: string, nilai: unknown) => void;
+  ubahBacaan: (kinerjaId: string, titik: number, arah: 'naik' | 'turun', urutan: number, jumlah: number, nilai: number | null) => void;
 }
 
 const BagianIdentitas: React.FC<BagianProps & {
@@ -324,6 +327,185 @@ const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
           </li>
         ))}
       </ul>
+      {(tpl.fisikTambahan?.length ?? 0) > 0 && (
+        <>
+          <h3 className="t-judul-kecil mt-6">Butir lain yang diperiksa</h3>
+          <p className="t-ket">Satu pilihan untuk tiap butir.</p>
+          <ul className="t-fisik-daftar mt-3">
+            {tpl.fisikTambahan!.map((f) => (
+              <li key={f.id} className="t-kartu">
+                <h4 className="t-judul-kecil">{f.judul}</h4>
+                <div className="mt-2">
+                  <Segmen label={f.judul} opsi={opsi} nilai={((isi.data.fisikTambahan ?? {}) as Peta)[f.id]} kunci={kunci} onPilih={(v) => ubahData('fisikTambahan', f.id, v)} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  );
+};
+
+/* ---------- Bagian 5: Kinerja ---------- */
+
+const fmt2 = (n: number | null | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(2).replace('.', ',') : '-');
+
+/** Chip hasil: warna + ikon + tulisan (CLAUDE.md 13.4). */
+const ChipVonis: React.FC<{ vonis: Vonis; teksLaik?: string; teksTidak?: string }> = ({ vonis, teksLaik = 'LAIK', teksTidak = 'TIDAK LAIK' }) => (
+  <span className="t-vonis" data-v={vonis === 'Laik' ? 'laik' : vonis === 'Tidak Laik' ? 'tidak' : 'belum'}>
+    {vonis === 'Laik' ? <Check size={16} aria-hidden="true" /> : vonis === 'Tidak Laik' ? <AlertCircle size={16} aria-hidden="true" /> : <Minus size={16} aria-hidden="true" />}
+    {vonis === 'Laik' ? teksLaik : vonis === 'Tidak Laik' ? teksTidak : 'Belum diisi'}
+  </span>
+);
+
+const BagianKinerja: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData, ubahBacaan }) => {
+  const jejak = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot), [tpl, isi.data, isi.snapshot]);
+  const hasil = jejak?.hasil ?? null;
+  const kin = (isi.data.kinerja ?? {}) as Peta;
+  return (
+    <>
+      {tpl.ujiAmbang.map((u) => {
+        const nilai = (isi.data[u.id] ?? {}) as Peta;
+        const kolom = u.jenis === 'selisih_setting' ? 'bacaan' : 'waktu';
+        const h = hasil?.ujiAmbang[u.id];
+        const angka = typeof nilai[kolom] === 'number' ? (nilai[kolom] as number) : null;
+        return (
+          <section key={u.id} className="t-kartu mb-4" aria-label={u.judul}>
+            <h3 className="t-judul-kecil">{u.judul}</h3>
+            <p className="t-ket">
+              {u.jenis === 'selisih_setting' ? `Setting ${u.setting} ${u.satuan}. Isi bacaan di alat; selisih terhadap setting dihitung otomatis.` : 'Isi hasil pengukuran.'}
+              {' '}Batas: {u.banding.replace('<=', '≤').replace('>=', '≥')} {u.batas} {u.satuan}.
+            </p>
+            <div className="mt-2 t-isian-grid">
+              <KotakAngka id={`uji-${u.id}`} label={u.jenis === 'selisih_setting' ? 'Bacaan' : 'Waktu'} satuan={u.satuan} nilai={angka} kunci={kunci} onNilai={(n) => ubahData(u.id, kolom, n)} />
+              <div className="t-isian">
+                <span className="t-label">{u.jenis === 'selisih_setting' ? 'Selisih' : 'Nilai'}</span>
+                <p className="t-hasil-baris tabular">
+                  {h && h.nilaiUkur !== null ? `${formatAngka(h.nilaiUkur)} ${u.satuan}` : '-'}
+                  <ChipVonis vonis={h?.hasil ?? '-'} />
+                </p>
+              </div>
+            </div>
+          </section>
+        );
+      })}
+
+      {tpl.kinerja.map((k) => (
+        <div key={k.id}>
+          <h3 className="t-judul-kecil">{k.judul}</h3>
+          <p className="t-ket">
+            Isi {k.pengulangan} bacaan naik dan {k.pengulangan} bacaan turun di tiap titik, mulai dari titik 0. Rata-rata, koreksi, dan ketidakpastian (U95) dihitung otomatis dengan koreksi alat standar.
+          </p>
+          <ul className="t-fisik-daftar mt-3">
+            {k.titik.map((t) => (
+              <li key={t} className="t-kartu" aria-label={`Titik ${t} ${k.satuan}`}>
+                <h4 className="t-judul-kecil">Titik {t} {k.satuan}</h4>
+                <div className="t-baca-pasang mt-2">
+                  {(['naik', 'turun'] as const).map((arah) => {
+                    const run = (kin[k.id]?.[String(t)]?.[arah] ?? []) as (number | null)[];
+                    const ht = hasil?.kinerja[k.id]?.titik.find((x) => x.titik === t && x.arah === arah);
+                    return (
+                      <div key={arah} className="t-baca-grup">
+                        <p className="t-label">{arah === 'naik' ? 'Naik' : 'Turun'}</p>
+                        <div className="t-baca-grid">
+                          {Array.from({ length: k.pengulangan }, (_, i) => (
+                            <KotakAngka
+                              key={i} id={`kin-${k.id}-${t}-${arah}-${i}`} label={`Bacaan ${i + 1}`} nilai={typeof run[i] === 'number' ? run[i] : null}
+                              kunci={kunci} onNilai={(n) => ubahBacaan(k.id, t, arah, i, k.pengulangan, n)}
+                            />
+                          ))}
+                        </div>
+                        <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil titik ${t} ${arah}`}>
+                          <span>Rata-rata {ht?.rataRata != null ? formatAngka(Math.round(ht.rataRata * 100) / 100) : '-'}</span>
+                          <span>Koreksi {ht?.koreksi != null ? formatAngka(Math.round(ht.koreksi * 100) / 100) : '-'}</span>
+                          <span>U95 {fmt2(ht?.u95Cetak)}</span>
+                          <ChipVonis vonis={ht?.hasil ?? '-'} />
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </>
+  );
+};
+
+/* ---------- Bagian 6: Kesimpulan ---------- */
+
+const NAMA_BAGIAN: Record<string, string> = { identitas: 'Identitas alat', lingkungan: 'Kondisi lingkungan', fisik: 'Fisik & fungsi', keselamatan: 'Keselamatan listrik', kinerja: 'Kinerja' };
+
+const BagianKesimpulan: React.FC<BagianProps & { keBagian: (id: BagianId) => void }> = ({ tpl, isi, kurang, keBagian }) => {
+  const jejak = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot), [tpl, isi.data, isi.snapshot]);
+  const hasil = jejak?.hasil ?? null;
+  const final = !!hasil && !!jejak?.lengkap && kurang.length === 0;
+  if (!final || !hasil) {
+    const bagianKurang = [...new Set(kurang.map((k) => k.bagian))];
+    return (
+      <>
+        <div className="t-stiker" data-v="belum" role="status">
+          <Minus size={28} aria-hidden="true" />
+          <div>
+            <p className="t-stiker-judul">Belum bisa ditentukan</p>
+            <p className="t-ket">Lengkapi isian dulu. Setelah semua terisi, di sini muncul LAIK PAKAI atau TIDAK LAIK PAKAI beserta stiker yang harus ditempel.</p>
+          </div>
+        </div>
+        {kurang.length > 0 && (
+          <div className="t-kurang" role="status" aria-label="Yang masih kurang">
+            <p className="t-label">Yang masih kurang</p>
+            <ul>
+              {kurang.map((k) => (
+                <li key={k.bagian + k.teks} data-merah={k.merah || undefined}>
+                  {k.merah ? <AlertCircle size={16} aria-hidden="true" className="shrink-0" /> : <span className="t-titik" aria-hidden="true" />}
+                  <span><b>{NAMA_BAGIAN[k.bagian] ?? k.bagian}:</b> {k.teks}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="t-kurang-aksi">
+              {bagianKurang.map((id) => (
+                <button key={id} type="button" className="t-tombol t-tombol-kedua" onClick={() => keBagian(id)}>Ke {NAMA_BAGIAN[id] ?? id}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const laik = hasil.kesimpulan === 'Laik Pakai';
+  const alasan: string[] = [];
+  tpl.skor.item.forEach((it, idx) => {
+    const nilai = hasil.skor.rincian[idx]?.nilai ?? 0;
+    if (nilai > 0) return;
+    if (it.dari === 'fisik') alasan.push(`Fisik & fungsi: ${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} butir baik (perlu minimal ${Math.round(it.minimalPersen * 100)}%).`);
+    else if (it.dari === 'uji_ambang') {
+      const u = tpl.ujiAmbang.find((x) => x.id === it.id); const h = hasil.ujiAmbang[it.id];
+      if (u && h) alasan.push(`${u.judul}: ${formatAngka(h.nilaiUkur)} ${u.satuan}, batas ${u.banding.replace('<=', '≤').replace('>=', '≥')} ${u.batas} ${u.satuan}.`);
+    } else {
+      const k = tpl.kinerja.find((x) => x.id === it.id); const h = hasil.kinerja[it.id];
+      if (k && h) alasan.push(`${k.judul}: ${h.jumlahLaik} dari ${h.jumlahDinilai} titik laik (perlu minimal ${Math.round(it.minimalPersen * 100)}%).`);
+    }
+  });
+  return (
+    <>
+      <div className="t-stiker" data-v={laik ? 'laik' : 'tidak'} role="status">
+        {laik ? <Check size={32} aria-hidden="true" /> : <AlertCircle size={32} aria-hidden="true" />}
+        <div>
+          <p className="t-stiker-judul">{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</p>
+          <p className="t-stiker-petunjuk">Tempel stiker <b>{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</b> pada alat ini.</p>
+        </div>
+      </div>
+      <p className="t-ket mt-3">Skor {hasil.skor.total} dari {tpl.skor.item.reduce((a, b) => a + b.nilai, 0)} (batas laik {tpl.skor.laikBila.banding.replace('>=', '≥')} {tpl.skor.laikBila.batas}).</p>
+      {alasan.length > 0 && (
+        <section className="t-kartu mt-3" aria-label="Alasan">
+          <h3 className="t-judul-kecil">Yang menurunkan nilai</h3>
+          <ul className="t-skor-daftar mt-2">{alasan.map((a) => <li key={a}>{a}</li>)}</ul>
+        </section>
+      )}
     </>
   );
 };
@@ -337,7 +519,7 @@ const DaftarBagian: React.FC<{
     <p className="t-bagian-label" aria-live="polite">Bagian {aktif + 1} dari {bagian.length} · {bagian[aktif]?.nama}</p>
     <ol className="t-bagian-daftar">
       {bagian.map((b, i) => {
-        const lengkap = b.tersedia && bagianLengkap(kurang, b.id);
+        const lengkap = b.tersedia && (b.id === 'kesimpulan' ? kurang.length === 0 : bagianLengkap(kurang, b.id));
         const adaMerah = kurang.some((k) => k.bagian === b.id && k.merah);
         return (
           <li key={b.id}>
@@ -416,8 +598,23 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
     };
   }, [simpanSekarang]);
 
-  const ubahData = useCallback((blok: 'identitas' | 'lingkungan' | 'fisik', bidang: string, nilai: unknown) => {
+  const ubahData = useCallback((blok: string, bidang: string, nilai: unknown) => {
     ubah((i) => ({ ...i, data: { ...i.data, [blok]: { ...((i.data[blok] as Peta) ?? {}), [bidang]: nilai } } }));
+  }, [ubah]);
+
+  /** Satu bacaan naik/turun di satu titik: data.kinerja[id][titik][arah][urutan]. */
+  const ubahBacaan = useCallback((kid: string, titik: number, arah: 'naik' | 'turun', urutan: number, jumlah: number, nilai: number | null) => {
+    ubah((i) => {
+      const kin = { ...((i.data.kinerja as Peta) ?? {}) };
+      const blok = { ...(kin[kid] ?? {}) };
+      const baris = { ...(blok[String(titik)] ?? {}) };
+      const run: (number | null)[] = Array.from({ length: jumlah }, (_, j) => (typeof baris[arah]?.[j] === 'number' ? baris[arah][j] : null));
+      run[urutan] = nilai;
+      baris[arah] = run;
+      blok[String(titik)] = baris;
+      kin[kid] = blok;
+      return { ...i, data: { ...i.data, kinerja: kin } };
+    });
   }, [ubah]);
 
   const ubahTanggal = useCallback((v: string) => ubah((i) => ({ ...i, tanggal: v || null })), [ubah]);
@@ -459,7 +656,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
   const terakhirTersedia = !bagian[aktif + 1]?.tersedia;
   const kurangBagian = kurang.filter((k) => k.bagian === bagian[aktif].id);
   const idBagian: BagianId = bagian[aktif].id;
-  const sifat: BagianProps = { tpl, isi, kunci, kurang, ubahData };
+  const sifat: BagianProps = { tpl, isi, kunci, kurang, ubahData, ubahBacaan };
   const balik = lkk.jadwalId ? `/tera/rs/${encodeURIComponent(lkk.jadwalId)}` : '/tera/lkk';
 
   return (
@@ -499,9 +696,11 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
             )}
             {idBagian === 'lingkungan' && <BagianLingkungan {...sifat} keIdentitas={() => pindah(0)} />}
             {idBagian === 'fisik' && <BagianFisik {...sifat} />}
+            {idBagian === 'kinerja' && <BagianKinerja {...sifat} />}
+            {idBagian === 'kesimpulan' && <BagianKesimpulan {...sifat} keBagian={(id) => pindah(bagian.findIndex((b) => b.id === id))} />}
           </div>
           {terakhirTersedia && (
-            <p className="t-ket mt-4" role="status">Kinerja, Kesimpulan, dan Selesai dibuka di pembaruan berikutnya. Isian di atas sudah tersimpan.</p>
+            <p className="t-ket mt-4" role="status">Ringkasan & Selesai dibuka di pembaruan berikutnya. Semua isian sudah tersimpan di perangkat.</p>
           )}
           {kurangBagian.length > 0 && (
             <div className="t-kurang" role="status" aria-label="Yang masih kurang di bagian ini">

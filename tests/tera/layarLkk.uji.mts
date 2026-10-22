@@ -11,7 +11,7 @@ const akar = fileURLToPath(new URL('../../', import.meta.url));
 const ASAL = 'http://localhost:9994';
 const keluar = process.env.TERA_FOTO_DIR || '';
 
-const ikon = ['AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
+const ikon = ['AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','Minus','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
 const stubIkon = ikon.map((n) => `export const ${n} = (p) => React.createElement('svg', { 'data-ikon': '${n}', width: p.size || 24, height: p.size || 24, className: p.className, 'aria-hidden': 'true', viewBox: '0 0 24 24' }, React.createElement('circle', { cx: 12, cy: 12, r: 8 }));`).join('\n');
 const stubRouter = `
 import React from 'react';
@@ -145,7 +145,7 @@ let t = await teks(p);
 cek('header: nama alat, nomor stiker, nama RS', /Sphygmomanometer/.test(t) && /095\.0001/.test(t) && /RS Uji Solo/.test(t), t.slice(0, 200));
 cek('chip status "Sedang diisi" (ikon + tulisan)', /Sedang diisi/.test(t));
 cek('bilah kemajuan: "Bagian 1 dari 6 · Identitas alat"', /Bagian 1 dari 6 · Identitas alat/.test(t));
-cek('6 penanda bagian bisa diketuk; 3 terakhir "segera hadir" tidak bisa dibuka', await p.getByRole('button', { name: /^Bagian \d,/ }).count() === 6 && await p.getByRole('button', { name: /segera hadir/ }).count() === 3);
+cek('6 penanda bagian; hanya Ringkasan & Selesai "segera hadir"', await p.getByRole('button', { name: /^Bagian \d,/ }).count() === 6 && await p.getByRole('button', { name: /segera hadir/ }).count() === 1);
 cek('nama alat, tempat, teknisi tampil baca-saja (bukan kotak isian)', /Nama alat/.test(t) && /Tempat/.test(t) && /Teknisi Uji, A\.Md\./.test(t) && await p.locator('#iden-nama').count() === 0);
 cek('urutan kolom identitas = Master Input 1', await p.evaluate(() => ['iden-merek', 'iden-tipe', 'iden-noSeri', 'iden-rentangUkur'].every((x, i, a) => { const e = document.getElementById(x)!; const n = document.getElementById(a[i + 1] || ''); return !n || (e.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; })));
 cek('resolusi bawaan 2 mmHg terpilih & tersimpan', await p.getByRole('radio', { name: '2 mmHg' }).getAttribute('aria-checked') === 'true' && await dataTersimpan(p, id, (l) => l.data.identitas?.resolusi === 2));
@@ -226,7 +226,7 @@ cek('dibetulkan → merah hilang, bagian 2 lengkap', await tunggu(p, () => /Bagi
 // ---------- 5. Fisik & fungsi ----------
 await ke(p, 3);
 const baik = (n: string, sisi: string, nilai: string) => p.getByRole('radiogroup', { name: `${n} — ${sisi}` }).getByRole('radio', { name: nilai, exact: true });
-cek('3 item × (Fisik, Fungsi) = 6 pilihan Baik / Tidak Baik', await p.getByRole('radiogroup').count() === 6 && await p.getByRole('radio', { name: 'Baik', exact: true }).count() === 6);
+cek('3 item × (Fisik, Fungsi) + 5 butir lain = 11 pilihan Baik / Tidak Baik', await p.getByRole('radiogroup').count() === 11 && await p.getByRole('radio', { name: 'Baik', exact: true }).count() === 11);
 cek('tombol segmen ≥ 48 px', await p.evaluate(() => [...document.querySelectorAll('.t-segmen button')].every((b) => b.getBoundingClientRect().height >= 47.5)));
 for (const n of ['Badan dan Permukaan', 'Level Cairan', 'Tabung dan Selang']) { await baik(n, 'Fisik', 'Baik').click(); }
 await baik('Badan dan Permukaan', 'Fungsi', 'Baik').click();
@@ -235,16 +235,60 @@ cek('baru sebagian terisi → kurang menyebut item yang belum', /Tabung dan Sela
 await baik('Tabung dan Selang', 'Fungsi', 'Tidak Baik').click();
 cek('"Tidak Baik" terpilih: warna + ikon tanda seru + tulisan', await p.evaluate(() => { const b = document.querySelector('[role="radio"][aria-checked="true"][data-nada="tidak"]'); return !!b && !!b.querySelector('svg[data-ikon="AlertCircle"]') && /Tidak Baik/.test(b.textContent || ''); }));
 cek('fisik tersimpan dengan teks persis "Baik" / "Tidak Baik"', await dataTersimpan(p, id, (x) => x.data.fisik?.badan?.fisik === 'Baik' && x.data.fisik?.tabung_selang?.fungsi === 'Tidak Baik' && x.data.fisik?.level_cairan?.fungsi === 'Baik'));
+cek('butir lain ditampilkan terpisah, belum diisi → kurang menyebutnya', /Butir lain yang diperiksa/.test(await teks(p)) && /Manset \(bagus, bersih, tidak sobek\): pilih kondisi/.test(await teks(p)));
+for (const n of ['Gauge/indikator', 'Konektor', 'Label/plakat/stiker terbaca', 'Manset', 'Titik nol']) await p.getByRole('radiogroup', { name: n }).getByRole('radio', { name: 'Baik', exact: true }).click();
+cek('butir lain tersimpan sebagai teks persis "Baik"', await dataTersimpan(p, id, (x) => ['gauge', 'konektor', 'label', 'manset', 'titik_nol'].every((k) => x.data.fisikTambahan?.[k] === 'Baik')));
 cek('semua bagian 1–3 lengkap, tidak ada daftar kurang', await tunggu(p, () => document.querySelectorAll('.t-bagian-btn[data-lengkap="true"]').length === 3) && !/Belum lengkap di bagian ini/.test(await teks(p)));
-cek('di bagian terakhir yang tersedia: Lanjut tidak membuka bagian kosong, ada penjelasan', /dibuka di pembaruan berikutnya/.test(await teks(p)));
+await p.getByRole('button', { name: /Lanjut/ }).click();
+cek('Lanjut dari Fisik → Kinerja', /Bagian 4 dari 6 · Kinerja/.test(await teks(p)));
+
+// ---------- 5b. Kesimpulan sebelum Kinerja diisi ----------
+await ke(p, 5);
+t = await teks(p);
+cek('Kesimpulan belum lengkap: "Belum bisa ditentukan", TIDAK ada stiker Laik/Tidak Laik', /Belum bisa ditentukan/.test(t) && !/Tempel stiker/.test(t));
+cek('daftar kurang menyebut Kinerja + tombol "Ke Kinerja"', /Kebocoran Tekanan belum diisi/.test(t) && await p.getByRole('button', { name: /Ke Kinerja/ }).count() === 1);
+cek('penanda Kesimpulan TIDAK bercentang selama masih ada yang kurang', await p.evaluate(() => document.querySelector('.t-bagian-btn:nth-child(1)') !== null && !/Bagian 5, Kesimpulan, lengkap/.test(document.querySelector('.t-bagian-daftar')!.innerHTML)));
+await p.getByRole('button', { name: /Ke Kinerja/ }).click();
+cek('"Ke Kinerja" membuka bagian Kinerja', /Bagian 4 dari 6 · Kinerja/.test(await teks(p)));
+
+// ---------- 5c. Kinerja ----------
+t = await teks(p);
+cek('Kinerja: uji ambang + 6 titik tampil; 2 + 36 kotak angka', /Kebocoran Tekanan/.test(t) && /Laju Buang Cepat/.test(t) && /Titik 250 mmHg/.test(t) && await p.locator('.t-lkk-isi input').count() === 2 + 36, String(await p.locator('.t-lkk-isi input').count()));
+cek('batas tertulis: bocor ≤ 15 mmHg, laju buang ≤ 10 detik', /≤ 15 mmHg/.test(t) && /≤ 10 detik/.test(t));
+cek('kotak bacaan: font ≥ 16 px, tinggi ≥ 48 px, inputmode decimal', await p.evaluate(() => { const e = document.getElementById('kin-tekanan-50-naik-0') as HTMLInputElement; const c = getComputedStyle(e); return e.inputMode === 'decimal' && parseFloat(c.fontSize) >= 16 && e.getBoundingClientRect().height >= 47.5; }));
+await p.fill('#uji-bocor', '240');
+await p.fill('#uji-lajuBuang', '8');
+for (const tt of [0, 50, 100, 150, 200, 250]) for (const arah of ['naik', 'turun']) for (let i = 0; i < 3; i++) await p.fill(`#kin-tekanan-${tt}-${arah}-${i}`, String(tt));
+cek('bacaan tersimpan di data.kinerja[tekanan][titik][arah][urutan] sebagai angka', await dataTersimpan(p, id, (x) => x.data.kinerja?.tekanan?.['150']?.naik?.length === 3 && x.data.kinerja.tekanan['150'].naik.every((v: any) => v === 150) && x.data.kinerja.tekanan['250'].turun[2] === 250 && x.data.bocor?.bacaan === 240 && x.data.lajuBuang?.waktu === 8));
+cek('hasil tampil di belakang layar: selisih bocor 10 mmHg + chip LAIK; 12 chip titik; tidak ada "Belum diisi"', await tunggu(p, () => /10 mmHg/.test(document.body.innerText) && document.querySelectorAll('.t-vonis').length === 14 && !/Belum diisi/.test(document.body.innerText)), (await teks(p)).slice(0, 400));
+cek('chip memuat ikon + tulisan (bukan warna saja)', await p.evaluate(() => [...document.querySelectorAll('.t-vonis')].every((c) => !!c.querySelector('svg') && /LAIK/.test(c.textContent || ''))));
+cek('bagian Kinerja lengkap (centang)', await tunggu(p, () => /Bagian 4, Kinerja, lengkap/.test(document.querySelector('.t-bagian-daftar')!.innerHTML)));
+
+// ---------- 5d. Kesimpulan: LAIK PAKAI ----------
+await ke(p, 5);
+cek('semua lengkap → stiker LAIK PAKAI + petunjuk tempel stiker', await tunggu(p, () => document.querySelector('.t-stiker')?.getAttribute('data-v') === 'laik' && /Tempel stiker LAIK PAKAI pada alat ini/.test(document.body.innerText)), (await teks(p)).slice(0, 500));
+cek('stiker memuat ikon centang + tulisan; Kesimpulan bercentang', await p.evaluate(() => !!document.querySelector('.t-stiker svg') && /Bagian 5, Kesimpulan, lengkap/.test(document.querySelector('.t-bagian-daftar')!.innerHTML)));
+cek('jejak di perangkat: lengkap, kesimpulan Laik Pakai (sama dengan layar)', await dataTersimpan(p, id, (x) => x.results?.lengkap === true && x.results?.kesimpulan === 'Laik Pakai'));
+
+// ---------- 5e. Kesimpulan: TIDAK LAIK PAKAI ----------
+await ke(p, 4);
+await p.fill('#uji-bocor', '200');
+await p.fill('#uji-lajuBuang', '20');
+await ke(p, 5);
+cek('bocor 50 mmHg & laju buang 20 detik → TIDAK LAIK PAKAI + stiker TIDAK LAIK PAKAI', await tunggu(p, () => document.querySelector('.t-stiker')?.getAttribute('data-v') === 'tidak' && /Tempel stiker TIDAK LAIK PAKAI pada alat ini/.test(document.body.innerText)), (await teks(p)).slice(0, 500));
+t = await teks(p);
+cek('alasan menyebut nilai & batas (bocor 50 mmHg > ≤ 15; laju buang 20 > ≤ 10)', /Kebocoran Tekanan: 50 mmHg, batas ≤ 15 mmHg/.test(t) && /Laju Buang Cepat: 20 detik, batas ≤ 10 detik/.test(t), t.slice(0, 600));
+cek('ikon tanda seru + tulisan tebal pada TIDAK LAIK', await p.evaluate(() => !!document.querySelector('.t-stiker[data-v="tidak"] svg') && getComputedStyle(document.querySelector('.t-stiker-judul')!).fontWeight >= '600'));
+cek('jejak di perangkat ikut berubah: kesimpulan Tidak Laik Pakai', await dataTersimpan(p, id, (x) => x.results?.kesimpulan === 'Tidak Laik Pakai'));
+cek('di bagian terakhir yang tersedia: Lanjut tidak membuka bagian kosong, ada penjelasan', /Ringkasan & Selesai dibuka di pembaruan berikutnya/.test(await teks(p)));
 await p.getByRole('button', { name: /Lanjut/ }).click({ force: true });
-cek('menekan Lanjut di sana tetap di bagian Fisik', /Bagian 3 dari 6 · Fisik & fungsi/.test(await teks(p)));
+cek('menekan Lanjut di sana tetap di Kesimpulan', /Bagian 5 dari 6 · Kesimpulan/.test(await teks(p)));
 await p.getByRole('button', { name: /^Kembali$/ }).click();
-cek('Kembali → bagian Lingkungan; Lanjut → Fisik', /Bagian 2 dari 6/.test(await teks(p)));
+cek('Kembali → Kinerja', /Bagian 4 dari 6/.test(await teks(p)));
 l = await bacaLkk(p, id);
 cek('LKK masih draft & versi draft naik (tiap auto-save tercatat)', l.syncState === 'draft' && l.draftVersion > 5, JSON.stringify({ s: l.syncState, v: l.draftVersion }));
-cek('jejak hitung ikut tersimpan di perangkat (belum lengkap → kesimpulan null) & belum dikirim (clientVersion 0)',
-  !!l.results && (l.results as any).skema === 1 && (l.results as any).lengkap === false && (l.results as any).kesimpulan === null && l.clientVersion === 0, JSON.stringify(l.results)?.slice(0, 200));
+cek('jejak hitung ikut tersimpan di perangkat & belum dikirim (clientVersion 0)',
+  !!l.results && (l.results as any).skema === 1 && (l.results as any).lengkap === true && l.clientVersion === 0, JSON.stringify(l.results)?.slice(0, 200));
 
 // ---------- 6. Tanggal pelaksanaan diubah → alat standar expired ----------
 await ke(p, 1);
@@ -316,6 +360,16 @@ for (const [lebar, tinggi, gelap, nama] of [[320, 640, false, '320'], [390, 844,
   await ke(p, 3);
   cek(`${nama}: Fisik tanpa geser samping`, !(await geser(p)));
   if (keluar) await p.screenshot({ path: `${keluar}/lkk-fisik-${nama}.png` });
+  await ke(p, 4);
+  cek(`${nama}: Kinerja tanpa geser samping`, !(await geser(p)));
+  const kecilK = await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi button, .t-lkk-isi input')].filter((e) => e.getBoundingClientRect().height < 47.5 && e.getBoundingClientRect().width > 0).length);
+  cek(`${nama}: Kinerja — semua kotak ≥ 48 px`, kecilK === 0, String(kecilK));
+  const kolomBaca = await p.evaluate(() => getComputedStyle(document.querySelector('.t-baca-pasang')!).gridTemplateColumns.split(' ').length);
+  cek(`${nama}: naik & turun ${lebar >= 600 ? 'berdampingan (6 bacaan sebaris)' : 'bertumpuk'}`, kolomBaca === (lebar >= 600 ? 2 : 1), String(kolomBaca));
+  if (keluar) await p.screenshot({ path: `${keluar}/lkk-kinerja-${nama}.png` });
+  await ke(p, 5);
+  cek(`${nama}: Kesimpulan tanpa geser samping`, !(await geser(p)));
+  if (keluar) await p.screenshot({ path: `${keluar}/lkk-kesimpulan-${nama}.png` });
   await p.context().close();
 }
 

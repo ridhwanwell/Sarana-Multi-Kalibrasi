@@ -1,4 +1,4 @@
-// Uji ATURAN ISIAN LKK bagian 1–3 (Tahap 4.3c, PRD-AISTUDIO A1). Jalankan: npm run test:tera:isian
+// Uji ATURAN ISIAN LKK bagian 1–5 (Tahap 4.3c + 4.3d-2, PRD-AISTUDIO A1). Jalankan: npm run test:tera:isian
 import { TEMPLATE_SPHYGMOMANOMETER as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
 import {
   BIDANG_IDENTITAS_BAWAAN, STANDAR_BAWAAN, bagianLengkap, batasLingkungan, bidangIdentitas, daftarBagian, daftarStandar,
@@ -12,7 +12,7 @@ const cek = (n: string, ok: boolean, d = '') => { ok ? lulus++ : gagal++; if (!o
 {
   const b = daftarBagian(T);
   cek('6 bagian: Identitas → Lingkungan → Fisik → Kinerja → Kesimpulan → Ringkasan', b.map((x) => x.id).join() === 'identitas,lingkungan,fisik,kinerja,kesimpulan,ringkasan', b.map((x) => x.id).join());
-  cek('3 bagian pertama tersedia, 3 sisanya menyusul', b.slice(0, 3).every((x) => x.tersedia) && b.slice(3).every((x) => !x.tersedia));
+  cek('5 bagian pertama tersedia (…Kinerja, Kesimpulan), Ringkasan menyusul', b.slice(0, 5).every((x) => x.tersedia) && !b[5].tersedia);
   const wajib = daftarBagian({ keselamatan_listrik: 'wajib' });
   cek('keselamatan listrik hanya bila template meminta (setelah Fisik)', wajib.map((x) => x.id).join() === 'identitas,lingkungan,fisik,keselamatan,kinerja,kesimpulan,ringkasan');
 }
@@ -64,6 +64,9 @@ const penuh = () => ({
     identitas: { merek: 'ABN', tipe: 'ABN-1', noSeri: '123', rentangUkur: 300, resolusi: 2, jenisSkala: 'Analog', tanggalPenerimaan: '2026-10-19', ruang: 'KIA' },
     lingkungan: { suhuAwal: 27.7, suhuAkhir: 27, rhAwal: 56, rhAkhir: 59 },
     fisik: { badan: { fisik: 'Baik', fungsi: 'Baik' }, level_cairan: { fisik: 'Baik', fungsi: 'Baik' }, tabung_selang: { fisik: 'Baik', fungsi: 'Tidak Baik' } },
+    fisikTambahan: { gauge: 'Baik', konektor: 'Baik', label: 'Baik', manset: 'Baik', titik_nol: 'Baik' },
+    bocor: { bacaan: 240 }, lajuBuang: { waktu: 8 },
+    kinerja: { tekanan: Object.fromEntries([0, 50, 100, 150, 200, 250].map((t) => [String(t), { naik: [t, t, t], turun: [t, t, t] }])) },
   } as any,
   tanggal: '2026-10-20',
   snapshot: {
@@ -77,7 +80,8 @@ const penuh = () => ({
   const k0 = periksaIsian(T, { data: {}, tanggal: null, snapshot: null });
   cek('LKK kosong → semua bagian 1–3 punya kekurangan', ['identitas', 'lingkungan', 'fisik'].every((b) => !bagianLengkap(k0, b as any)));
   cek('LKK kosong: 8 identitas − resolusi/skala dihitung + tanggal + 3 alat standar', k0.filter((k) => k.bagian === 'identitas').length === 8 + 1 + 3, String(k0.filter((k) => k.bagian === 'identitas').length));
-  cek('LKK kosong: 4 isian lingkungan, 3 item fisik', k0.filter((k) => k.bagian === 'lingkungan').length === 4 && k0.filter((k) => k.bagian === 'fisik').length === 3);
+  cek('LKK kosong: 4 isian lingkungan, 3 item fisik + 5 butir lain', k0.filter((k) => k.bagian === 'lingkungan').length === 4 && k0.filter((k) => k.bagian === 'fisik').length === 3 + 5);
+  cek('LKK kosong: kinerja = 2 uji ambang + 6 titik', k0.filter((k) => k.bagian === 'kinerja').length === 2 + 6, String(k0.filter((k) => k.bagian === 'kinerja').length));
   cek('kekurangan kosong bukan "merah"', k0.every((k) => !k.merah));
 }
 {
@@ -115,6 +119,24 @@ const penuh = () => ({
   cek('rentang ukur 0 ditolak', periksaIsian(T, i4).some((x) => /lebih dari 0/.test(x.teks)));
   const i5 = penuh(); i5.data.identitas.merek = '   ';
   cek('teks hanya spasi dianggap kosong', periksaIsian(T, i5).some((x) => /Merek belum diisi/.test(x.teks)));
+}
+// ── Fisik butir lain & Kinerja
+{
+  const i = penuh(); delete i.data.fisikTambahan.manset;
+  const k = periksaIsian(T, i);
+  cek('butir fisik lain belum dipilih → kurang di Fisik', k.length === 1 && k[0].bagian === 'fisik' && /Manset/.test(k[0].teks), JSON.stringify(k));
+  const i2 = penuh(); i2.data.fisikTambahan.gauge = 'baik';
+  cek('butir fisik lain: teks bukan pilihan template ditolak', periksaIsian(T, i2).length === 1);
+  const i3 = penuh(); delete i3.data.bocor;
+  cek('bocor belum diisi → kurang di Kinerja', (() => { const k = periksaIsian(T, i3); return k.length === 1 && k[0].bagian === 'kinerja' && /Kebocoran/.test(k[0].teks); })());
+  const i4 = penuh(); i4.data.lajuBuang = { waktu: null };
+  cek('laju buang kosong → kurang di Kinerja', periksaIsian(T, i4).some((x) => x.bagian === 'kinerja' && /Laju Buang/.test(x.teks)));
+  const i5 = penuh(); i5.data.kinerja.tekanan['100'].turun = [100, null, 100];
+  cek('satu bacaan turun kosong → titik itu kurang (satu pesan)', (() => { const k = periksaIsian(T, i5); return k.length === 1 && /titik 100/.test(k[0].teks) && /turun/.test(k[0].teks) && !/naik/.test(k[0].teks); })());
+  const i6 = penuh(); i6.data.kinerja.tekanan['50'].naik = [50, 50];
+  cek('bacaan kurang dari jumlah pengulangan → kurang', periksaIsian(T, i6).length === 1);
+  const i7 = penuh(); i7.data.kinerja = 'x';
+  cek('data kinerja rusak tidak crash, semua titik kurang', periksaIsian(T, i7).filter((x) => x.bagian === 'kinerja').length === 6);
 }
 // ── Data rusak tidak membuat crash
 cek('data null / angka / larik tidak melempar galat', (() => {
