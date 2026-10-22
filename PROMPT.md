@@ -242,3 +242,8 @@ Aku isi LKK [alat] di Tera SMK dengan data dari golden file [nama file]. Hasil d
 ```
 oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 ```
+
+### Perubahan kecil 22 Okt ±20.55 — migrasi 0009 (pulihkan jadwal uji BO 999)
+- Dijalankan di produksi setelah "lanjutkan": jadwal SCH-UJI-TERA-999 dan Push-nya aktif lagi (CEK 3/3 benar). Backup: backup.b20261022_jadwal_uji_999 dan backup.b20261022_tera_push_uji_999. Teknisi = ridhwan@tera.smk.
+- Hanya untuk uji LKK Sphygmomanometer (BO 999, is_test). Timbangan Bayi Digital di jadwal uji belum punya template.
+- Migrasi kalibrator termohigrometer/stopwatch bergeser ke nomor 0010.
