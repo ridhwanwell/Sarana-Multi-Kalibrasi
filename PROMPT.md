@@ -260,3 +260,9 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Uji: periksaServer 13 lulus (termasuk template DB v2 = template tablet).
 - KEPUTUSAN RIDHWAN 22 Okt: layar Penyelia (Selia) dibuat di halaman Selia/dashboard Manajemen Aset (/admin), BUKAN di Tera SMK.
 - Langkah berikutnya: 4.4b-1 server/ API Selia (daftar LKK + penanda + detail, kembalikan, ACC); 4.4b-2 layar Selia di Manajemen Aset. Migrasi kalibrator termohigrometer/stopwatch = 0011.
+
+### Hasil 4.4b-1 (22 Okt ±21.25) — API Selia (baca saja)
+- src/server/teraSeliaRoutes.ts: GET /api/tera/selia/lkk (daftar, filter status/bo, + ringkasan pemeriksaan server) dan GET /api/tera/selia/lkk/:id (isian, jejak hitung, snapshot, template, pemeriksaan). Hanya admin_teknik & admin_utama. Tanpa tulis. Didaftarkan di app.ts (3 baris).
+- Pemeriksaan hanya dianggap berlaku bila client_version-nya sama dengan versi LKK; null = belum diperiksa = belum boleh ACC.
+- KEPUTUSAN RIDHWAN 22 Okt: layar Selia = SATU HALAMAN panjang dari atas ke bawah (scroll), TIDAK memilih halaman/bagian satu-satu seperti di Tera. Letaknya di Selia dashboard Manajemen Aset.
+- Langkah berikutnya: 4.4b-2 aksi Kembalikan & ACC (perlu migrasi 0011: tabel riwayat tera_lkk_riwayat + fungsi ubah status — dijelaskan dulu, tunggu "lanjutkan"), lalu 4.4b-3 layar Selia satu halaman. Migrasi kalibrator termohigrometer/stopwatch = 0012.
