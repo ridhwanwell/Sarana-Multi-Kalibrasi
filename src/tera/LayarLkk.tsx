@@ -1,0 +1,595 @@
+/**
+ * Tera SMK — layar isi LKK, bagian 1–3 (Tahap 4.3c, PRD-AISTUDIO A1 · CLAUDE.md 5, 9.3, 9.4, 13).
+ *
+ * Perumpamaan: lembar kerja kalibrasi di tangan teknisi. Setiap isian LANGSUNG ditulis ke buku di perangkat
+ * (auto-save ≤ 400 ms + saat kotak ditinggalkan, pindah bagian, aplikasi disembunyikan/ditutup), jadi muat
+ * ulang halaman atau HP mati tidak menghilangkan isian. Tiga "fotokopi sertifikat" alat standar dijepret ke
+ * LKK saat dipilih (snapshot), sehingga hitungan tidak berubah walau master kalibrator nanti diperbarui.
+ *
+ * Bagian: Identitas alat (+ pilih alat standar) → Kondisi lingkungan → Fisik & fungsi.
+ * Kinerja, Kesimpulan, Ringkasan & Selesai dibuka di langkah berikutnya (4.3d).
+ *
+ * Tidak ada rumus di komponen: hitungan lingkungan ada di shared/lingkungan.ts, aturan kelengkapan di shared/isian.ts.
+ * UI: ui-ux-pro-max (label di atas kotak, galat di bawah kotak saat pindah kotak, ≥ 48 px, inputmode, safe area,
+ * status bukan warna saja, reduced-motion) + break-ui (teks panjang, huruf besar, data kosong/rusak).
+ */
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
+import { useSinkron } from './SinkronKonteks';
+import { ChipSync, KeadaanKosong } from './TeraKerangka';
+import { ambilLkk, bolehDiubah, simpanIsian, type LkkLokal } from './data/teraDb';
+import { buatSnapshot, daftarKalibrator, templateVersi, type KalibratorLokal } from './data/masterLokal';
+import type { TemplateAlat } from './shared/hitung';
+import {
+  bagianLengkap, batasLingkungan, bidangIdentitas, daftarBagian, daftarStandar, jepretStandar, periksaIsian,
+  statusBerlaku, statusSnapshot, susunPilihan, tabelRh, tabelSuhu,
+  type BagianId, type DefStandar, type IsiKerja, type Kurang, type PilihanStandar,
+} from './shared/isian';
+import { diLuarBatas, formatAngka, hitungLingkungan, uraiKetikan } from './shared/lingkungan';
+
+type Peta = Record<string, any>;
+
+/* ---------- Pembantu tampilan ---------- */
+
+const tglPanjang = (v: string | null | undefined): string => {
+  if (!v || !/^\d{4}-\d{2}-\d{2}/.test(v)) return '-';
+  try {
+    return new Date(v.slice(0, 10) + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  } catch { return '-'; }
+};
+
+const jamLokal = (d: Date): string => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+const Galat: React.FC<{ id: string; pesan: string | null | undefined }> = ({ id, pesan }) =>
+  pesan ? (
+    <p id={id} className="t-pesan-error">
+      <AlertCircle size={16} aria-hidden="true" className="mt-px shrink-0" />
+      <span>{pesan}</span>
+    </p>
+  ) : null;
+
+interface KotakTeksProps {
+  id: string; label: string; nilai: string; onUbah: (v: string) => void; kunci: boolean;
+  type?: 'text' | 'date'; maksPanjang?: number; bantuan?: string;
+}
+
+/** Kotak teks/tanggal: label selalu di atas, font 16 px, tinggi ≥ 48 px. */
+const KotakTeks: React.FC<KotakTeksProps> = ({ id, label, nilai, onUbah, kunci, type = 'text', maksPanjang, bantuan }) => (
+  <div className="t-isian">
+    <label htmlFor={id} className="t-label">{label}</label>
+    <div className="t-kotak" data-kunci={kunci ? 'true' : undefined}>
+      <input
+        id={id} type={type} value={nilai} readOnly={kunci} maxLength={maksPanjang}
+        autoComplete="off" autoCorrect="off" spellCheck={false}
+        aria-describedby={bantuan ? `${id}-ket` : undefined}
+        onChange={(e) => onUbah(e.target.value)}
+      />
+    </div>
+    {bantuan && <p id={`${id}-ket`} className="t-ket mt-1">{bantuan}</p>}
+  </div>
+);
+
+interface KotakAngkaProps {
+  id: string; label: string; nilai: number | null; onNilai: (n: number | null) => void; kunci: boolean;
+  satuan?: string; batas?: { min: number; maks: number }; pesanBatas?: string; sudahDiisi?: boolean;
+}
+
+/**
+ * Kotak angka berkoma Indonesia. Teks yang diketik disimpan terpisah dari angkanya, jadi "27," tidak
+ * hilang di tengah ketikan. Galat batas muncul SETELAH kotak ditinggalkan (bukan saat "2" menuju "27").
+ */
+const KotakAngka: React.FC<KotakAngkaProps> = ({ id, label, nilai, onNilai, kunci, satuan, batas, pesanBatas }) => {
+  const [teks, setTeks] = useState(() => formatAngka(nilai));
+  const [disentuh, setDisentuh] = useState(nilai !== null);
+  const di_luar = batas ? diLuarBatas(nilai, batas) : false;
+  const galat = disentuh && di_luar ? pesanBatas || 'Angka di luar batas.' : null;
+  return (
+    <div className="t-isian">
+      <label htmlFor={id} className="t-label">{label}</label>
+      <div className="t-kotak" data-error={galat ? 'true' : undefined} data-kunci={kunci ? 'true' : undefined}>
+        <input
+          id={id} type="text" inputMode="decimal" autoComplete="off" readOnly={kunci}
+          className="tabular" value={teks} aria-invalid={galat ? true : undefined}
+          aria-describedby={galat ? `${id}-galat` : undefined}
+          onChange={(e) => { const u = uraiKetikan(e.target.value); setTeks(u.bersih); setDisentuh(false); onNilai(u.nilai); }}
+          onBlur={() => { setDisentuh(true); setTeks(formatAngka(nilai)); }}
+        />
+        {satuan && <span className="t-akhiran" aria-hidden="true">{satuan}</span>}
+      </div>
+      <Galat id={`${id}-galat`} pesan={galat} />
+    </div>
+  );
+};
+
+interface OpsiSegmen { nilai: string | number; label: string; nada?: 'baik' | 'tidak' }
+
+/** Tombol segmen (≥ 48 px) — pengganti dropdown kecil. Terpilih = warna + centang + tulisan. */
+const Segmen: React.FC<{ label: string; opsi: OpsiSegmen[]; nilai: unknown; onPilih: (v: string | number) => void; kunci: boolean }> = ({ label, opsi, nilai, onPilih, kunci }) => (
+  <div role="radiogroup" aria-label={label} className="t-segmen" style={{ gridTemplateColumns: `repeat(${opsi.length}, minmax(0, 1fr))` }}>
+    {opsi.map((o) => {
+      const dipilih = nilai === o.nilai;
+      return (
+        <button
+          key={String(o.nilai)} type="button" role="radio" aria-checked={dipilih} aria-disabled={kunci || undefined}
+          data-nada={o.nada} onClick={() => { if (!kunci) onPilih(o.nilai); }}
+        >
+          {dipilih && (o.nada === 'tidak' ? <AlertCircle size={18} aria-hidden="true" /> : <Check size={18} aria-hidden="true" />)}
+          <span>{o.label}</span>
+        </button>
+      );
+    })}
+  </div>
+);
+
+/* ---------- Pilih alat standar ---------- */
+
+const RingkasStatus: React.FC<{ status: ReturnType<typeof statusBerlaku>; berlakuSampai: string | null }> = ({ status, berlakuSampai }) => {
+  if (status === 'expired') return <span className="t-opsi-status" data-jenis="expired"><AlertCircle size={14} aria-hidden="true" />Expired — berlaku sampai {tglPanjang(berlakuSampai)}</span>;
+  if (status === 'berlaku') return <span className="t-opsi-status" data-jenis="berlaku"><Check size={14} aria-hidden="true" />Berlaku sampai {tglPanjang(berlakuSampai)}</span>;
+  return <span className="t-opsi-status" data-jenis="belum"><Info size={14} aria-hidden="true" />Belum ada tanggal sertifikat (boleh dipakai)</span>;
+};
+
+interface KartuStandarProps {
+  def: DefStandar; pilihan: PilihanStandar<KalibratorLokal>[]; snap: Peta | null; tanggal: string | null;
+  kunci: boolean; onPilih: (p: PilihanStandar<KalibratorLokal>) => void;
+}
+
+const KartuStandar: React.FC<KartuStandarProps> = ({ def, pilihan, snap, tanggal, kunci, onPilih }) => {
+  const idJudul = `std-${def.peran}`;
+  const statusDipilih = statusSnapshot(snap, tanggal);
+  return (
+    <section className="t-kartu t-standar" aria-labelledby={idJudul}>
+      <h3 id={idJudul} className="t-judul-kecil">
+        {def.judul}{def.wajib ? <span className="t-ket"> · wajib</span> : null}
+      </h3>
+      {snap && statusDipilih === 'expired' && (
+        <p className="t-peringatan" role="alert">
+          <AlertCircle size={20} aria-hidden="true" className="shrink-0" />
+          <span>Alat yang dipilih expired pada tanggal pelaksanaan. Pilih alat lain, atau betulkan tanggal pelaksanaan. LKK belum bisa diselesaikan.</span>
+        </p>
+      )}
+      {pilihan.length === 0 ? (
+        <p className="t-ket mt-2" role="status">Data {def.judul.toLowerCase()} belum ada di aplikasi. Hubungi Developer.</p>
+      ) : (
+        <div role="radiogroup" aria-labelledby={idJudul} className="t-opsi-daftar">
+          {pilihan.map((p) => {
+            const st = statusBerlaku(p.berlakuSampai, tanggal);
+            const dipilih = snap?.asetId === p.kunci;
+            const mati = kunci || (st === 'expired' && !dipilih) || !p.lengkap;
+            const rincian = [[p.merk, p.model].filter(Boolean).join(' '), p.nomorSeri ? `S/N ${p.nomorSeri}` : ''].filter(Boolean).join(' · ');
+            return (
+              <button
+                key={p.kunci} type="button" role="radio" className="t-opsi"
+                aria-checked={dipilih} aria-disabled={mati || undefined} data-mati={mati ? 'true' : undefined}
+                onClick={() => { if (!mati && !dipilih) onPilih(p); }}
+              >
+                <span className="t-opsi-tanda" aria-hidden="true">{dipilih ? <Check size={16} /> : null}</span>
+                <span className="t-opsi-isi">
+                  <span className="t-opsi-nama">
+                    {p.nama}
+                    {p.rekomendasi && <span className="t-rekomendasi">Rekomendasi</span>}
+                  </span>
+                  {rincian && <span className="t-ket">{rincian}</span>}
+                  {p.nomorSertifikat && <span className="t-ket tabular">Sertifikat {p.nomorSertifikat}</span>}
+                  <RingkasStatus status={st} berlakuSampai={p.berlakuSampai} />
+                  {!p.lengkap && <span className="t-ket">Data sertifikat belum lengkap, belum bisa dipilih.</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+};
+
+/* ---------- Bagian 1: Identitas ---------- */
+
+interface BagianProps {
+  tpl: TemplateAlat; isi: IsiKerja; kunci: boolean; kurang: Kurang[];
+  ubahData: (kunci: 'identitas' | 'lingkungan' | 'fisik', bidang: string, nilai: unknown) => void;
+}
+
+const BagianIdentitas: React.FC<BagianProps & {
+  namaRs: string; teknisi: string; kalibrator: KalibratorLokal[];
+  ubahTanggal: (v: string) => void; pilihStandar: (def: DefStandar, p: PilihanStandar<KalibratorLokal>) => void;
+}> = ({ tpl, isi, kunci, namaRs, teknisi, kalibrator, ubahTanggal, ubahData, pilihStandar }) => {
+  const iden = (isi.data.identitas ?? {}) as Peta;
+  const standar = useMemo(() => daftarStandar(tpl), [tpl]);
+  return (
+    <>
+      <div className="t-isian-grid">
+        <div className="t-isian"><span className="t-label">Nama alat</span><p className="t-baca">{tpl.nama}</p></div>
+        <div className="t-isian"><span className="t-label">Tempat</span><p className="t-baca">{namaRs}</p></div>
+        <div className="t-isian"><span className="t-label">Teknisi</span><p className="t-baca">{teknisi}</p></div>
+        {bidangIdentitas(tpl).map((b) => {
+          const id = `iden-${b.id}`;
+          if (b.jenis === 'teks') return <KotakTeks key={b.id} id={id} label={b.label} nilai={String(iden[b.id] ?? '')} kunci={kunci} maksPanjang={b.maksPanjang} onUbah={(v) => ubahData('identitas', b.id, v)} />;
+          if (b.jenis === 'tanggal') return <KotakTeks key={b.id} id={id} label={b.label} type="date" nilai={String(iden[b.id] ?? '')} kunci={kunci} onUbah={(v) => ubahData('identitas', b.id, v)} />;
+          if (b.jenis === 'angka') return <KotakAngka key={b.id} id={id} label={b.label} satuan={b.satuan} nilai={typeof iden[b.id] === 'number' ? iden[b.id] : null} kunci={kunci} onNilai={(n) => ubahData('identitas', b.id, n)} />;
+          if (b.jenis === 'resolusi') {
+            return (
+              <div key={b.id} className="t-isian">
+                <span className="t-label" id={`${id}-l`}>{b.label}</span>
+                <Segmen label={b.label} kunci={kunci} nilai={iden[b.id]} onPilih={(v) => ubahData('identitas', b.id, v)}
+                  opsi={tpl.identitas.resolusi.pilihan.map((n) => ({ nilai: n, label: `${formatAngka(n)} ${tpl.identitas.resolusi.satuan}` }))} />
+              </div>
+            );
+          }
+          return (
+            <div key={b.id} className="t-isian">
+              <span className="t-label" id={`${id}-l`}>{b.label}</span>
+              <Segmen label={b.label} kunci={kunci} nilai={iden[b.id]} onPilih={(v) => ubahData('identitas', b.id, v)}
+                opsi={tpl.identitas.jenisSkala.map((s) => ({ nilai: s, label: s }))} />
+            </div>
+          );
+        })}
+        <KotakTeks id="iden-tanggal-pelaksanaan" label="Tanggal pelaksanaan" type="date" nilai={isi.tanggal ?? ''} kunci={kunci} onUbah={ubahTanggal}
+          bantuan="Dipakai untuk memeriksa masa berlaku alat standar." />
+      </div>
+
+      <h3 className="t-judul-bagian mt-6">Alat standar yang dipakai</h3>
+      <p className="t-ket mt-1">Pilih alat yang benar-benar dipakai. Salinan sertifikatnya disimpan di LKK ini.</p>
+      <div className="t-standar-daftar mt-3">
+        {standar.map((d) => (
+          <KartuStandar
+            key={d.peran} def={d} kunci={kunci} tanggal={isi.tanggal} snap={(isi.snapshot?.[d.peran] as Peta) ?? null}
+            pilihan={susunPilihan(d, kalibrator)} onPilih={(p) => pilihStandar(d, p)}
+          />
+        ))}
+      </div>
+    </>
+  );
+};
+
+/* ---------- Bagian 2: Lingkungan ---------- */
+
+const HasilKoreksi: React.FC<{ judul: string; teks: string | null; ket: string }> = ({ judul, teks, ket }) => (
+  <div className="t-hasil" role="status">
+    <p className="t-ket">{judul}</p>
+    <p className="t-hasil-angka tabular">{teks ?? '-'}</p>
+    <p className="t-ket">{ket}</p>
+  </div>
+);
+
+const BagianLingkungan: React.FC<BagianProps & { keIdentitas: () => void }> = ({ tpl, isi, kunci, ubahData, keIdentitas }) => {
+  const ling = (isi.data.lingkungan ?? {}) as Peta;
+  const batas = batasLingkungan(tpl);
+  const snap = (isi.snapshot?.termohigrometer as Peta) ?? null;
+  const angka = (k: string) => (typeof ling[k] === 'number' ? (ling[k] as number) : null);
+  const suhu = useMemo(() => hitungLingkungan(tabelSuhu(snap), ling.suhuAwal, ling.suhuAkhir, 1), [snap, ling.suhuAwal, ling.suhuAkhir]);
+  const rh = useMemo(() => hitungLingkungan(tabelRh(snap), ling.rhAwal, ling.rhAkhir, 0), [snap, ling.rhAwal, ling.rhAkhir]);
+  const adaIsian = (a: unknown, b: unknown) => typeof a === 'number' && typeof b === 'number';
+  const ket = (hasil: unknown, a: unknown, b: unknown) =>
+    !snap ? 'Pilih termohigrometer di bagian Identitas.'
+      : !adaIsian(a, b) ? 'Isi bacaan awal dan akhir.'
+        : hasil ? `Dikoreksi dengan sertifikat ${snap.nama || 'termohigrometer'}.` : 'Data sertifikat termohigrometer kurang.';
+  const pesan = (n: string, b: { min: number; maks: number }, s: string) => `Di luar batas ${b.min}–${b.maks} ${s}. Periksa angkanya. Bila benar, ruangan belum layak untuk kalibrasi.`;
+  return (
+    <>
+      <p className="t-ket">Baca termohigrometer di ruangan, sebelum dan sesudah kalibrasi. Batas ruang: suhu {batas.suhu.min}–{batas.suhu.maks} °C, kelembaban {batas.rh.min}–{batas.rh.maks} %RH.</p>
+      {!snap && !kunci && (
+        <p className="t-info mt-3" role="status">
+          <Info size={20} aria-hidden="true" className="shrink-0" />
+          <span>Nilai terkoreksi muncul setelah termohigrometer dipilih. <button type="button" className="t-tautan" onClick={keIdentitas}>Pilih sekarang</button></span>
+        </p>
+      )}
+      <div className="t-isian-grid mt-4">
+        <section className="t-kartu" aria-label="Suhu ruangan">
+          <h3 className="t-judul-kecil">Suhu ruangan</h3>
+          <div className="t-isian-grid mt-2">
+            <KotakAngka id="ling-suhu-awal" label="Awal" satuan="°C" nilai={angka('suhuAwal')} kunci={kunci} batas={batas.suhu} pesanBatas={pesan('Suhu', batas.suhu, '°C')} onNilai={(n) => ubahData('lingkungan', 'suhuAwal', n)} />
+            <KotakAngka id="ling-suhu-akhir" label="Akhir" satuan="°C" nilai={angka('suhuAkhir')} kunci={kunci} batas={batas.suhu} pesanBatas={pesan('Suhu', batas.suhu, '°C')} onNilai={(n) => ubahData('lingkungan', 'suhuAkhir', n)} />
+          </div>
+          <HasilKoreksi judul="Suhu terkoreksi" ket={ket(suhu, ling.suhuAwal, ling.suhuAkhir)}
+            teks={suhu ? `( ${suhu.terkoreksi.toFixed(1).replace('.', ',')} ± ${formatAngka(suhu.u95)} ) °C` : null} />
+        </section>
+        <section className="t-kartu" aria-label="Kelembaban ruangan">
+          <h3 className="t-judul-kecil">Kelembaban</h3>
+          <div className="t-isian-grid mt-2">
+            <KotakAngka id="ling-rh-awal" label="Awal" satuan="%RH" nilai={angka('rhAwal')} kunci={kunci} batas={batas.rh} pesanBatas={pesan('Kelembaban', batas.rh, '%RH')} onNilai={(n) => ubahData('lingkungan', 'rhAwal', n)} />
+            <KotakAngka id="ling-rh-akhir" label="Akhir" satuan="%RH" nilai={angka('rhAkhir')} kunci={kunci} batas={batas.rh} pesanBatas={pesan('Kelembaban', batas.rh, '%RH')} onNilai={(n) => ubahData('lingkungan', 'rhAkhir', n)} />
+          </div>
+          <HasilKoreksi judul="Kelembaban terkoreksi" ket={ket(rh, ling.rhAwal, ling.rhAkhir)}
+            teks={rh ? `( ${rh.terkoreksi.toFixed(0)} ± ${formatAngka(rh.u95)} ) %RH` : null} />
+        </section>
+      </div>
+    </>
+  );
+};
+
+/* ---------- Bagian 3: Fisik & fungsi ---------- */
+
+const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
+  const fisik = (isi.data.fisik ?? {}) as Peta;
+  const [baik, tidak] = tpl.pilihanFisik;
+  const opsi: OpsiSegmen[] = [{ nilai: baik, label: baik, nada: 'baik' }, { nilai: tidak, label: tidak, nada: 'tidak' }];
+  const simpan = (id: string, sisi: 'fisik' | 'fungsi', v: unknown) => ubahData('fisik', id, { ...(fisik[id] ?? {}), [sisi]: v });
+  return (
+    <>
+      <p className="t-ket">Periksa tiap bagian alat: kondisi fisiknya dan cara kerjanya.</p>
+      <ul className="t-fisik-daftar mt-3">
+        {tpl.fisik.map((f) => (
+          <li key={f.id} className="t-kartu">
+            <h3 className="t-judul-kecil">{f.judul}</h3>
+            <div className="t-isian-grid mt-2">
+              <div className="t-isian"><span className="t-label">Fisik</span>
+                <Segmen label={`${f.judul} — Fisik`} opsi={opsi} nilai={fisik[f.id]?.fisik} kunci={kunci} onPilih={(v) => simpan(f.id, 'fisik', v)} /></div>
+              <div className="t-isian"><span className="t-label">Fungsi</span>
+                <Segmen label={`${f.judul} — Fungsi`} opsi={opsi} nilai={fisik[f.id]?.fungsi} kunci={kunci} onPilih={(v) => simpan(f.id, 'fungsi', v)} /></div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+};
+
+/* ---------- Daftar bagian & kemajuan ---------- */
+
+const DaftarBagian: React.FC<{
+  bagian: ReturnType<typeof daftarBagian>; aktif: number; kurang: Kurang[]; onPilih: (i: number) => void;
+}> = ({ bagian, aktif, kurang, onPilih }) => (
+  <nav className="t-bagian" aria-label="Bagian LKK">
+    <p className="t-bagian-label" aria-live="polite">Bagian {aktif + 1} dari {bagian.length} · {bagian[aktif]?.nama}</p>
+    <ol className="t-bagian-daftar">
+      {bagian.map((b, i) => {
+        const lengkap = b.tersedia && bagianLengkap(kurang, b.id);
+        const adaMerah = kurang.some((k) => k.bagian === b.id && k.merah);
+        return (
+          <li key={b.id}>
+            <button
+              type="button" className="t-bagian-btn" aria-current={i === aktif ? 'step' : undefined}
+              aria-disabled={!b.tersedia || undefined} data-aktif={i === aktif} data-lengkap={lengkap} data-merah={adaMerah || undefined}
+              aria-label={`Bagian ${i + 1}, ${b.nama}${lengkap ? ', lengkap' : ''}${adaMerah ? ', ada yang perlu diperbaiki' : ''}${b.tersedia ? '' : ', segera hadir'}`}
+              onClick={() => { if (b.tersedia) onPilih(i); }}
+            >
+              <span className="t-bagian-nomor" aria-hidden="true">
+                {adaMerah ? <AlertCircle size={16} /> : lengkap ? <Check size={16} /> : i + 1}
+              </span>
+              <span className="t-bagian-nama">{b.nama}{b.tersedia ? '' : <span className="t-ket"> · segera</span>}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  </nav>
+);
+
+/* ---------- Formulir ---------- */
+
+interface FormulirProps { lkk: LkkLokal; tpl: TemplateAlat; kalibrator: KalibratorLokal[]; namaRs: string; teknisi: string }
+type Simpan = { k: 'diam' } | { k: 'menyimpan' } | { k: 'tersimpan'; waktu: Date } | { k: 'galat'; pesan: string };
+
+const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, teknisi }) => {
+  const kunci = !bolehDiubah(lkk);
+  const bagian = useMemo(() => daftarBagian(tpl), [tpl]);
+  const [aktif, setAktif] = useState(0);
+  const [isi, setIsi] = useState<IsiKerja>(() => ({ data: (lkk.data ?? {}) as Peta, tanggal: lkk.tanggalKalibrasi, snapshot: (lkk.calibratorSnapshot ?? null) as Peta | null }));
+  const [simpan, setSimpan] = useState<Simpan>({ k: 'diam' });
+  const isiRef = useRef(isi);
+  const kotor = useRef(false);
+  const jam = useRef<number | null>(null);
+  const antrean = useRef<Promise<void>>(Promise.resolve());
+  const judulRef = useRef<HTMLHeadingElement>(null);
+
+  /* Auto-save: tulis SEMUA isian terbaru; ditumpuk berurutan agar tidak saling menimpa. */
+  const simpanSekarang = useCallback((): Promise<void> => {
+    if (jam.current !== null) { window.clearTimeout(jam.current); jam.current = null; }
+    if (kunci || !kotor.current) return antrean.current;
+    kotor.current = false;
+    const s = isiRef.current;
+    setSimpan({ k: 'menyimpan' });
+    antrean.current = antrean.current
+      .then(() => simpanIsian(lkk.id, { data: s.data, tanggalKalibrasi: s.tanggal, calibratorSnapshot: s.snapshot }))
+      .then(() => { setSimpan({ k: 'tersimpan', waktu: new Date() }); })
+      .catch((e: any) => {
+        kotor.current = true;       // dicoba lagi pada pemicu berikutnya
+        setSimpan({ k: 'galat', pesan: String(e?.message || 'Isian belum tersimpan di perangkat.') });
+      });
+    return antrean.current;
+  }, [kunci, lkk.id]);
+
+  const ubah = useCallback((f: (i: IsiKerja) => IsiKerja) => {
+    if (kunci) return;
+    const baru = f(isiRef.current);
+    isiRef.current = baru;
+    kotor.current = true;
+    setIsi(baru);
+    if (jam.current !== null) window.clearTimeout(jam.current);
+    jam.current = window.setTimeout(() => { void simpanSekarang(); }, 350);
+  }, [kunci, simpanSekarang]);
+
+  // Simpan saat aplikasi disembunyikan / ditutup / layar ditinggalkan
+  useEffect(() => {
+    const sembunyi = () => { if (document.visibilityState === 'hidden') void simpanSekarang(); };
+    const tutup = () => { void simpanSekarang(); };
+    document.addEventListener('visibilitychange', sembunyi);
+    window.addEventListener('pagehide', tutup);
+    return () => {
+      document.removeEventListener('visibilitychange', sembunyi);
+      window.removeEventListener('pagehide', tutup);
+      void simpanSekarang();
+    };
+  }, [simpanSekarang]);
+
+  const ubahData = useCallback((blok: 'identitas' | 'lingkungan' | 'fisik', bidang: string, nilai: unknown) => {
+    ubah((i) => ({ ...i, data: { ...i.data, [blok]: { ...((i.data[blok] as Peta) ?? {}), [bidang]: nilai } } }));
+  }, [ubah]);
+
+  const ubahTanggal = useCallback((v: string) => ubah((i) => ({ ...i, tanggal: v || null })), [ubah]);
+
+  const pilihStandar = useCallback((def: DefStandar, p: PilihanStandar<KalibratorLokal>) => {
+    ubah((i) => ({ ...i, snapshot: { ...(i.snapshot ?? {}), [def.peran]: jepretStandar(def, p, buatSnapshot) } }));
+  }, [ubah]);
+
+  // Saat dibuka: resolusi bawaan template terisi; alat standar yang satu-satunya berlaku terpilih otomatis (A1.4, A1.5)
+  useEffect(() => {
+    if (kunci) return;
+    ubah((i) => {
+      let hasil = i;
+      const iden = (i.data.identitas ?? {}) as Peta;
+      if (iden.resolusi === undefined || iden.resolusi === null) {
+        hasil = { ...hasil, data: { ...hasil.data, identitas: { ...iden, resolusi: tpl.identitas.resolusi.pilihan[0] } } };
+      }
+      for (const d of daftarStandar(tpl)) {
+        if (hasil.snapshot?.[d.peran]) continue;
+        const layak = susunPilihan(d, kalibrator).filter((p) => p.lengkap && statusBerlaku(p.berlakuSampai, hasil.tanggal) !== 'expired');
+        if (layak.length === 1) hasil = { ...hasil, snapshot: { ...(hasil.snapshot ?? {}), [d.peran]: jepretStandar(d, layak[0], buatSnapshot) } };
+      }
+      return hasil;
+    });
+  // Hanya sekali saat layar dibuka
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const kurang = useMemo(() => periksaIsian(tpl, isi), [tpl, isi]);
+
+  const pindah = useCallback((i: number) => {
+    if (i < 0 || i >= bagian.length || !bagian[i].tersedia) return;
+    void simpanSekarang();
+    setAktif(i);
+    try { window.scrollTo({ top: 0 }); } catch { /* lingkungan tanpa scroll */ }
+  }, [bagian, simpanSekarang]);
+  useEffect(() => { judulRef.current?.focus({ preventScroll: true }); }, [aktif]);
+
+  const terakhirTersedia = !bagian[aktif + 1]?.tersedia;
+  const kurangBagian = kurang.filter((k) => k.bagian === bagian[aktif].id);
+  const idBagian: BagianId = bagian[aktif].id;
+  const sifat: BagianProps = { tpl, isi, kunci, kurang, ubahData };
+  const balik = lkk.jadwalId ? `/tera/rs/${encodeURIComponent(lkk.jadwalId)}` : '/tera/lkk';
+
+  return (
+    <div className="t-lkk-layar">
+      <Link to={balik} className="t-kembali"><ChevronLeft size={20} aria-hidden="true" />Kembali ke daftar</Link>
+      <header className="t-lkk-kepala">
+        <h1 className="t-judul-layar t-rs-judul">{tpl.nama}</h1>
+        <p className="t-ket tabular t-rs-judul">{lkk.noLabel || 'Nomor label belum diisi'} · {namaRs}{lkk.alatTambahan ? ' · alat tambahan' : ''}{lkk.isTest ? ' · data uji' : ''}</p>
+        <div className="t-lkk-status"><ChipSync state={lkk.syncState} /></div>
+        {/* Tinggi baris ini tetap supaya layar tidak bergeser saat status simpan berganti (ketukan tidak meleset) */}
+        <p className="t-ket t-simpan" role="status" data-simpan={simpan.k}>
+          {simpan.k === 'menyimpan' ? 'Menyimpan…'
+            : simpan.k === 'tersimpan' ? `Tersimpan di perangkat pukul ${jamLokal(simpan.waktu)}`
+              : simpan.k === 'galat' ? '\u00a0' : kunci ? 'Hanya bisa dibaca' : 'Setiap isian langsung tersimpan di perangkat'}
+        </p>
+        {simpan.k === 'galat' && (
+          <p className="t-peringatan" role="alert">
+            <AlertCircle size={20} aria-hidden="true" className="shrink-0" /><span>{simpan.pesan} Isian tetap ada di layar; aplikasi mencoba menyimpan lagi.</span>
+          </p>
+        )}
+      </header>
+
+      {kunci && (
+        <p className="t-info mt-3" role="status">
+          <Lock size={20} aria-hidden="true" className="shrink-0" />
+          <span>LKK ini sudah dikirim dan tidak bisa diubah. Bila ada yang salah, minta Penyelia mengembalikannya.</span>
+        </p>
+      )}
+
+      <div className="t-lkk-badan">
+        <DaftarBagian bagian={bagian} aktif={aktif} kurang={kurang} onPilih={pindah} />
+        <section className="t-lkk-isi" aria-labelledby="judul-bagian-lkk" onBlur={() => { void simpanSekarang(); }}>
+          <h2 id="judul-bagian-lkk" ref={judulRef} tabIndex={-1} className="t-judul-bagian">{bagian[aktif].nama}</h2>
+          <div className="mt-3">
+            {idBagian === 'identitas' && (
+              <BagianIdentitas {...sifat} namaRs={namaRs} teknisi={teknisi} kalibrator={kalibrator} ubahTanggal={ubahTanggal} pilihStandar={pilihStandar} />
+            )}
+            {idBagian === 'lingkungan' && <BagianLingkungan {...sifat} keIdentitas={() => pindah(0)} />}
+            {idBagian === 'fisik' && <BagianFisik {...sifat} />}
+          </div>
+          {terakhirTersedia && (
+            <p className="t-ket mt-4" role="status">Kinerja, Kesimpulan, dan Selesai dibuka di pembaruan berikutnya. Isian di atas sudah tersimpan.</p>
+          )}
+          {kurangBagian.length > 0 && (
+            <div className="t-kurang" role="status" aria-label="Yang masih kurang di bagian ini">
+              <p className="t-label">Belum lengkap di bagian ini</p>
+              <ul>
+                {kurangBagian.map((k) => (
+                  <li key={k.teks} data-merah={k.merah || undefined}>
+                    {k.merah ? <AlertCircle size={16} aria-hidden="true" className="shrink-0" /> : <span className="t-titik" aria-hidden="true" />}
+                    <span>{k.teks}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="t-aksi-bawah">
+        <div className="t-aksi-bawah-tombol">
+          <button type="button" className="t-tombol t-tombol-kedua" onClick={() => pindah(aktif - 1)} aria-disabled={aktif === 0 || undefined}>
+            <ChevronLeft size={20} aria-hidden="true" />Kembali
+          </button>
+          <button type="button" className="t-tombol t-tombol-utama" onClick={() => pindah(aktif + 1)} aria-disabled={terakhirTersedia || undefined}>
+            Lanjut<ChevronRight size={20} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- Pintu masuk layar: /tera/lkk/:id ---------- */
+
+type Muat =
+  | { k: 'memuat' }
+  | { k: 'tidak'; judul: string; pesan: string }
+  | { k: 'siap'; lkk: LkkLokal; tpl: TemplateAlat; kalibrator: KalibratorLokal[] };
+
+export const LayarLkk: React.FC = () => {
+  const { id = '' } = useParams();
+  const { user } = useAuth();
+  const { jadwal, siap } = useSinkron();
+  const [muat, setMuat] = useState<Muat>({ k: 'memuat' });
+
+  useEffect(() => {
+    let hidup = true;
+    setMuat({ k: 'memuat' });
+    (async () => {
+      try {
+        const lkk = await ambilLkk(id);
+        if (!lkk || (user?.id && lkk.pemilik !== user.id)) {
+          if (hidup) setMuat({ k: 'tidak', judul: 'LKK tidak ditemukan', pesan: 'LKK ini tidak ada di perangkat atau bukan milik akun Anda.' });
+          return;
+        }
+        const tpl = lkk.templateKode && lkk.templateVersi ? await templateVersi(lkk.templateKode, lkk.templateVersi) : null;
+        if (!tpl) {
+          if (hidup) setMuat({ k: 'tidak', judul: 'Template alat belum ada di perangkat', pesan: 'Buka aplikasi dengan internet sebentar agar template ditarik, lalu coba lagi. Isian LKK tetap aman.' });
+          return;
+        }
+        const kalibrator = await daftarKalibrator();
+        if (hidup) setMuat({ k: 'siap', lkk, tpl, kalibrator });
+      } catch {
+        if (hidup) setMuat({ k: 'tidak', judul: 'Data di perangkat belum bisa dibaca', pesan: 'Isian tetap aman. Muat ulang halaman, atau pindah ke menu lain lalu kembali.' });
+      }
+    })();
+    return () => { hidup = false; };
+  }, [id, user?.id]);
+
+  if (muat.k === 'memuat' || !siap) {
+    return (
+      <p className="t-teks-2 mt-4 flex items-center gap-2 text-[15px]" role="status">
+        <Loader2 size={20} aria-hidden="true" className="t-putar" />Membuka LKK di perangkat…
+      </p>
+    );
+  }
+  if (muat.k === 'tidak') {
+    return (
+      <>
+        <Link to="/tera/lkk" className="t-kembali"><ChevronLeft size={20} aria-hidden="true" />Daftar LKK</Link>
+        <div className="mt-4"><KeadaanKosong ikon={AlertCircle} judul={muat.judul} pesan={muat.pesan} /></div>
+      </>
+    );
+  }
+  const j = jadwal.find((x) => x.jadwalId === muat.lkk.jadwalId);
+  return (
+    <Formulir
+      key={muat.lkk.id} lkk={muat.lkk} tpl={muat.tpl} kalibrator={muat.kalibrator}
+      namaRs={j?.namaRs || (muat.lkk.bo ? `BO ${muat.lkk.bo}` : 'Rumah sakit belum diketahui')}
+      teknisi={user?.fullName?.trim() || 'Teknisi'}
+    />
+  );
+};

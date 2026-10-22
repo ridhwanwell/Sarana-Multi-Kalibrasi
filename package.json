@@ -16,7 +16,14 @@
     "test:tera:jadwal": "tsx tests/tera/jadwal.test.mts",
     "test:tera:jadwal-lokal": "tsx tests/tera/jadwalLokal.uji.mts",
     "test:tera:jadwal-layar": "tsx tests/tera/jadwalLayar.uji.mts",
-    "test:tera:impor": "tsx tests/tera/imporServer.test.mts"
+    "test:tera:impor": "tsx tests/tera/imporServer.test.mts",
+    "test:tera:hitung": "tsx tests/tera/hitungSphygmo.test.mts",
+    "test:tera:master": "tsx tests/tera/masterLokal.uji.mts",
+    "test:tera:nomor": "tsx tests/tera/nomorLabel.test.mts",
+    "test:tera:mulai-lkk": "tsx tests/tera/mulaiLkk.uji.mts",
+    "test:tera:lingkungan": "tsx tests/tera/lingkungan.test.mts",
+    "test:tera:isian": "tsx tests/tera/isian.test.mts",
+    "test:tera:layar-lkk": "tsx tests/tera/layarLkk.uji.mts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

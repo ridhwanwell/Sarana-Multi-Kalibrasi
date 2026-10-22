@@ -10,7 +10,7 @@
  * <nav>/<button> semantik), design-system (semua warna lewat token).
  */
 import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   AlertCircle,
   Check,
@@ -289,7 +289,8 @@ export const KerangkaTera: React.FC = () => {
 /* ---------- Halaman ---------- */
 
 export const BarisLkk: React.FC<{ l: LkkLokal }> = React.memo(({ l }) => (
-  <li className="t-lkk-baris">
+  <li>
+    <Link to={`/tera/lkk/${encodeURIComponent(l.id)}`} className="t-lkk-baris t-lkk-tautan">
     <div className="t-lkk-utama">
       <p className="t-lkk-nomor tabular truncate" title={l.noLabel || undefined}>{l.noLabel || 'Nomor label belum diisi'}</p>
       <p className="t-ket truncate" title={l.templateKode || undefined}>
@@ -302,6 +303,7 @@ export const BarisLkk: React.FC<{ l: LkkLokal }> = React.memo(({ l }) => (
       )}
     </div>
     <ChipSync state={l.syncState} />
+    </Link>
   </li>
 ));
 BarisLkk.displayName = 'BarisLkk';

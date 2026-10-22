@@ -12,15 +12,19 @@
  * break-ui (nama RS sangat panjang, 0 alat, 200 alat, PO ditembus). Daftar panjang memakai
  * `content-visibility: auto` pada baris (tanpa paket baru).
  */
-import React, { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, Building2, Check, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, Plus, RefreshCw, Tag,
 } from 'lucide-react';
 import { useSinkron } from './SinkronKonteks';
 import { BarisLkk, KeadaanKosong, Statistik } from './TeraKerangka';
-import { hitungAlatPo, type JadwalLokal } from './data/jadwalLokal';
+import { hitungAlatPo, type HitunganAlat, type JadwalLokal } from './data/jadwalLokal';
+import { daftarTemplateTerbaru } from './data/masterLokal';
 import type { LkkLokal } from './data/teraDb';
+import type { TemplateAlat } from './shared/hitung';
+import { templateUntukAlat } from './shared/nomorLabel';
+import { MulaiLkk } from './MulaiLkk';
 
 /* ---------- Pembantu ---------- */
 
@@ -168,8 +172,19 @@ export const HalamanBeranda: React.FC = () => {
 
 export const HalamanDetailRs: React.FC = () => {
   const { id = '' } = useParams();
-  const { jadwal, daftar, siap } = useSinkron();
-  const [infoTambahan, setInfoTambahan] = useState(false);
+  const navigate = useNavigate();
+  const { jadwal, daftar, siap, dorong, statusJadwal } = useSinkron();
+  const [templates, setTemplates] = useState<TemplateAlat[]>([]);
+  const [lembar, setLembar] = useState<{ alat: HitunganAlat | null } | null>(null);
+  const [kabar, setKabar] = useState<{ jenis: 'ok' | 'info'; teks: string } | null>(null);
+  const [tanpaTemplate, setTanpaTemplate] = useState<string | null>(null);
+
+  // Template di perangkat (bawaan kode + hasil tarik dari server); dibaca ulang tiap master ditarik
+  useEffect(() => {
+    let hidup = true;
+    daftarTemplateTerbaru().then((t) => { if (hidup) setTemplates(t); }).catch(() => { /* tetap pakai yang ada */ });
+    return () => { hidup = false; };
+  }, [statusJadwal.waktu]);
 
   const j = useMemo(() => jadwal.find((x) => x.jadwalId === id) || null, [jadwal, id]);
   const alat = useMemo(() => (j ? hitungAlatPo(j, daftar) : []), [j, daftar]);
@@ -233,6 +248,13 @@ export const HalamanDetailRs: React.FC = () => {
         </p>
       </section>
 
+      {kabar && (
+        <div className={kabar.jenis === 'ok' ? 't-sukses mt-4' : 't-info mt-4'} role="status">
+          {kabar.jenis === 'ok' ? <Check size={20} aria-hidden="true" className="shrink-0" /> : <AlertCircle size={20} aria-hidden="true" className="shrink-0" />}
+          <p className="min-w-0">{kabar.teks}</p>
+        </div>
+      )}
+
       <section className="mt-6" aria-labelledby="judul-alat">
         <h2 id="judul-alat" className="t-judul-bagian">Alat PO</h2>
         {alat.length === 0 ? (
@@ -253,20 +275,48 @@ export const HalamanDetailRs: React.FC = () => {
                 </div>
                 <Bilah nilai={a.dikerjakan} maks={a.jumlah} />
                 <p className="t-ket tabular">PO {a.jumlah} · dikerjakan {a.dikerjakan} · sisa {a.sisa}</p>
+                {a.sisa > 0 && (
+                  <div className="t-alat-aksi">
+                    <button
+                      type="button" className="t-tombol t-tombol-utama t-tombol-kecil"
+                      aria-describedby={tanpaTemplate === a.ref ? `ket-tpl-${a.ref}` : undefined}
+                      onClick={() => {
+                        setKabar(null);
+                        if (!templateUntukAlat(a.nama, templates)) { setTanpaTemplate(a.ref); return; }
+                        setTanpaTemplate(null);
+                        setLembar({ alat: a });
+                      }}
+                    >
+                      <Plus size={18} aria-hidden="true" />Mulai LKK
+                    </button>
+                    {tanpaTemplate === a.ref && (
+                      <p id={`ket-tpl-${a.ref}`} className="t-ket mt-2" role="status">
+                        Template untuk alat ini belum tersedia di aplikasi. Hubungi Developer.
+                      </p>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         )}
 
         <div className="mt-4" style={{ maxWidth: 420 }}>
-          <button type="button" className="t-tombol t-tombol-kedua" aria-describedby="ket-tambahan" onClick={() => setInfoTambahan((v) => !v)}>
+          <button
+            type="button" className="t-tombol t-tombol-kedua" aria-describedby="ket-tambahan"
+            onClick={() => {
+              setTanpaTemplate(null);
+              if (!j.cadanganAwal || !j.cadanganAkhir) {
+                setKabar({ jenis: 'info', teks: 'Jadwal ini tidak punya stiker cadangan, jadi belum bisa menambah alat. Hubungi Admin Teknik.' });
+                return;
+              }
+              setKabar(null);
+              setLembar({ alat: null });
+            }}
+          >
             <Plus size={18} aria-hidden="true" />Alat tambahan
           </button>
-          {infoTambahan && (
-            <p id="ket-tambahan" className="t-ket mt-2" role="status">
-              Fitur ini aktif setelah template alat tersedia (Tahap berikutnya). Stiker cadangan sudah disiapkan untuk alat tambahan.
-            </p>
-          )}
+          <p id="ket-tambahan" className="t-ket mt-2">Alat di luar PO. Memakai stiker cadangan dan tidak mengurangi jatah PO.</p>
         </div>
       </section>
 
@@ -282,6 +332,17 @@ export const HalamanDetailRs: React.FC = () => {
           )}
         </div>
       </section>
+      {lembar && (
+        <MulaiLkk
+          jadwal={j} alat={lembar.alat} templates={templates} pemilik={j.pemilik}
+          onTutup={() => setLembar(null)}
+          onDibuat={(l) => {
+            setLembar(null);
+            dorong();
+            navigate(`/tera/lkk/${encodeURIComponent(l.id)}`);   // langsung ke layar isi LKK (4.3c)
+          }}
+        />
+      )}
     </>
   );
 };

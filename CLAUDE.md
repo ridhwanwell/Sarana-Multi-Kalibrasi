@@ -1,7 +1,8 @@
 # CLAUDE.md — Tera SMK (sub-website PWA LKK Digital di dalam `qrcode-smk`)
 
 > File ini adalah **aturan kerja untuk Claude** (Claude Code / Project "TERA-SMK"). Semua aturan di sini WAJIB diikuti.
-> **Cara kerja proyek ini (diperbarui 18 Okt 2026): Claude (lewat Claude Code) menulis kode, menguji build, dan commit langsung ke cabang `tera-dev`. Claude boleh menggabungkan `tera-dev` ke `main` **hanya setelah pemilik proyek mengecek Preview dan membalas "oke"** (diubah 19 Okt 2026). Perubahan database & pengaturan Vercel dijelaskan dulu dan baru dijalankan setelah kata "lanjutkan"** (lihat bagian 2A).
+> **Cara kerja proyek ini (diperbarui 22 Okt 2026): Claude (lewat Claude Code) menulis kode, menguji build, lalu commit & push LANGSUNG ke `main` (tanpa cabang `tera-dev`), dengan pengaman di bagian 2A. Perubahan database & pengaturan Vercel dijelaskan dulu dan baru dijalankan setelah kata "lanjutkan"** (lihat bagian 2A).
+> **Cakupan awal 5 alat (22 Okt 2026): Sphygmomanometer (diulang), Kelistrikan, Timbangan Bayi Digital, Suction Pump, Thermohygrometer — sampai Tahap 10.** Alat lain menyusul setelah pemilik proyek mengunggah Master Excel + Metode Kerja + Report All satu per satu (PRD 11.48).
 > Kalau ada aturan yang bertentangan dengan permintaan baru, tanyakan dulu ke pemilik proyek.
 > Kebutuhan produk, kriteria terima, model data, dan uji penerimaan ada di **`PRD.md`** — baca bersama file ini.
 > **PRD Draf 3 (18 Oktober 2026).** Keputusan pemilik produk ada di PRD bagian 11 — jangan ditanyakan ulang.
@@ -47,21 +48,23 @@ Aturan berkomunikasi:
 
 ---
 
-## 2A. CARA KERJA: CLAUDE CODE MENULIS & COMMIT KE `tera-dev`, PEMILIK PROYEK MENYETUJUI (WAJIB)
+## 2A. CARA KERJA: CLAUDE CODE MENULIS & PUSH KE `main` DENGAN PENGAMAN (WAJIB)
 
 > Diperbarui 18 Oktober 2026 (keputusan pemilik proyek, menggantikan cara "pemilik proyek menyalin kode lewat GitHub web"). Pemilik proyek **bukan programmer** dan memantau/menyetujui dari iPhone (GitHub di Safari, link Preview Vercel, Supabase SQL Editor).
 
 1. **Satu langkah = sedikit file.** Maksimal ±3 file kode per giliran. Pekerjaan besar dipecah jadi beberapa giliran.
-2. **Cabang** *(diubah 19 Okt 2026 atas permintaan pemilik proyek)*: semua pekerjaan dikerjakan, di-commit, dan di-push ke **`tera-dev`**. Claude **boleh** menggabungkan `tera-dev` ke **`main`**, tetapi dengan urutan wajib:
-   1. Claude memastikan build Vercel `tera-dev` **READY**, lalu meminta pemilik proyek **mengecek link Preview** dengan daftar cek bernomor (apa yang dibuka, apa yang harus terlihat).
-   2. Claude **menunggu balasan "oke"** yang jelas untuk penggabungan itu. Kata "lanjutkan" saja **bukan** izin merge; diam/tanpa jawaban juga bukan izin.
-   3. Baru setelah "oke": merge `tera-dev` → `main` dengan *merge commit* (bukan squash, bukan force push), push, lalu cek deployment produksi READY dan uji cepat `saranamultikalibrasi.com` (scan QR lama, `/admin/login`, `/tera/`).
+2. **Cabang** *(diubah 22 Okt 2026 atas permintaan pemilik proyek; menggantikan aturan `tera-dev` + "oke")*: Claude **commit & push langsung ke `main`**. Tidak ada lagi cabang `tera-dev` untuk pekerjaan baru. Karena `main` = produksi (push otomatis ter-deploy), **pengaman wajib**:
+   1. Sebelum push: `npm run build`/uji otomatis lolos, `git status` bersih dari `_referensi/`, `.env`, data pelanggan; `node_modules` tidak ikut.
+   2. Kode Tera SMK hanya di folder sendiri (`src/tera/`, `api/tera*`, tabel `tera_`); modul lama tidak disentuh kecuali di titik sambungan PRD.
+   3. Sesudah push: pastikan deployment produksi **READY**, lalu uji cepat `saranamultikalibrasi.com` (scan QR lama, `/admin/login`, `/tera/`). Laporkan hasilnya.
    4. Bila produksi bermasalah: laporkan segera dan tawarkan *Promote* deployment produksi sebelumnya di Vercel (dijalankan setelah disetujui).
-   Claude **tidak pernah** commit langsung ke `main`, tidak pernah `push --force` ke `main`, dan tidak merge cabang lain selain `tera-dev`.
+   5. **Tidak pernah** `push --force`, tidak mengubah riwayat `main`, tidak mengubah domain/pengalihan Vercel.
+   6. Perubahan yang berisiko ke website lama (server route yang dipakai modul lama, service worker, login, label/QR) tetap dijelaskan dulu dan menunggu "lanjutkan".
+   Cabang `tera-dev` lama (Tahap 4.0–4.3c) digabung ke `main` sekali setelah pemilik proyek membalas "lanjutkan"; sesudah itu tidak dipakai lagi.
 3. **Sebelum mengubah file yang sudah ada**, Claude membaca isinya dari repo (bukan dari ingatan).
 4. **Sebelum setiap commit**: jalankan `npm run build` (dan `npm run lint` bila relevan) sampai lolos, lalu cek `git status` — **`_referensi/`, `.env`, dan data pelanggan tidak boleh ikut** (repo publik).
 5. **Pesan commit** singkat, bahasa Indonesia, diawali tahap, contoh: `Tahap 1: tambah halaman login Tera SMK`.
-6. Setiap langkah diakhiri **cara mengecek** di link Preview Vercel cabang `tera-dev` → apa yang harus terlihat. Bila build Vercel gagal, Claude membaca log build dan memperbaikinya.
+6. Setiap langkah diakhiri **cara mengecek** di `saranamultikalibrasi.com/tera` (atau link deployment produksi) → apa yang harus terlihat. Bila build Vercel gagal, Claude membaca log build dan memperbaikinya.
 7. **Paket npm baru** boleh ditambahkan bila perlu, dengan alasan singkat; cek dokumentasi terbaru dulu.
 8. **SQL untuk Supabase** selalu disusun dalam **4 blok terpisah**, berurutan:
    1. **BACKUP** — salin tabel yang akan disentuh (mis. `create table backup_20261020_labels as table public.labels;`) atau perintah ekspor;
@@ -88,7 +91,7 @@ Website `qrcode-smk` **sudah dipakai** (± 3.934 label QR aktif tertempel di ala
 3. Kode Tera SMK dikumpulkan di folder sendiri (mis. `src/tera/`), dan modul lama hanya disentuh di titik sambungan yang disebut PRD (penjadwalan, Selia, BAP, penagihan, label).
 4. Ikuti pola yang sudah ada: Vite + React + TypeScript + Tailwind, API server Express di `api/` (Vercel serverless), Supabase.
 5. **Acuan struktur database = database langsung.** File `supabase_schema.sql` di repo **sudah usang**. Tabel asli berbahasa Indonesia (`rumah_sakit`, `jadwal_kalibrasi`, `labels`, `dokumen_bap`, dst.).
-6. Kerja di cabang **`tera-dev`**; cek di **Vercel Preview**; digabung ke `main` oleh Claude hanya setelah pemilik proyek membalas "oke" (lihat 2A).
+6. Kerja langsung di **`main`** dengan pengaman 2A; cek di deployment produksi setelah push.
 7. Kode harus lolos build (TypeScript tanpa error) sebelum di-commit, dan lolos build Vercel. Bila Vercel gagal, perbaiki dari log build.
 8. **Bahan acuan** (Master LKK v12, Report All, golden file, kop, contoh BAP/BASTP, MK Kemenkes) ada di **Project knowledge** (diunggah pemilik proyek) dan di folder laptop `_referensi/` — susunan lengkap di PRD Lampiran E. Bila file yang dibutuhkan belum diunggah, **minta** pemilik proyek mengunggahnya; jangan menebak isinya.
 9. **Repo `qrcode-smk` publik** (sampai pemilik proyek menjadikannya Private): **`_referensi/`, `.env`, dan data pelanggan TIDAK BOLEH di-commit.** Pastikan `_referensi/` ada di `.gitignore` sebelum commit pertama, dan cek `git status` sebelum setiap commit.
@@ -530,7 +533,7 @@ Mode gelap: kuning → latar `#3B2A0A`, garis `#F59E0B`, teks `#FCD34D`; merah �
 
 ## 16. URUTAN PENGERJAAN
 
-Kerjakan satu per satu, tunggu kata **"lanjutkan"** di tiap tahap. Rincian & kriteria: PRD bagian 9.
+Kerjakan satu per satu, tunggu kata **"lanjutkan"** di tiap tahap. **Cakupan awal = 5 alat** (Sphygmomanometer [diulang setelah Master Excel disesuaikan], Kelistrikan, Timbangan Bayi Digital, Suction Pump, Thermohygrometer) sampai Tahap 10; alat lain = Tahap 11 (satu per satu setelah pemilik proyek mengunggah Master Excel + MK + Report All). Rincian & kriteria: PRD bagian 9.
 
 0. **Pengaman & audit** tanpa mengubah kode (`docs/audit-fase0.md`), backup, aturan migrasi, BO uji 999.
 1. **Dua PWA** di `saranamultikalibrasi.com`: Manajemen Aset SMK (`/admin`) & Tera SMK (`/tera`); role `teknisi`, login & pengalihan per role, tema Ocean, tata letak HP/tablet.
@@ -540,8 +543,9 @@ Kerjakan satu per satu, tunggu kata **"lanjutkan"** di tiap tahap. Rincian & kri
    - **Sebelum membuat template**: tinjau **budget ketidakpastian** Master Sphygmomanometer — U95 4,1–6,6 mmHg lebih besar dari toleransi ±3 mmHg (PRD 11.45). Jelaskan penyebabnya dengan bahasa awam, usulkan perbaikan, **tunggu persetujuan**, lalu terapkan ke template **dan** golden file.
    - Masukkan juga perbaikan Excel yang sudah ditemukan (PRD 11.43): sel isian tidak terkunci, teks "Baik" tanpa spasi + pilihan Baik/Tidak Baik, rujukan satu sel.
 5. **BAP & BASTP otomatis** + sambungan penagihan.
-6. **Timbangan Bayi Digital** (uji kop KAN), lalu alat bertahap: tekanan/aliran → suhu → kelistrikan/sinyal → volume/massa → cahaya → radiologi.
+6. **4 alat lain dari 5 alat awal**: Timbangan Bayi Digital (uji kop KAN bila kop sudah diputuskan), Thermohygrometer, Suction Pump, Kelistrikan.
 7. Pemindai AI & highlight.
 8. Menu pengaturan lengkap di **Manajemen Aset SMK** (bukan di Tera SMK).
 9. Backup mingguan terverifikasi + log.
 10. Uji lapangan di HP & tablet kantor; kurangi akun `admin_utama` menjadi Ridhwan saja.
+11. **Perluasan alat** (setelah Tahap 10): pemilik proyek mengunggah Master Excel, MK & Report All per alat → template JSON + golden file + PDF disetujui.
