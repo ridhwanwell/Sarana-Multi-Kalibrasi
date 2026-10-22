@@ -8,7 +8,7 @@
  * Hanya untuk admin_teknik & admin_utama (server juga memeriksa). Penanda kuning/merah: warna + ikon + tulisan (CLAUDE.md 13.11).
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, Clock, FileText, Loader2, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, FileText, Folder, FolderOpen, Loader2, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 
@@ -75,6 +75,16 @@ const Isian: React.FC<{ nama: string; nilai: React.ReactNode }> = ({ nama, nilai
 );
 
 type Saringan = 'semua' | 'merah' | 'menunggu' | 'acc';
+
+/** Nama isian identitas seperti di layar teknisi (bukan nama teknis di database). */
+const NAMA_IDENTITAS: Record<string, string> = {
+  merek: 'Merek', tipe: 'Tipe / model', noSeri: 'Nomor seri', ruang: 'Ruang / lokasi', jenisSkala: 'Jenis skala',
+  rentangUkur: 'Rentang ukur (mmHg)', resolusi: 'Resolusi (mmHg)', tanggalPenerimaan: 'Tanggal penerimaan',
+};
+
+/** Satu folder = satu rumah sakit (BO). Isinya hanya LKK yang sudah dikirim teknisi. */
+interface FolderRs { kunci: string; nama: string; bo: string; isTest: boolean; isi: Ringkas[]; menunggu: number; merah: number }
+const adaMerah = (x: Ringkas) => !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x.pemeriksaan.jejakCocok;
 
 export const SeliaTeraLkk: React.FC = () => {
   const { role } = useAuth();
@@ -159,6 +169,21 @@ export const SeliaTeraLkk: React.FC = () => {
     return [...f].sort((a, b) => merah(a) - merah(b));
   }, [daftar, saringan]);
 
+  // Folder per RS: yang masih ada pekerjaan (menunggu / merah) di atas, lalu urut nama.
+  const folder = useMemo<FolderRs[]>(() => {
+    const peta = new Map<string, FolderRs>();
+    for (const x of tampil) {
+      const kunciF = `${x.bo}|${x.namaRs ?? ''}`;
+      let f = peta.get(kunciF);
+      if (!f) { f = { kunci: kunciF, nama: x.namaRs ?? `BO ${x.bo}`, bo: x.bo, isTest: x.isTest, isi: [], menunggu: 0, merah: 0 }; peta.set(kunciF, f); }
+      f.isi.push(x);
+      if (x.status === 'submitted' || x.status === 'under_review') f.menunggu += 1;
+      if (adaMerah(x)) f.merah += 1;
+    }
+    return [...peta.values()].sort((a, b) => (Number(b.menunggu > 0) - Number(a.menunggu > 0)) || a.nama.localeCompare(b.nama, 'id'));
+  }, [tampil]);
+  const [bukaF, setBukaF] = useState<Record<string, boolean>>({});
+
   if (!boleh) return null;
 
   const aksi = async (jenis: 'kembalikan' | 'acc') => {
@@ -188,7 +213,7 @@ export const SeliaTeraLkk: React.FC = () => {
     <section aria-labelledby="selia-tera" className="bg-white rounded-2xl border border-[#DCDFE3] p-5 sm:p-6 space-y-6 mb-6">
       <div>
         <h2 id="selia-tera" className="text-xl font-black text-[#1C658C] flex items-center gap-2"><Stamp className="w-5 h-5" aria-hidden="true" />LKK Digital Tera SMK</h2>
-        <p className="text-sm text-slate-600 mt-1 leading-relaxed">Daftar LKK dari teknisi. Pilih satu, lalu seluruh isinya terbentang di bawah daftar (scroll ke bawah), dan tombol Kembalikan / ACC ada di paling bawah.</p>
+        <p className="text-sm text-slate-600 mt-1 leading-relaxed">Folder per rumah sakit, isinya hanya LKK yang sudah dikirim teknisi. Buka folder, pilih satu LKK, lalu seluruh isinya terbentang di bawah daftar dalam satu lembar (scroll ke bawah). Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.</p>
       </div>
 
       {/* ───────── DAFTAR ───────── */}
@@ -203,25 +228,49 @@ export const SeliaTeraLkk: React.FC = () => {
         {gagalDaftar && <p role="alert" className="text-sm text-rose-700 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" aria-hidden="true" />{gagalDaftar}</p>}
         {daftar === null && !gagalDaftar && <p role="status" className="text-sm text-slate-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Memuat daftar LKK…</p>}
         {daftar && tampil.length === 0 && <p className="text-sm text-slate-600">Belum ada LKK pada saringan ini.</p>}
-        <ul className="space-y-2">
-          {tampil.map((x) => {
-            const merah = !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x.pemeriksaan.jejakCocok;
+        <ul className="space-y-3">
+          {folder.map((f) => {
+            const terpilihDiSini = f.isi.some((x) => x.id === pilihId);
+            const buka = bukaF[f.kunci] ?? (saringan !== 'semua' || terpilihDiSini);
+            const idIsi = `folder-${f.kunci.replace(/[^a-z0-9]/gi, '-')}`;
             return (
-              <li key={x.id}>
-                <button type="button" onClick={() => pilih(x.id)} aria-current={pilihId === x.id}
-                  className={`w-full text-left rounded-xl border px-3 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 cursor-pointer min-h-[56px] ${pilihId === x.id ? 'border-[#1C658C] bg-[#EEF3F7]' : 'border-[#DCDFE3] bg-white hover:bg-[#F6F9FB]'}`}>
-                  <span className="font-black text-sm text-slate-900 tabular-nums">{x.noLabel}</span>
-                  <span className="min-w-0 flex-1 text-xs text-slate-600 truncate">{x.templateKode} · {x.namaRs ?? `BO ${x.bo}`} · {x.teknisi ?? '-'} · {tglPendek(x.tanggalKalibrasi)}</span>
-                  {x.isTest && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800">Uji BO 999</span>}
-                  {x.alatTambahan && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">Alat tambahan</span>}
-                  {x.pemeriksaan && <span className={`shrink-0 text-[11px] font-bold ${x.pemeriksaan.kesimpulanServer === 'Tidak Laik Pakai' ? 'text-[#991B1B]' : 'text-[#166534]'}`}>{x.pemeriksaan.kesimpulanServer ?? '-'}</span>}
-                  {merah
-                    ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan ? 'Ada penanda merah' : 'Belum diperiksa server'}</span>
-                    : x.pemeriksaan && x.pemeriksaan.jumlahPenanda > 0
-                    ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#D97706]"><AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan.jumlahPenanda} info</span>
-                    : null}
-                  <Chip status={x.status} />
+              <li key={f.kunci} className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
+                <button type="button" aria-expanded={buka} aria-controls={idIsi} onClick={() => setBukaF((s) => ({ ...s, [f.kunci]: !buka }))}
+                  className="w-full text-left px-3 py-3 flex items-center gap-3 cursor-pointer min-h-[56px] bg-[#F6F9FB] hover:bg-[#EEF3F7]">
+                  {buka ? <FolderOpen className="w-5 h-5 shrink-0 text-[#1C658C]" aria-hidden="true" /> : <Folder className="w-5 h-5 shrink-0 text-[#1C658C]" aria-hidden="true" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-black text-sm text-slate-900 truncate">{f.nama}</span>
+                    <span className="block text-xs text-slate-600">BO {f.bo} · {f.isi.length} LKK terkirim</span>
+                  </span>
+                  {f.isTest && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800">Data uji</span>}
+                  {f.merah > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{f.merah} merah</span>}
+                  {f.menunggu > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-300"><Clock className="w-3.5 h-3.5" aria-hidden="true" />{f.menunggu} menunggu</span>}
+                  <ChevronDown className={`w-5 h-5 shrink-0 text-slate-500 transition-transform ${buka ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
+                {buka && (
+                  <ul id={idIsi} className="p-2 space-y-2 border-t border-[#DCDFE3]">
+                    {f.isi.map((x) => {
+                      const merah = adaMerah(x);
+                      return (
+                        <li key={x.id}>
+                          <button type="button" onClick={() => pilih(x.id)} aria-current={pilihId === x.id}
+                            className={`w-full text-left rounded-xl border px-3 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 cursor-pointer min-h-[56px] ${pilihId === x.id ? 'border-[#1C658C] bg-[#EEF3F7]' : 'border-[#DCDFE3] bg-white hover:bg-[#F6F9FB]'}`}>
+                            <span className="font-black text-sm text-slate-900 tabular-nums">{x.noLabel}</span>
+                            <span className="min-w-0 flex-1 text-xs text-slate-600 truncate">{x.templateKode} · {x.teknisi ?? '-'} · {tglPendek(x.tanggalKalibrasi)}</span>
+                            {x.alatTambahan && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">Alat tambahan</span>}
+                            {x.pemeriksaan && <span className={`shrink-0 text-[11px] font-bold ${x.pemeriksaan.kesimpulanServer === 'Tidak Laik Pakai' ? 'text-[#991B1B]' : 'text-[#166534]'}`}>{x.pemeriksaan.kesimpulanServer ?? '-'}</span>}
+                            {merah
+                              ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan ? 'Ada penanda merah' : 'Belum diperiksa server'}</span>
+                              : x.pemeriksaan && x.pemeriksaan.jumlahPenanda > 0
+                              ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#D97706]"><AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan.jumlahPenanda} info</span>
+                              : null}
+                            <Chip status={x.status} />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}
@@ -247,36 +296,8 @@ export const SeliaTeraLkk: React.FC = () => {
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <Chip status={detail.lkk.status} />
-                  {detail.lkk.templateKode === 'sphygmomanometer' && (
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, true); }} disabled={pdfMemuat !== null}
-                        className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl border border-[#0B6FB3] text-[#0B6FB3] text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
-                        {pdfMemuat === 'kop' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
-                        {pdfMemuat === 'kop' ? 'Membuat…' : 'Pratinjau sertifikat (dengan kop)'}
-                      </button>
-                      <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, false); }} disabled={pdfMemuat !== null}
-                        className="inline-flex items-center gap-1.5 min-h-[40px] px-3 rounded-xl border border-slate-400 text-slate-700 text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
-                        {pdfMemuat === 'tanpa' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
-                        {pdfMemuat === 'tanpa' ? 'Membuat…' : 'Unduh tanpa kop'}
-                      </button>
-                    </div>
-                  )}
-                  {pdfGalat && <p className="text-[11px] text-[#991B1B] font-semibold max-w-[220px] text-right" role="alert">{pdfGalat}</p>}
                 </div>
               </header>
-
-              {pratinjauUrl && (
-                <section aria-label="Pratinjau sertifikat dengan kop" className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#EEF3F7] text-xs">
-                    <p className="font-bold text-slate-800">Pratinjau sertifikat (dengan kop) — hanya untuk dilihat &amp; tertaut ke QR; salinan Drive/komputer tanpa kop</p>
-                    <div className="flex gap-2 shrink-0">
-                      <a href={pratinjauUrl} target="_blank" rel="noreferrer" className="font-bold text-[#0B6FB3] underline">Layar penuh</a>
-                      <button type="button" onClick={bersihkanPratinjau} className="font-bold text-slate-700 underline cursor-pointer">Tutup</button>
-                    </div>
-                  </div>
-                  <iframe title="Pratinjau sertifikat" src={pratinjauUrl} className="w-full h-[70vh] min-h-[420px] bg-slate-100" />
-                </section>
-              )}
 
               {/* 1. Hasil periksa server + penanda */}
               <Bagian id="b-periksa" judul="1. Hasil periksa server">
@@ -299,7 +320,7 @@ export const SeliaTeraLkk: React.FC = () => {
               {/* 2. Identitas */}
               <Bagian id="b-identitas" judul="2. Identitas alat">
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {Object.entries(data.identitas ?? {}).map(([k, v]) => <Isian key={k} nama={k} nilai={v === null || v === '' ? '-' : String(v)} />)}
+                  {Object.entries(data.identitas ?? {}).map(([k, v]) => <Isian key={k} nama={NAMA_IDENTITAS[k] ?? k} nilai={v === null || v === '' ? '-' : (k === 'tanggalPenerimaan' ? tglPendek(String(v)) : String(v))} />)}
                   <Isian nama="Template" nilai={`${detail.lkk.templateKode} v${detail.lkk.templateVersi}`} />
                 </dl>
               </Bagian>
@@ -434,8 +455,44 @@ export const SeliaTeraLkk: React.FC = () => {
                 </div>
               </Bagian>
 
-              {/* 9. Aksi */}
-              <Bagian id="b-aksi" judul="9. Keputusan Penyelia">
+              {/* 9. Pratinjau sertifikat (di paling bawah lembar, sebelum keputusan) */}
+              <Bagian id="b-pratinjau" judul="9. Pratinjau sertifikat">
+                {detail.lkk.templateKode !== 'sphygmomanometer' ? (
+                  <p className="text-sm text-slate-600">Pratinjau sertifikat untuk alat ini belum tersedia.</p>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs text-slate-600">Versi <strong>dengan kop</strong> hanya untuk dilihat di sini dan tertaut ke QR. Salinan untuk Google Drive dan komputer adalah versi <strong>tanpa kop</strong>. {detail.lkk.status === 'approved' ? '' : 'Sebelum ACC, QR yang tampil hanya contoh (TTE CONTOH).'}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, true); }} disabled={pdfMemuat !== null}
+                        className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl border border-[#0B6FB3] text-[#0B6FB3] text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
+                        {pdfMemuat === 'kop' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
+                        {pdfMemuat === 'kop' ? 'Membuat…' : 'Tampilkan pratinjau (dengan kop)'}
+                      </button>
+                      <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, false); }} disabled={pdfMemuat !== null}
+                        className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl border border-slate-400 text-slate-700 text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
+                        {pdfMemuat === 'tanpa' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileText className="w-4 h-4" aria-hidden="true" />}
+                        {pdfMemuat === 'tanpa' ? 'Membuat…' : 'Unduh tanpa kop'}
+                      </button>
+                    </div>
+                    {pdfGalat && <p className="text-xs text-[#991B1B] font-semibold flex items-start gap-1.5" role="alert"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />{pdfGalat}</p>}
+                    {pratinjauUrl && (
+                      <div className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#EEF3F7] text-xs">
+                          <p className="font-bold text-slate-800">Pratinjau sertifikat (dengan kop)</p>
+                          <div className="flex gap-3 shrink-0">
+                            <a href={pratinjauUrl} target="_blank" rel="noreferrer" className="font-bold text-[#0B6FB3] underline">Layar penuh</a>
+                            <button type="button" onClick={bersihkanPratinjau} className="font-bold text-slate-700 underline cursor-pointer">Tutup</button>
+                          </div>
+                        </div>
+                        <iframe title="Pratinjau sertifikat" src={pratinjauUrl} className="w-full h-[70vh] min-h-[420px] bg-slate-100" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Bagian>
+
+              {/* 10. Aksi */}
+              <Bagian id="b-aksi" judul="10. Keputusan Penyelia">
                 {!bisaAksi && <p className="text-sm text-slate-600">LKK berstatus <strong>{STATUS[detail.lkk.status]?.teks ?? detail.lkk.status}</strong>; tidak ada aksi yang tersedia di sini.</p>}
                 {bisaAksi && (
                   <div className="space-y-4">
