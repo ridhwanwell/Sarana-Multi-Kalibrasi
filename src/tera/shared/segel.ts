@@ -77,10 +77,28 @@ function rapikan(v: unknown, kedalaman: number): unknown {
   }
 }
 
-/** Banyaknya titik ukur di isian (baris `data.titik_ukur`). */
+/**
+ * Banyaknya titik ukur di isian: baris `data.titik_ukur` (bentuk lama) + SETIAP bacaan angka di
+ * `data.kinerja[id][titik][naik|turun][urutan]` (bentuk template). Server memakai fungsi yang sama,
+ * jadi LKK yang terkirim setengah (bacaan hilang) tidak akan lolos jadi 🟢.
+ */
 export function hitungJumlahTitik(data: unknown): number {
-  const t = (data as { titik_ukur?: unknown } | null)?.titik_ukur;
-  return Array.isArray(t) ? t.length : 0;
+  const d = data as { titik_ukur?: unknown; kinerja?: unknown } | null;
+  let n = Array.isArray(d?.titik_ukur) ? d!.titik_ukur.length : 0;
+  const kin = d?.kinerja;
+  if (kin && typeof kin === 'object') {
+    for (const per of Object.values(kin as Record<string, unknown>)) {
+      if (!per || typeof per !== 'object') continue;
+      for (const baris of Object.values(per as Record<string, unknown>)) {
+        if (!baris || typeof baris !== 'object') continue;
+        for (const arah of ['naik', 'turun'] as const) {
+          const run = (baris as Record<string, unknown>)[arah];
+          if (Array.isArray(run)) n += run.filter((x) => typeof x === 'number' && Number.isFinite(x)).length;
+        }
+      }
+    }
+  }
+  return n;
 }
 
 async function sha256Hex(teks: string): Promise<string> {

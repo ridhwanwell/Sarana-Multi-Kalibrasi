@@ -6,8 +6,8 @@
  * ulang halaman atau HP mati tidak menghilangkan isian. Tiga "fotokopi sertifikat" alat standar dijepret ke
  * LKK saat dipilih (snapshot), sehingga hitungan tidak berubah walau master kalibrator nanti diperbarui.
  *
- * Bagian: Identitas alat (+ pilih alat standar) → Kondisi lingkungan → Fisik & fungsi → Kinerja → Kesimpulan.
- * Ringkasan & Selesai dibuka di langkah berikutnya (4.3d-3). Hitungan Laik/Tidak Laik berjalan di belakang layar
+ * Bagian: Identitas alat (+ pilih alat standar) → Kondisi lingkungan → Fisik & fungsi → Kinerja → Kesimpulan → Ringkasan & Selesai.
+ * Ringkasan & Selesai (4.3d-3): segel LKK lalu antre kirim otomatis. Hitungan Laik/Tidak Laik berjalan di belakang layar
  * (shared/jejak.ts → hitung.ts) dan hanya DITAMPILKAN di sini; tidak ada rumus di komponen.
  *
  * Tidak ada rumus di komponen: hitungan lingkungan ada di shared/lingkungan.ts, aturan kelengkapan di shared/isian.ts.
@@ -20,7 +20,7 @@ import { AlertCircle, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Loade
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
-import { ambilLkk, bolehDiubah, simpanIsian, type LkkLokal } from './data/teraDb';
+import { ambilLkk, bolehDiubah, simpanIsian, tandaiSelesai, type LkkLokal, type SyncState } from './data/teraDb';
 import { buatJejakHitung } from './shared/jejak';
 import type { Vonis } from './shared/hitung';
 import { buatSnapshot, daftarKalibrator, templateVersi, type KalibratorLokal } from './data/masterLokal';
@@ -531,16 +531,131 @@ const BagianKesimpulan: React.FC<BagianProps & { keBagian: (id: BagianId) => voi
   );
 };
 
+/* ---------- Bagian 7: Ringkasan & Selesai ---------- */
+
+interface SelesaiProps {
+  lkk: LkkLokal; namaRs: string; status: SyncState; terkunci: boolean; proses: boolean; galat: string | null;
+  onSelesai: () => void; keBagian: (id: BagianId) => void;
+}
+
+const Baris: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="t-ringkas-baris"><dt className="t-ket">{label}</dt><dd>{children}</dd></div>
+);
+
+const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl, isi, kunci, kurang, lkk, namaRs, status, terkunci, proses, galat, onSelesai, keBagian }) => {
+  const [tanya, setTanya] = useState(false);
+  const jejak = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot), [tpl, isi.data, isi.snapshot]);
+  const hasil = jejak?.hasil ?? null;
+  const siap = !!hasil && !!jejak?.lengkap && !!jejak?.kesimpulan && kurang.length === 0;
+  const laik = jejak?.kesimpulan === 'Laik Pakai';
+  const iden = (isi.data.identitas ?? {}) as Peta;
+  const ling = (isi.data.lingkungan ?? {}) as Peta;
+  const snap = (isi.snapshot ?? {}) as Peta;
+  const bagianKurang = [...new Set(kurang.map((k) => k.bagian))];
+  const angka = (v: unknown) => (typeof v === 'number' ? formatAngka(v) : '-');
+  const sudahSelesai = terkunci || status !== 'draft';
+
+  return (
+    <>
+      {sudahSelesai && (
+        <div className="t-stiker" data-v="laik" role="status">
+          <Check size={28} aria-hidden="true" />
+          <div>
+            <p className="t-stiker-judul">LKK selesai</p>
+            <p className="t-ket">Tersimpan di perangkat dan dikirim otomatis begitu ada sinyal. Tidak perlu menekan tombol apa pun.</p>
+            <p className="mt-2"><ChipSync state={status} /></p>
+          </div>
+        </div>
+      )}
+      {siap && hasil && (
+        <div className="t-stiker mt-3" data-v={laik ? 'laik' : 'tidak'} role="status">
+          {laik ? <Check size={28} aria-hidden="true" /> : <AlertCircle size={28} aria-hidden="true" />}
+          <div>
+            <p className="t-stiker-judul">{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</p>
+            <p className="t-stiker-petunjuk">Tempel stiker <b>{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</b> pada alat ini.</p>
+          </div>
+        </div>
+      )}
+
+      <section className="t-kartu mt-3" aria-label="Ringkasan LKK">
+        <h3 className="t-judul-kecil">Ringkasan</h3>
+        <dl className="t-ringkas mt-2">
+          <Baris label="Alat">{tpl.nama}</Baris>
+          <Baris label="Nomor stiker"><span className="tabular">{lkk.noLabel || '-'}</span>{lkk.alatTambahan ? ' · alat tambahan' : ''}</Baris>
+          <Baris label="Rumah sakit">{namaRs}</Baris>
+          <Baris label="Tanggal pelaksanaan">{tglPanjang(isi.tanggal)}</Baris>
+          <Baris label="Merek / tipe / no. seri">{[iden.merek, iden.tipe, iden.noSeri].filter((x) => typeof x === 'string' && x.trim()).join(' · ') || '-'}</Baris>
+          <Baris label="Alat standar">{(['tekanan', 'stopwatch', 'termohigrometer'] as const).map((k) => snap[k]?.nama).filter(Boolean).join(' · ') || '-'}</Baris>
+          <Baris label="Lingkungan"><span className="tabular">{angka(ling.suhuAwal)}–{angka(ling.suhuAkhir)} °C · {angka(ling.rhAwal)}–{angka(ling.rhAkhir)} %RH</span></Baris>
+          {hasil && <Baris label="Fisik & fungsi">{hasil.fisik.jumlahBaik} dari {hasil.fisik.jumlahItem} butir Baik</Baris>}
+          {hasil && tpl.ujiAmbang.map((u) => (
+            <Baris key={u.id} label={u.judul}><span className="tabular">{hasil.ujiAmbang[u.id]?.nilaiUkur != null ? `${formatAngka(hasil.ujiAmbang[u.id].nilaiUkur)} ${u.satuan}` : '-'}</span> <ChipVonis vonis={hasil.ujiAmbang[u.id]?.hasil ?? '-'} /></Baris>
+          ))}
+          {hasil && tpl.kinerja.map((k) => (
+            <Baris key={k.id} label={k.judul}>{hasil.kinerja[k.id]?.jumlahLaik ?? 0} dari {hasil.kinerja[k.id]?.jumlahDinilai ?? 0} titik laik</Baris>
+          ))}
+          {siap && hasil && <Baris label="Skor">{hasil.skor.total} dari {tpl.skor.item.reduce((a, b) => a + b.nilai, 0)}</Baris>}
+        </dl>
+      </section>
+
+      {!sudahSelesai && kurang.length > 0 && (
+        <div className="t-kurang" role="status" aria-label="Yang masih kurang">
+          <p className="t-label">Belum bisa diselesaikan — masih kurang</p>
+          <ul>
+            {kurang.map((k) => (
+              <li key={k.bagian + k.teks} data-merah={k.merah || undefined}>
+                {k.merah ? <AlertCircle size={16} aria-hidden="true" className="shrink-0" /> : <span className="t-titik" aria-hidden="true" />}
+                <span><b>{NAMA_BAGIAN[k.bagian] ?? k.bagian}:</b> {k.teks}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="t-kurang-aksi">
+            {bagianKurang.map((id) => (
+              <button key={id} type="button" className="t-tombol t-tombol-kedua" onClick={() => keBagian(id)}>Ke {NAMA_BAGIAN[id] ?? id}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {galat && (
+        <p className="t-peringatan mt-3" role="alert">
+          <AlertCircle size={20} aria-hidden="true" className="shrink-0" /><span>{galat}</span>
+        </p>
+      )}
+
+      {!sudahSelesai && !kunci && (
+        tanya && siap ? (
+          <section className="t-kartu t-konfirmasi mt-4" role="group" aria-label="Konfirmasi selesai">
+            <p className="t-judul-kecil">Selesaikan LKK ini?</p>
+            <p className="t-ket mt-1">Hasil: <b>{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</b>. Setelah selesai, isian dikunci dan tidak bisa diubah (kecuali Penyelia mengembalikannya).</p>
+            <div className="t-aksi-bawah-tombol">
+              <button type="button" className="t-tombol t-tombol-kedua" onClick={() => setTanya(false)} disabled={proses}>Periksa lagi</button>
+              <button type="button" className="t-tombol t-tombol-utama" onClick={() => { void onSelesai(); }} aria-busy={proses || undefined} disabled={proses}>
+                {proses ? <><Loader2 size={20} aria-hidden="true" className="t-putar" />Menyimpan…</> : 'Ya, selesai'}
+              </button>
+            </div>
+          </section>
+        ) : (
+          <button type="button" className="t-tombol t-tombol-utama t-tombol-penuh mt-4" onClick={() => { if (siap) setTanya(true); }} aria-describedby={siap ? undefined : 'selesai-ket'}>
+            <Check size={20} aria-hidden="true" />Selesai
+          </button>
+        )
+      )}
+      {!sudahSelesai && !kunci && !siap && <p id="selesai-ket" className="t-ket mt-2">Tombol Selesai aktif setelah semua isian lengkap. Yang kurang tertulis di atas.</p>}
+    </>
+  );
+};
+
 /* ---------- Daftar bagian & kemajuan ---------- */
 
 const DaftarBagian: React.FC<{
-  bagian: ReturnType<typeof daftarBagian>; aktif: number; kurang: Kurang[]; onPilih: (i: number) => void;
-}> = ({ bagian, aktif, kurang, onPilih }) => (
+  bagian: ReturnType<typeof daftarBagian>; aktif: number; kurang: Kurang[]; selesai: boolean; onPilih: (i: number) => void;
+}> = ({ bagian, aktif, kurang, selesai, onPilih }) => (
   <nav className="t-bagian" aria-label="Bagian LKK">
     <p className="t-bagian-label" aria-live="polite">Bagian {aktif + 1} dari {bagian.length} · {bagian[aktif]?.nama}</p>
     <ol className="t-bagian-daftar">
       {bagian.map((b, i) => {
-        const lengkap = b.tersedia && (b.id === 'kesimpulan' ? kurang.length === 0 : bagianLengkap(kurang, b.id));
+        const lengkap = b.tersedia && (b.id === 'ringkasan' ? selesai : b.id === 'kesimpulan' ? kurang.length === 0 : bagianLengkap(kurang, b.id));
         const adaMerah = kurang.some((k) => k.bagian === b.id && k.merah);
         return (
           <li key={b.id}>
@@ -568,7 +683,12 @@ interface FormulirProps { lkk: LkkLokal; tpl: TemplateAlat; kalibrator: Kalibrat
 type Simpan = { k: 'diam' } | { k: 'menyimpan' } | { k: 'tersimpan'; waktu: Date } | { k: 'galat'; pesan: string };
 
 const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, teknisi }) => {
-  const kunci = !bolehDiubah(lkk);
+  const { dorong } = useSinkron();
+  const [selesaiLokal, setSelesaiLokal] = useState(false);
+  const [status, setStatus] = useState<SyncState>(lkk.syncState);
+  const [prosesSelesai, setProsesSelesai] = useState(false);
+  const [galatSelesai, setGalatSelesai] = useState<string | null>(null);
+  const kunci = !bolehDiubah(lkk) || selesaiLokal;
   const bagian = useMemo(() => daftarBagian(tpl), [tpl]);
   const [aktif, setAktif] = useState(0);
   const [isi, setIsi] = useState<IsiKerja>(() => ({ data: (lkk.data ?? {}) as Peta, tanggal: lkk.tanggalKalibrasi, snapshot: (lkk.calibratorSnapshot ?? null) as Peta | null }));
@@ -686,6 +806,33 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
 
   const kurang = useMemo(() => periksaIsian(tpl, isi), [tpl, isi]);
 
+  /** SELESAI: tulis isian + jejak hitung terakhir, segel, taruh di antrean kirim (🟡), lalu kunci layar. */
+  const selesaikan = useCallback(async () => {
+    if (prosesSelesai || kunci) return;
+    setProsesSelesai(true);
+    setGalatSelesai(null);
+    try {
+      const s = isiRef.current;
+      const jejak = buatJejakHitung(tpl, s.data, s.snapshot);
+      if (periksaIsian(tpl, s).length > 0 || !jejak || !jejak.lengkap || !jejak.kesimpulan) {
+        throw new Error('Masih ada isian yang kurang. Lengkapi dulu, lalu tekan Selesai lagi.');
+      }
+      if (jam.current !== null) { window.clearTimeout(jam.current); jam.current = null; }
+      await antrean.current;
+      await simpanIsian(lkk.id, { data: s.data, tanggalKalibrasi: s.tanggal, calibratorSnapshot: s.snapshot, results: jejak as unknown as Record<string, unknown> });
+      kotor.current = false;
+      const baru = await tandaiSelesai(lkk.id);
+      setStatus(baru.syncState);
+      setSelesaiLokal(true);
+      try { navigator.vibrate?.(30); } catch { /* tidak semua perangkat */ }
+      dorong();
+    } catch (e: any) {
+      setGalatSelesai(String(e?.message || 'LKK belum bisa diselesaikan. Isian tetap aman di perangkat.'));
+    } finally {
+      setProsesSelesai(false);
+    }
+  }, [prosesSelesai, kunci, tpl, lkk.id, dorong]);
+
   const pindah = useCallback((i: number) => {
     if (i < 0 || i >= bagian.length || !bagian[i].tersedia) return;
     void simpanSekarang();
@@ -706,7 +853,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
       <header className="t-lkk-kepala">
         <h1 className="t-judul-layar t-rs-judul">{tpl.nama}</h1>
         <p className="t-ket tabular t-rs-judul">{lkk.noLabel || 'Nomor label belum diisi'} · {namaRs}{lkk.alatTambahan ? ' · alat tambahan' : ''}{lkk.isTest ? ' · data uji' : ''}</p>
-        <div className="t-lkk-status"><ChipSync state={lkk.syncState} /></div>
+        <div className="t-lkk-status"><ChipSync state={status} /></div>
         {/* Tinggi baris ini tetap supaya layar tidak bergeser saat status simpan berganti (ketukan tidak meleset) */}
         <p className="t-ket t-simpan" role="status" data-simpan={simpan.k}>
           {simpan.k === 'menyimpan' ? 'Menyimpan…'
@@ -728,7 +875,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
       )}
 
       <div className="t-lkk-badan">
-        <DaftarBagian bagian={bagian} aktif={aktif} kurang={kurang} onPilih={pindah} />
+        <DaftarBagian bagian={bagian} aktif={aktif} kurang={kurang} selesai={selesaiLokal || lkk.syncState !== 'draft'} onPilih={pindah} />
         <section className="t-lkk-isi" aria-labelledby="judul-bagian-lkk" onBlur={() => { void simpanSekarang(); }}>
           <h2 id="judul-bagian-lkk" ref={judulRef} tabIndex={-1} className="t-judul-bagian">{bagian[aktif].nama}</h2>
           <div className="mt-3">
@@ -739,10 +886,11 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
             {idBagian === 'fisik' && <BagianFisik {...sifat} />}
             {idBagian === 'kinerja' && <BagianKinerja {...sifat} />}
             {idBagian === 'kesimpulan' && <BagianKesimpulan {...sifat} keBagian={(id) => pindah(bagian.findIndex((b) => b.id === id))} />}
+            {idBagian === 'ringkasan' && (
+              <BagianRingkasan {...sifat} lkk={lkk} namaRs={namaRs} status={status} terkunci={selesaiLokal} proses={prosesSelesai} galat={galatSelesai}
+                onSelesai={selesaikan} keBagian={(id) => pindah(bagian.findIndex((b) => b.id === id))} />
+            )}
           </div>
-          {terakhirTersedia && (
-            <p className="t-ket mt-4" role="status">Ringkasan & Selesai dibuka di pembaruan berikutnya. Semua isian sudah tersimpan di perangkat.</p>
-          )}
           {kurangBagian.length > 0 && (
             <div className="t-kurang" role="status" aria-label="Yang masih kurang di bagian ini">
               <p className="t-label">Belum lengkap di bagian ini</p>

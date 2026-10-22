@@ -145,7 +145,7 @@ let t = await teks(p);
 cek('header: nama alat, nomor stiker, nama RS', /Sphygmomanometer/.test(t) && /095\.0001/.test(t) && /RS Uji Solo/.test(t), t.slice(0, 200));
 cek('chip status "Sedang diisi" (ikon + tulisan)', /Sedang diisi/.test(t));
 cek('bilah kemajuan: "Bagian 1 dari 6 · Identitas alat"', /Bagian 1 dari 6 · Identitas alat/.test(t));
-cek('6 penanda bagian; hanya Ringkasan & Selesai "segera hadir"', await p.getByRole('button', { name: /^Bagian \d,/ }).count() === 6 && await p.getByRole('button', { name: /segera hadir/ }).count() === 1);
+cek('6 penanda bagian; semuanya bisa dibuka (tidak ada "segera hadir")', await p.getByRole('button', { name: /^Bagian \d,/ }).count() === 6 && await p.getByRole('button', { name: /segera hadir/ }).count() === 0);
 cek('nama alat, tempat, teknisi tampil baca-saja (bukan kotak isian)', /Nama alat/.test(t) && /Tempat/.test(t) && /Teknisi Uji, A\.Md\./.test(t) && await p.locator('#iden-nama').count() === 0);
 cek('urutan kolom identitas = Master Input 1', await p.evaluate(() => ['iden-merek', 'iden-tipe', 'iden-noSeri', 'iden-rentangUkur'].every((x, i, a) => { const e = document.getElementById(x)!; const n = document.getElementById(a[i + 1] || ''); return !n || (e.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0; })));
 cek('resolusi bawaan 2 mmHg terpilih & tersimpan', await p.getByRole('radio', { name: '2 mmHg' }).getAttribute('aria-checked') === 'true' && await dataTersimpan(p, id, (l) => l.data.identitas?.resolusi === 2));
@@ -282,11 +282,11 @@ t = await teks(p);
 cek('alasan menyebut nilai & batas (bocor 50 mmHg > ≤ 15; laju buang 20 > ≤ 10)', /Kebocoran Tekanan: 50 mmHg, batas ≤ 15 mmHg/.test(t) && /Laju Buang Cepat: 20 detik, batas ≤ 10 detik/.test(t), t.slice(0, 600));
 cek('ikon tanda seru + tulisan tebal pada TIDAK LAIK', await p.evaluate(() => !!document.querySelector('.t-stiker[data-v="tidak"] svg') && getComputedStyle(document.querySelector('.t-stiker-judul')!).fontWeight >= '600'));
 cek('jejak di perangkat ikut berubah: kesimpulan Tidak Laik Pakai', await dataTersimpan(p, id, (x) => x.results?.kesimpulan === 'Tidak Laik Pakai'));
-cek('di bagian terakhir yang tersedia: Lanjut tidak membuka bagian kosong, ada penjelasan', /Ringkasan & Selesai dibuka di pembaruan berikutnya/.test(await teks(p)));
-await p.getByRole('button', { name: /Lanjut/ }).click({ force: true });
-cek('menekan Lanjut di sana tetap di Kesimpulan', /Bagian 5 dari 6 · Kesimpulan/.test(await teks(p)));
+await p.getByRole('button', { name: /Lanjut/ }).click();
+cek('Lanjut dari Kesimpulan → Ringkasan & Selesai', /Bagian 6 dari 6 · Ringkasan & Selesai/.test(await teks(p)));
+cek('di bagian terakhir tombol Lanjut nonaktif (tidak membuka bagian kosong)', await p.getByRole('button', { name: /Lanjut/ }).getAttribute('aria-disabled') === 'true');
 await p.getByRole('button', { name: /^Kembali$/ }).click();
-cek('Kembali → Kinerja', /Bagian 4 dari 6/.test(await teks(p)));
+cek('Kembali → Kesimpulan', /Bagian 5 dari 6/.test(await teks(p)));
 l = await bacaLkk(p, id);
 cek('LKK masih draft & versi draft naik (tiap auto-save tercatat)', l.syncState === 'draft' && l.draftVersion > 5, JSON.stringify({ s: l.syncState, v: l.draftVersion }));
 cek('jejak hitung ikut tersimpan di perangkat & belum dikirim (clientVersion 0)',
@@ -303,6 +303,36 @@ await p.fill('#iden-tanggal-pelaksanaan', '2026-10-20');
 cek('dikembalikan → peringatan hilang', await tunggu(p, () => !/Alat yang dipilih expired/.test(document.body.innerText)));
 await p.fill('#iden-tanggal-pelaksanaan', '2026-10-18');
 cek('tanggal pelaksanaan sebelum tanggal penerimaan → kurang', /Tanggal penerimaan tidak boleh sesudah/.test(await teks(p)));
+
+// ---------- 6b. Ringkasan & Selesai ----------
+await ke(p, 6);
+t = await teks(p);
+cek('Ringkasan belum lengkap: daftar kurang + tombol ke bagian + TIDAK ada stiker', /Belum bisa diselesaikan — masih kurang/.test(t) && /Tanggal penerimaan tidak boleh sesudah/.test(t) && !/Tempel stiker/.test(t) && await p.getByRole('button', { name: /Ke Identitas alat/ }).count() === 1);
+await p.getByRole('button', { name: /^Selesai$/ }).click();
+cek('tekan Selesai saat masih kurang: TIDAK membuka konfirmasi, tidak ada yang dikirim', !/Selesaikan LKK ini\?/.test(await teks(p)) && (await bacaLkk(p, id)).syncState === 'draft' && /Tombol Selesai aktif setelah semua isian lengkap/.test(await teks(p)));
+await ke(p, 1);
+await p.fill('#iden-tanggal-pelaksanaan', '2026-10-20');
+await ke(p, 6);
+t = await teks(p);
+cek('lengkap: ringkasan memuat alat, nomor stiker, RS, tanggal, hasil bocor, skor', /Sphygmomanometer/.test(t) && /095\.0001/.test(t) && /RS Uji Solo/.test(t) && /20 Okt 2026/.test(t) && /Kebocoran Tekanan/.test(t) && /Skor\s+\d+ dari 100/.test(t), t.slice(0, 700));
+cek('lengkap: stiker TIDAK LAIK PAKAI (bocor 200, laju buang 20) + tidak ada daftar kurang', await tunggu(p, () => document.querySelector('.t-stiker[data-v="tidak"]') !== null && !/masih kurang/.test(document.body.innerText)));
+await p.getByRole('button', { name: /^Selesai$/ }).click();
+cek('Selesai → kartu konfirmasi menyebut hasil + peringatan terkunci (bukan dialog bertumpuk)', /Selesaikan LKK ini\?/.test(await teks(p)) && /TIDAK LAIK PAKAI/.test(await teks(p)) && /dikunci/.test(await teks(p)) && await p.locator('[role="dialog"], [role="alertdialog"]').count() === 0);
+await p.getByRole('button', { name: /Periksa lagi/ }).click();
+cek('"Periksa lagi" menutup konfirmasi; LKK masih draft', !/Selesaikan LKK ini\?/.test(await teks(p)) && (await bacaLkk(p, id)).syncState === 'draft');
+await p.getByRole('button', { name: /^Selesai$/ }).click();
+await p.getByRole('button', { name: /Ya, selesai/ }).click();
+cek('Ya, selesai → "LKK selesai" + chip status', await tunggu(p, () => /LKK selesai/.test(document.body.innerText) && /Tersimpan di perangkat|Sedang dikirim/.test(document.body.innerText)), (await teks(p)).slice(0, 400));
+l = await bacaLkk(p, id);
+cek('LKK disegel: clientVersion 1, checksum 64 hex, status tersimpan/mengirim, jumlah titik = 36 bacaan nyata', l.clientVersion === 1 && /^[0-9a-f]{64}$/.test(l.checksum) && ['tersimpan', 'mengirim'].includes(l.syncState) && l.jumlahTitik === 36, JSON.stringify({ v: l.clientVersion, s: l.syncState, j: l.jumlahTitik }));
+cek('jejak hitung ikut tersegel: kesimpulan Tidak Laik Pakai + lengkap', l.results?.lengkap === true && l.results?.kesimpulan === 'Tidak Laik Pakai');
+const antre = await p.evaluate(async () => (await (window as any).tera.daftarOutbox()).map((o: any) => o.lkkId));
+cek('masuk antrean kirim otomatis (tanpa tombol Upload)', antre.includes(id));
+cek('layar terkunci: semua kotak readOnly, dropdown nonaktif, tombol Selesai hilang', await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi input')].every((i) => (i as HTMLInputElement).readOnly) && [...document.querySelectorAll('.t-lkk-isi select')].every((s) => (s as HTMLSelectElement).disabled) && ![...document.querySelectorAll('button')].some((b) => /^Selesai$/.test(b.textContent?.trim() || ''))));
+await ke(p, 4);
+cek('Kinerja sesudah selesai: terkunci (readOnly) & banner "sudah dikirim"', await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi input')].every((i) => (i as HTMLInputElement).readOnly)) && /sudah dikirim dan tidak bisa diubah/.test(await teks(p)));
+await ke(p, 6);
+cek('penanda Ringkasan bercentang sesudah selesai', (await p.getByRole('button', { name: /^Bagian 6,/ }).getAttribute('aria-label'))?.includes('lengkap') === true);
 await p.context().close();
 
 // ---------- 7. Tanpa data master / template ----------
@@ -372,6 +402,9 @@ for (const [lebar, tinggi, gelap, nama] of [[320, 640, false, '320'], [390, 844,
   await ke(p, 5);
   cek(`${nama}: Kesimpulan tanpa geser samping`, !(await geser(p)));
   if (keluar) await p.screenshot({ path: `${keluar}/lkk-kesimpulan-${nama}.png` });
+  await ke(p, 6);
+  cek(`${nama}: Ringkasan & Selesai tanpa geser samping, semua tombol ≥ 48 px`, !(await geser(p)) && (await p.evaluate(() => [...document.querySelectorAll('.t-lkk-isi button')].filter((e) => e.getBoundingClientRect().height < 47.5 && e.getBoundingClientRect().width > 0).length)) === 0);
+  if (keluar) await p.screenshot({ path: `${keluar}/lkk-ringkasan-${nama}.png` });
   await p.context().close();
 }
 

@@ -776,6 +776,13 @@ html.tera-aktif body {
 .t-kurang-aksi { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .t-kurang-aksi .t-tombol { min-height: 48px; }
 
+.t-ringkas { display: flex; flex-direction: column; gap: 8px; }
+.t-ringkas-baris { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--t-border); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.t-ringkas-baris:last-child { border-bottom: 0; padding-bottom: 0; }
+.t-ringkas-baris dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.t-tombol-penuh { width: 100%; }
+.t-konfirmasi { border-color: var(--t-primary); border-width: 2px; }
+
 /* Yang masih kurang */
 .t-kurang { margin-top: 16px; padding: 12px; border-radius: var(--t-radius-ctl); background: var(--t-wait-bg); color: var(--t-wait-text); }
 .t-kurang ul { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; font-size: 14px; line-height: 1.5; }

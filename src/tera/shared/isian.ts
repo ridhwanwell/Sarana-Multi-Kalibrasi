@@ -26,7 +26,7 @@ export function daftarBagian(tpl: Pick<TemplateAlat, 'keselamatan_listrik'>): De
     ...(tpl.keselamatan_listrik !== 'tidak_ada' ? [{ id: 'keselamatan' as const, nama: 'Keselamatan listrik', tersedia: false }] : []),
     { id: 'kinerja', nama: 'Kinerja', tersedia: true },
     { id: 'kesimpulan', nama: 'Kesimpulan', tersedia: true },
-    { id: 'ringkasan', nama: 'Ringkasan & Selesai', tersedia: false },
+    { id: 'ringkasan', nama: 'Ringkasan & Selesai', tersedia: true },
   ];
 }
 

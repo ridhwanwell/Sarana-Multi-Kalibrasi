@@ -12,7 +12,7 @@ const cek = (n: string, ok: boolean, d = '') => { ok ? lulus++ : gagal++; if (!o
 {
   const b = daftarBagian(T);
   cek('6 bagian: Identitas → Lingkungan → Fisik → Kinerja → Kesimpulan → Ringkasan', b.map((x) => x.id).join() === 'identitas,lingkungan,fisik,kinerja,kesimpulan,ringkasan', b.map((x) => x.id).join());
-  cek('5 bagian pertama tersedia (…Kinerja, Kesimpulan), Ringkasan menyusul', b.slice(0, 5).every((x) => x.tersedia) && !b[5].tersedia);
+  cek('semua 6 bagian tersedia (sampai Ringkasan & Selesai)', b.every((x) => x.tersedia));
   const wajib = daftarBagian({ keselamatan_listrik: 'wajib' });
   cek('keselamatan listrik hanya bila template meminta (setelah Fisik)', wajib.map((x) => x.id).join() === 'identitas,lingkungan,fisik,keselamatan,kinerja,kesimpulan,ringkasan');
 }
