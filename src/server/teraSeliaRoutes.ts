@@ -265,7 +265,11 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
     try {
       args.p_nama = await namaPenyelia(req);
       const { data, error } = await berbatas((sg) => supabaseAdmin.rpc(fungsi, args).abortSignal(sg));
-      if (error || !data) { console.error(`[Tera/Selia] ${fungsi}:`, error?.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      if (error || !data) {
+        console.error(`[Tera/Selia] ${fungsi}:`, error?.message);
+        // Galat dari database (bukan sinyal): beri tahu jujur, jangan "server tidak merespons".
+        return res.status(error ? 500 : 503).json({ error: error ? 'Database menolak perintah ini. Tidak ada yang berubah — galat sudah tercatat, hubungi Developer.' : PESAN_SIBUK });
+      }
       const h = data as any;
       const ok = ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan', 'dibuka', 'sudah_dibuka'].includes(h.hasil);
       // Sesudah ACC: cetak lembar ASLI (dengan kop) lalu simpan, supaya scan QR langsung membuka PDF.
