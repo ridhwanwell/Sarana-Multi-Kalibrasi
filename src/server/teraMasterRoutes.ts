@@ -72,7 +72,9 @@ export function registerTeraMasterRoutes(app: Express, deps: { rateLimitKey: (re
         waktuServer: new Date().toISOString(),
         template: (rT.data || []).map((r: any) => ({ kodeAlat: r.kode_alat, versi: r.versi, definition: r.definition })),
         kalibrator: (rK.data || [])
-          .filter((r: any) => aset.has(r.aset_kalibrator_id) && !aset.get(r.aset_kalibrator_id).deleted_at)
+          // 26 Okt 2026 (keputusan Ridhwan): data kalibrator di Manajemen Aset sudah dihapus; kalibrator sungguhan = nilai sertifikat
+          // di tera_calibrator_points. Baris aset (yang dihapus-lembut) tetap dipakai hanya sebagai kartu identitas alat.
+          .filter((r: any) => aset.has(r.aset_kalibrator_id))
           .map((r: any) => {
             const a = aset.get(r.aset_kalibrator_id);
             return {

@@ -447,3 +447,10 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Uji Chromium `npm run test:tera:layar-pompa` 25/25 (isi semua bagian dengan angka golden → semua LAIK, skor 100; penyumbatan 30 psi → TIDAK LAIK; HP 390 px, huruf 200 %, tablet diputar tanpa geser samping). Uji lama tetap lulus (layar-lkk 145, hitung 87/70/134, jejak 37, isian 52, dll). Stub ikon `FileDown` yang usang di uji jadwal-layar & mulai-lkk diperbaiki.
 - Template pompa BELUM ada di database, jadi teknisi belum melihat Infusion Pump. Kode layar saja tidak mengubah apa pun bagi pengguna sekarang.
 - BERIKUTNYA 6.2: migrasi 4 blok (titik kalibrator IDA CAL-030 + ESA + template `infusion_pump` v1). Pertanyaan: ESA mana yang dipakai, CAL-008 atau CAL-042 (nomor seri & sertifikat sama)? Lalu Selia untuk pompa dan PDF sertifikat (pratinjau dulu).
+
+### Hasil 6.2 (26 Okt 2026) — migrasi 0022 DIJALANKAN
+- Backup `backup.b20261026_tera_calibrator_points_0022` (7 baris) & `..._device_templates_0022` (3 baris). Perubahan: 6 baris titik kalibrator (IDA CAL-030: aliran 5 titik, tekanan 6 titik; ESA CAL-042: tegangan 6, resistansi 4, isolasi 2, arus bocor 4) + template `infusion_pump` v1 (Non-KAN, aktif). Semua CEK = true; baris lama tidak berubah.
+- Keputusan Ridhwan: data kalibrator di Manajemen Aset sudah dihapus (semua 57 baris `deleted_at` terisi) — kalibrator sungguhan = nilai sertifikat di `tera_calibrator_points`. Tanggal sertifikat mengikuti Excel (IDA 3 Feb 2026, berlaku sampai 3 Feb 2027 = asumsi 1 tahun; ESA 30 Jan 2026 – 30 Jan 2027).
+- Perbaikan kode: `/api/tera/master` tidak lagi menyaring baris aset yang dihapus-lembut (kalau tidak, tablet tidak menerima kalibrator apa pun). Baris aset hanya jadi kartu identitas.
+- Perlu diketahui: halaman "Nilai Kalibrator Tera" di Manajemen Aset memuat daftar aset yang belum dihapus, jadi tidak menampilkan kalibrator ini; nilai baru lewat migrasi/Developer sampai halaman itu disesuaikan.
+- BERIKUTNYA: uji layar Infusion Pump di tablet dengan BO 999; lalu Selia pompa dan pratinjau PDF sertifikat (tunggu "oke").
