@@ -24,6 +24,11 @@
  *  - Aliran Laik bila |koreksi| + U95 ≤ setting × 10 %
  *  - Listrik: bacaan + koreksi ESA; U = MAKS dari dua titik yang mengapit nilai terkoreksi
  *  - Skor: fisik&fungsi 10 + listrik (semua lulus) 40 + kinerja 50 (≥ 70 % titik aliran Laik DAN penyumbatan Laik); Laik Pakai bila ≥ 90
+ *
+ * ATURAN KEPUTUSAN KMK (keputusan Ridhwan 26 Okt 2026, template Infusion v3 / Syringe v2 ke atas):
+ *   KMK-MK-053.0 & 095.0 butir 10.1: guard band C + |U| ≤ MPE + w, dengan w = U  →  U saling coret  →  |C| ≤ MPE.
+ *   Bila template.aturanKeputusan = 'guardband_w_u': aliran |koreksi| ≤ toleransi; penyumbatan |rata-rata| < 20 psi;
+ *   listrik dibanding langsung dengan ambang SNI IEC 62353. U95 tetap dihitung & dicetak di sertifikat.
  */
 import { bandingkan, bulatExcel, faktorKDariVeff, rataRata, stdevS, type Banding, type JenisSkala } from './hitung.js';
 
@@ -87,6 +92,11 @@ export interface TemplatePompa {
   kinerja: KinerjaPompa;
   skor: { fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number } };
   sertifikat: { tata_letak: string; halaman: number };
+  /**
+   * Aturan keputusan. Kosong = perilaku Excel lama (U95 ditambahkan ke koreksi, versi template lama tetap begitu).
+   * 'guardband_w_u' = KMK-MK-004.0 seperti ditulis KMK-MK-053.0/095.0: C + |U| ≤ MPE + w, w = U → |C| ≤ MPE.
+   */
+  aturanKeputusan?: 'guardband_w_u';
 }
 
 // ───────────────────────────── Data & kalibrator ─────────────────────────────
@@ -237,6 +247,7 @@ export function jenisSkalaPompa(tpl: TemplatePompa, data: DataPompa): JenisSkala
 export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: KalibratorPompa): HasilPompa {
   const kurang: string[] = [];
   const kn = tpl.kinerja;
+  const gb = tpl.aturanKeputusan === 'guardband_w_u';
   const resolusi = angka(data.identitas?.resolusi);
   const jenisSkala = jenisSkalaPompa(tpl, data);
   if (resolusi === null) kurang.push('Resolusi alat belum diisi');
@@ -268,9 +279,11 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
       u95 = u95Listrik(tabel, terukur);
       if (u95 !== null) {
         const q = u.uji;
-        const lulus = q.jenis === 'sekitar' ? Math.abs(terukur - q.nominal) + u95 <= q.batas
-          : q.jenis === 'maksimum' ? Math.abs(terukur) + u95 <= q.batas
-          : terukur - u95 >= q.batas;
+        // KMK guard band w = U: U di kedua sisi saling coret → dibanding langsung (tanpa galat pembulatan desimal)
+        const uu = gb ? 0 : u95;
+        const lulus = q.jenis === 'sekitar' ? Math.abs(terukur - q.nominal) + uu <= q.batas
+          : q.jenis === 'maksimum' ? Math.abs(terukur) + uu <= q.batas
+          : terukur - uu >= q.batas;
         hasil = lulus ? 'Laik' : 'Tidak Laik';
       }
     }
@@ -288,7 +301,8 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
     let hasil: Vonis = '-';
     if (b.koreksi !== null && b.u95 !== null) {
       const tambahan = kn.aturanAliran === 'sepertiga' ? toleransi / 3 : b.u95;
-      hasil = Math.abs(b.koreksi) + tambahan <= toleransi ? 'Laik' : 'Tidak Laik';
+      // KMK: C + |U| ≤ MPE + w, w = U → |C| ≤ MPE
+      hasil = Math.abs(b.koreksi) + (gb ? 0 : tambahan) <= toleransi ? 'Laik' : 'Tidak Laik';
       aliran.jumlahDinilai++;
       if (hasil === 'Laik') aliran.jumlahLaik++;
     } else kurang.push(`Aliran ${s} mL/h belum lengkap`);
@@ -301,7 +315,7 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
   const uResSumbat = (kn.sumbat.resolusiTetap * 0.5) / Math.sqrt(3);
   const bs = budgetTitik(runSumbat, runSumbat, 0, kal.tekanan, uResSumbat, kn, kn.desimalCetak);
   let hasilSumbat: Vonis = '-';
-  if (bs.rataRata !== null && bs.u95 !== null) hasilSumbat = bandingkan(Math.abs(bs.rataRata) + bs.u95, kn.sumbat.banding, kn.sumbat.batas) ? 'Laik' : 'Tidak Laik';
+  if (bs.rataRata !== null && bs.u95 !== null) hasilSumbat = bandingkan(Math.abs(bs.rataRata) + (gb ? 0 : bs.u95), kn.sumbat.banding, kn.sumbat.batas) ? 'Laik' : 'Tidak Laik';
   else kurang.push('Penyumbatan belum lengkap');
   const sumbat = { ...bs, koreksi: null, setting: settingSumbat, batas: kn.sumbat.batas, hasil: hasilSumbat };
 

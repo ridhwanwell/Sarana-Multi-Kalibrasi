@@ -30,4 +30,24 @@ export const TEMPLATE_SYRINGE_PUMP_V1: TemplatePompa = {
   sertifikat: { tata_letak: 'report_all_syringe_pump', halaman: 3 },
 };
 
-export const TEMPLATE_SYRINGE_PUMP = TEMPLATE_SYRINGE_PUMP_V1;
+/**
+ * VERSI 2 (26 Okt 2026, keputusan Ridhwan "ikuti KMK semuanya"): mengikuti KMK-MK-095.0 —
+ *  - aturan keputusan guard band w = U (butir 95.10.1): aliran Laik bila |koreksi| ≤ 10 % setting (bukan lagi toleransi/3);
+ *    penyumbatan < 20 psi; keselamatan listrik dibanding langsung dengan ambang SNI IEC 62353;
+ *  - titik aliran contoh KMK 10/25/50/75/100 mL/h (butir 95.7.9.2; titik 1 mL/h dibuang karena U95 IDA di sana
+ *    lebih besar dari 1/3 toleransi), pengulangan 5 kali.
+ */
+export const TEMPLATE_SYRINGE_PUMP_V2: TemplatePompa = {
+  ...TEMPLATE_SYRINGE_PUMP_V1,
+  versi: 2,
+  sumber: 'KMK-MK-095.0 (aturan keputusan guard band w = U, titik 10/25/50/75/100 mL/h, 5 pengulangan, occlusion < 20 psi) + rumus ketidakpastian Master_Syringe_Pump_terisi.xlsx (26 Okt 2026)',
+  kinerja: {
+    ...TEMPLATE_SYRINGE_PUMP_V1.kinerja,
+    titikAliran: [10, 25, 50, 75, 100],
+    pengulangan: 5,
+    aturanAliran: 'u95',
+  },
+  aturanKeputusan: 'guardband_w_u',
+};
+
+export const TEMPLATE_SYRINGE_PUMP = TEMPLATE_SYRINGE_PUMP_V2;

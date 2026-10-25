@@ -71,7 +71,7 @@ export interface JejakPompa {
   template: { kode: string; versi: number; metode: string };
   kalibrator: Record<string, { asetId: string | null; nama: string | null; nomorSertifikat: string | null; berlakuSampai: string | null; jumlahTabel: number } | null>;
   masukan: { resolusi: number | null; jenisSkala: string | null };
-  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor'] };
+  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor']; aturanKeputusan?: TemplatePompa['aturanKeputusan'] };
   hasil: HasilPompa;
   lengkap: boolean;
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai' | null;
@@ -97,7 +97,7 @@ function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null
       template: { kode: tpl.kode_alat, versi: tpl.versi, metode: tpl.metode },
       kalibrator: { ida: identitasAlat('ida'), esa: identitasAlat('esa') },
       masukan: { resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: jenisSkalaPompa(tpl, dataPompa(data)) },
-      aturan: { kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor },
+      aturan: { kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor, ...(tpl.aturanKeputusan ? { aturanKeputusan: tpl.aturanKeputusan } : {}) },
       hasil, lengkap, kesimpulan: lengkap ? hasil.kesimpulan : null,
     });
   } catch {

@@ -107,7 +107,36 @@ KASUS_SYR = [
          listrik=dict(tegangan=250.0, resistansi_pembumian=1.5, resistansi_isolasi=15.0, arus_bocor=520.0), aliran=_ALIR_OK,
          sumbat=(100, [30.0, 31.0, 29.0, 30.5, 29.5, 30.0])),
 ]
-if JENIS == 'syringe':
+# Versi KMK (Infusion v3 / Syringe v2): 5 pengulangan, titik contoh KMK. Angka dibaca dari Excel; vonis KMK dihitung di uji.
+def _run(s, faktor):
+    return [round(s * f, 4) for f in faktor]
+_OK = [1.004, 0.997, 1.006, 1.001, 0.995]
+_GESER8 = [1.081, 1.078, 1.083, 1.079, 1.080]    # koreksi ≈ +8 %: Laik menurut KMK, Tidak Laik menurut Excel lama (bila U95 besar)
+_GAGAL = [1.12, 1.118, 1.125, 1.121, 1.119]       # koreksi ≈ +12 %: Tidak Laik
+_LIS_OK = dict(tegangan=221.5, resistansi_pembumian=0.12, resistansi_isolasi=250.0, arus_bocor=45.0)
+def kasus_kmk(S):
+    a = lambda pola: {s: _run(s, f) for s, f in zip(S, pola)}
+    return [
+        dict(nama='laik-lengkap', skala='Digital', resolusi=0.1, listrik=_LIS_OK, aliran=a([_OK] * 5), sumbat=(100, [9.5, 9.9, 10.2, 9.8, 10.1])),
+        dict(nama='koreksi-8persen-semua', skala='Digital', resolusi=0.1, listrik=_LIS_OK, aliran=a([_GESER8] * 5), sumbat=(100, [9.5, 9.9, 10.2, 9.8, 10.1])),
+        dict(nama='satu-titik-gagal-masih-70persen', skala='Digital', resolusi=0.1,
+             listrik=dict(tegangan=219.0, resistansi_pembumian=0.2, resistansi_isolasi=100.0, arus_bocor=120.0),
+             aliran=a([_GAGAL, _OK, _OK, _OK, _OK]), sumbat=(100, [12.0, 12.4, 11.8, 12.2, 12.1])),
+        dict(nama='dua-titik-gagal', skala='Digital', resolusi=0.1, listrik=_LIS_OK, aliran=a([_GAGAL, _OK, _GAGAL, _OK, _OK]), sumbat=(100, [9.5, 9.9, 10.2, 9.8, 10.1])),
+        dict(nama='listrik-dekat-batas', skala='Digital', resolusi=0.1,
+             listrik=dict(tegangan=241.9, resistansi_pembumian=0.295, resistansi_isolasi=2.02, arus_bocor=499.0), aliran=a([_OK] * 5), sumbat=(100, [9.5, 9.9, 10.2, 9.8, 10.1])),
+        dict(nama='listrik-gagal', skala='Digital', resolusi=0.1,
+             listrik=dict(tegangan=221.5, resistansi_pembumian=0.35, resistansi_isolasi=1.5, arus_bocor=620.0), aliran=a([_OK] * 5), sumbat=(100, [9.5, 9.9, 10.2, 9.8, 10.1])),
+        dict(nama='penyumbatan-dekat-batas', skala='Digital', resolusi=0.1, listrik=_LIS_OK, aliran=a([_OK] * 5), sumbat=(100, [19.9, 19.95, 19.92, 19.94, 19.93])),
+        dict(nama='penyumbatan-gagal', skala='Digital', resolusi=0.1, listrik=_LIS_OK, aliran=a([_OK] * 5), sumbat=(100, [24.5, 24.9, 24.2, 25.1, 24.7])),
+        dict(nama='resolusi-1', skala='Digital', resolusi=1, listrik=_LIS_OK, aliran=a([_OK] * 5), sumbat=(100, [9.5, 9.9, 10.2, 9.8, 10.1])),
+    ]
+
+if JENIS in ('infusion_kmk', 'syringe_kmk'):
+    KASUS = kasus_kmk([10, 25, 50, 100, 150] if JENIS == 'infusion_kmk' else [10, 25, 50, 75, 100])
+    FISIK_ALIAS = {k['nama']: 'laik-lengkap' for k in KASUS}
+    FISIK_ALIAS['satu-titik-gagal-masih-70persen'] = 'satu-titik-aliran-gagal-masih-70persen'
+elif JENIS == 'syringe':
     KASUS = KASUS_SYR
     FISIK_ALIAS = {'penyumbatan-dekat-batas': 'laik-lengkap', 'resolusi-0-1': 'laik-lengkap'}
 else:
@@ -139,11 +168,11 @@ def tulis_kasus(k, jalur):
         i2[f'H{r_in}'] = k['listrik'][id_]
     for baris, (setting, run) in zip(range(22, 27), k['aliran'].items()):
         i2[f'C{baris}'] = setting
-        for kol, v in zip(KOLOM_RUN, run):
-            i2[f'{kol}{baris}'] = v
+        for n, kol in enumerate(KOLOM_RUN):
+            i2[f'{kol}{baris}'] = run[n] if n < len(run) else None
     i2['C32'] = k['sumbat'][0]
-    for kol, v in zip(KOLOM_RUN, k['sumbat'][1]):
-        i2[f'{kol}32'] = v
+    for n, kol in enumerate(KOLOM_RUN):
+        i2[f'{kol}32'] = k['sumbat'][1][n] if n < len(k['sumbat'][1]) else None
     wb.save(jalur)
 
 
@@ -232,7 +261,7 @@ def main():
         ))
     os.makedirs(os.path.dirname(KELUAR) or '.', exist_ok=True)
     with open(KELUAR, 'w', encoding='utf-8') as f:
-        json.dump(dict(sumber=('Master_Syringe_Pump_terisi.xlsx' if JENIS == 'syringe' else 'Master_Infusion_Pump_terisi.xlsx') + ' (26 Okt 2026), dihitung ulang penuh dengan LibreOffice',
+        json.dump(dict(sumber=('Master_Syringe_Pump_terisi.xlsx' if JENIS.startswith('syringe') else 'Master_Infusion_Pump_terisi.xlsx') + ' (26 Okt 2026), dihitung ulang penuh dengan LibreOffice',
                        dibuat=datetime.date.today().isoformat(),
                        catatan='Fisik & fungsi memakai aturan baru (semua kotak); harapan Excel hanya untuk listrik, aliran, penyumbatan.',
                        kasus=hasil), f, ensure_ascii=False, indent=1)

@@ -98,4 +98,24 @@ export const TEMPLATE_INFUSION_PUMP_V2: TemplatePompa = {
   ],
 };
 
-export const TEMPLATE_INFUSION_PUMP = TEMPLATE_INFUSION_PUMP_V2;
+/**
+ * VERSI 3 (26 Okt 2026, keputusan Ridhwan "ikuti KMK semuanya"): mengikuti KMK-MK-053.0 —
+ *  - aturan keputusan guard band w = U (butir 53.10.1): aliran Laik bila |koreksi| ≤ 10 % setting; penyumbatan < 20 psi
+ *    (butir 53.9.2); keselamatan listrik dibanding langsung dengan ambang SNI IEC 62353;
+ *  - titik aliran contoh KMK 10/25/50/100/150 mL/h (butir 53.7.9.2), pengulangan 5 kali.
+ * Rumus rata-rata, koreksi, U95 sama dengan Excel; identitas sama dengan versi 2.
+ */
+export const TEMPLATE_INFUSION_PUMP_V3: TemplatePompa = {
+  ...TEMPLATE_INFUSION_PUMP_V2,
+  versi: 3,
+  sumber: 'KMK-MK-053.0 (aturan keputusan guard band w = U, titik 10/25/50/100/150 mL/h, 5 pengulangan, occlusion < 20 psi) + rumus ketidakpastian Master_Infusion_Pump.xlsx (26 Okt 2026)',
+  kinerja: {
+    ...TEMPLATE_INFUSION_PUMP_V2.kinerja,
+    titikAliran: [10, 25, 50, 100, 150],
+    pengulangan: 5,
+    sumbat: { ...TEMPLATE_INFUSION_PUMP_V2.kinerja.sumbat, banding: '<' },
+  },
+  aturanKeputusan: 'guardband_w_u',
+};
+
+export const TEMPLATE_INFUSION_PUMP = TEMPLATE_INFUSION_PUMP_V3;
