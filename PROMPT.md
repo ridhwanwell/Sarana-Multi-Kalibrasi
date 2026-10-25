@@ -358,3 +358,11 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
   - Server `GET /api/tera/selia/jadwal` (push aktif + jumlah LKK per status + LKK tanpa jadwal); `GET /api/tera/selia/lkk?jadwal=<id|__tanpa__>`.
   - `SeliaDashboard.tsx`: jadwal yang di-Push ikut daftar; kartu RS diberi chip "Tera SMK: N LKK · menunggu · dikembalikan · ACC"; detail RS memuat `<SeliaTeraLkk jadwalId=…/>` di atas daftar label; jadwal Tera yang tidak ada di penjadwalan (uji BO 999) & "LKK Tera tanpa jadwal" jadi kartu tersendiri. `AsetPortalApp.tsx`: blok berdiri sendiri dihapus. `SeliaTeraLkk.tsx`: mode tertanam (daftar datar), warna latar mengikuti tema gelap (perbaikan teks tak terbaca di kartu folder).
 - KEPUTUSAN RIDHWAN 25 Okt 18.17: termohigrometer yang dipakai ke depan = **HTC-1 (CAL-027, s/n PK-0069-SMK)** yang bersertifikat (migrasi 0019). HTC-2 (AK-00040-SMK) TIDAK dimasukkan ke Tera.
+
+### Hasil 4.7e (25 Okt 2026) — sertifikat dicetak di atas "kertas" Report All (bukan digambar ulang)
+- PERMINTAAN RIDHWAN 18.28/18.31: hasil sertifikat jelek; "diambil dari report all, jangan menulis dari awal".
+- Baru: `public/tera/sertifikat/templat-sphygmomanometer.pdf` = PDF Report All cetakan Excel Ridhwan (`_referensi/sphygmo-v5/Sertifikat_Sphygmomanometer.pdf`) yang isiannya dihapus (teks tetap, garis, tabel, kotak biru dibiarkan apa adanya). Pembuatnya: `tools/tera/buat_templat_sertifikat.py`.
+- `renderSertifikat.ts`: bila ada templat → kop, lalu halaman templat ditempel, lalu HANYA isian dicetak di posisi yang sama. Perbaikan: font Carlito tidak lagi dipotong (`subset:false`; huruf hilang di iPhone) dan halaman/tempelan diberi grup transparansi (kotak abu-abu watermark di iPhone).
+- `teraPdfSertifikat.ts` mengambil templat dari `/tera/sertifikat/` (di-cache seperti font).
+- Catatan: teks tetap kini persis Excel, termasuk salah ketik "Reading after 60 secon" — bila mau dibetulkan, betulkan di Excel lalu kirim ulang PDF Report All-nya.
+- BERIKUTNYA: (1) Selia — klik nomor label/sertifikat/nama alat membuka halaman tersendiri (tombol Kembali iPhone berfungsi); (2) Penyelia bisa menyunting semua isian teknisi (alasan wajib, riwayat per kolom, hitung ulang di server; migrasi 0020 `tera_ubah_lkk`).

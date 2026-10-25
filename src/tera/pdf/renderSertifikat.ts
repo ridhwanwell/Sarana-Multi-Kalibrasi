@@ -5,7 +5,7 @@
  * Font & kop DISUNTIKKAN sebagai byte (tidak dibaca dari disk/jaringan di sini) agar mudah diuji dan aman.
  * Posisi isi tidak digeser demi kop (CLAUDE.md 9.5).
  */
-import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { PDFDocument, PDFName, rgb, type PDFFont, type PDFPage, type PDFEmbeddedPage } from 'pdf-lib';
 import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf } from './susunSertifikat.js';
 
 /** QR tanda tangan elektronik (TTE) di halaman 1, di ruang kosong atas nama Manajer Teknik. `kotak[baris][kolom]` true = gelap. */
@@ -26,7 +26,12 @@ function gambarTte(page: PDFPage, tte: Tte, huruf: HurufTerpasang, tinggi: numbe
   if (tte.contoh) page.drawText('TTE CONTOH', { x: kiri, y: tinggi - (QR_Y_ATAS + 38), size: 9.96, font: huruf.b, color: rgb(0, 0, 0) });
 }
 
-export interface BahanPdf { fontR: Uint8Array; fontB: Uint8Array; fontI: Uint8Array; kop: Uint8Array | null }
+/**
+ * templat = "kertas cetak" Report All dari Excel (PDF cetakan Ridhwan, teks isian & latar putih sel sudah dihapus —
+ * tools/tera/buat_templat_sertifikat.py). Bila ada, SEMUA teks tetap, garis, dan kotak biru diambil dari templat apa adanya;
+ * aplikasi hanya mencetak isian dari LKK. Tanpa templat → cara lama (teks tetap digambar dari tata letak; dipakai tes).
+ */
+export interface BahanPdf { fontR: Uint8Array; fontB: Uint8Array; fontI: Uint8Array; kop: Uint8Array | null; templat?: Uint8Array | null }
 export type HurufTerpasang = Record<GayaHuruf, PDFFont>;
 
 /** Batas kanan isi (poin) — sama dengan tepi kanan garis tabel di acuan. Isian yang kepanjangan diperkecil, tidak meluber. */
@@ -52,16 +57,30 @@ function gambarHalaman(page: PDFPage, h: HalamanSusun, huruf: HurufTerpasang, ti
 }
 
 /** Gambar semua halaman ke dokumen yang sudah punya font (dipisah agar bisa diuji dengan font standar). */
-export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null, tte?: Tte | null): Promise<void> {
+/** Grup transparansi: tanpa ini sebagian penampil (iPhone) tidak menghormati transparansi gambar watermark kop → kotak abu-abu. */
+function grupTransparan(doc: PDFDocument) {
+  return doc.context.obj({ Type: 'Group', S: 'Transparency', CS: 'DeviceRGB' });
+}
+
+export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null, tte?: Tte | null, templat?: Uint8Array | null): Promise<PDFEmbeddedPage[]> {
   const { lebar, tinggi } = tl.ukuran;
   // kop = null → versi TANPA kop (untuk salinan Google Drive & komputer); isi tetap sama persis.
   const kopHalaman = kop ? (await doc.embedPdf(kop, [0]))[0] : null;
+  const templatHalaman = templat ? await doc.embedPdf(templat, Array.from({ length: tl.halaman }, (_, i) => i)) : null;
   for (const h of susun(tl, isian)) {
     const page = doc.addPage([lebar, tinggi]);
+    page.node.set(PDFName.of('Group'), grupTransparan(doc));
     if (kopHalaman) page.drawPage(kopHalaman, { x: 0, y: 0, width: lebar, height: tinggi });
-    gambarHalaman(page, h, huruf, tinggi);
+    if (templatHalaman) {
+      // Teks tetap, garis & kotak biru = templat Excel; aplikasi hanya mencetak isian.
+      page.drawPage(templatHalaman[h.nomor - 1], { x: 0, y: 0, width: lebar, height: tinggi });
+      gambarHalaman(page, { ...h, biru: [], kotak: [], teks: h.teks.filter((t) => t.isian) }, huruf, tinggi);
+    } else {
+      gambarHalaman(page, h, huruf, tinggi);
+    }
     if (tte && h.nomor === 1) gambarTte(page, tte, huruf, tinggi);
   }
+  return [kopHalaman, ...(templatHalaman ?? [])].filter((x): x is PDFEmbeddedPage => !!x);
 }
 
 export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: BahanPdf, tte?: Tte | null): Promise<Uint8Array> {
@@ -69,7 +88,8 @@ export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: Ba
   const fontkit = (await import('@pdf-lib/fontkit')).default; // dimuat saat dipakai (tes tanpa font tidak memerlukannya)
   doc.registerFontkit(fontkit);
   // kern:false — PDF acuan (Excel) tidak memakai kerning; lebar kata mengikuti acuan.
-  const opsi = { subset: true, features: { kern: false } } as const;
+  // subset:false — pemotongan font (subset) fontkit membuat sebagian huruf hilang di iPhone/Acrobat; font dipasang utuh.
+  const opsi = { subset: false, features: { kern: false } } as const;
   const huruf: HurufTerpasang = {
     r: await doc.embedFont(bahan.fontR, opsi),
     b: await doc.embedFont(bahan.fontB, opsi),
@@ -78,6 +98,14 @@ export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: Ba
   doc.setTitle('Sertifikat Kalibrasi');
   doc.setProducer('PT Sarana Multi Kalibrasi');
   doc.setCreator('PT Sarana Multi Kalibrasi');
-  await gambarSertifikat(doc, tl, isian, huruf, bahan.kop, tte);
+  const tempelan = await gambarSertifikat(doc, tl, isian, huruf, bahan.kop, tte, bahan.templat ?? null);
+  // Halaman tempelan (kop, templat) juga diberi grup transparansi (lihat grupTransparan)
+  try {
+    await doc.flush();
+    for (const e of tempelan) {
+      const xo: any = doc.context.lookup(e.ref);
+      xo?.dict?.set(PDFName.of('Group'), grupTransparan(doc));
+    }
+  } catch { /* tidak wajib: tanpa ini PDF tetap sah */ }
   return doc.save();
 }

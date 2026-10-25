@@ -48,7 +48,25 @@ async function ambilFont(sinyal: AbortSignal) {
   return fontCache;
 }
 
-const tanggalJakarta = (d: Date | string) => new Date(new Date(d).getTime() + 7 * 3600_000).toISOString().slice(0, 10);
+/**
+ * "Kertas cetak" Report All: halaman sertifikat hasil cetak Excel (teks tetap, garis, tabel) tanpa isian.
+ * Aplikasi hanya mencetak isian di posisi yang sama — tidak menggambar ulang format (permintaan pemilik, 25 Okt 2026).
+ * Dibuat dengan tools/tera/buat_templat_sertifikat.py dari PDF Report All.
+ */
+const BASE_TEMPLAT = 'https://saranamultikalibrasi.com/tera/sertifikat';
+const templatCache = new Map<string, Uint8Array>();
+async function ambilTemplat(nama: string, sinyal: AbortSignal): Promise<Uint8Array> {
+  const ada = templatCache.get(nama);
+  if (ada) return ada;
+  const r = await fetch(`${BASE_TEMPLAT}/${nama}`, { signal: sinyal });
+  if (!r.ok) throw new Error(`templat ${nama} HTTP ${r.status}`);
+  const b = new Uint8Array(await r.arrayBuffer());
+  if (b.byteLength < 10_000 || String.fromCharCode(...b.slice(0, 5)) !== '%PDF-') throw new Error(`templat ${nama} rusak`);
+  templatCache.set(nama, b);
+  return b;
+}
+
+const tanggalJakarta =(d: Date | string) => new Date(new Date(d).getTime() + 7 * 3600_000).toISOString().slice(0, 10);
 
 export interface SertifikatTercatat {
   kode_verifikasi: string; revisi: number; status: string; lkk_id: string; no_label: string;
@@ -88,8 +106,8 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
     }
     kopBytes = new Uint8Array(await kop.data.arrayBuffer());
   }
-  const font = await ambilFont(signal);
-  const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: kopBytes };
+  const [font, templat] = await Promise.all([ambilFont(signal), ambilTemplat('templat-sphygmomanometer.pdf', signal)]);
+  const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: kopBytes, templat };
 
   // Penandatangan: sesudah ACC memakai nama & jabatan yang dibekukan; sebelum ACC dari data master.
   const m = (ttd.data as any) ?? {};

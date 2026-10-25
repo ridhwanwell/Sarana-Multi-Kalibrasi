@@ -86,6 +86,14 @@ if (kopPath && existsSync(kopPath)) {
   const cek2 = await PDFDocument.load(bytes);
   cek('PDF 3 halaman A4', cek2.getPageCount() === 3 && Math.abs(cek2.getPage(0).getWidth() - 595.2756) < 0.01);
   if (process.env.KELUAR) { mkdirSync(process.env.KELUAR, { recursive: true }); writeFileSync(`${process.env.KELUAR}/uji-sphygmo.pdf`, bytes); }
+  // Dengan templat Report All (Excel): hanya isian yang dicetak aplikasi
+  const templat = readFileSync(new URL('../../public/tera/sertifikat/templat-sphygmomanometer.pdf', import.meta.url));
+  const d2 = await PDFDocument.create();
+  const f2 = { r: await d2.embedFont(StandardFonts.Helvetica), b: await d2.embedFont(StandardFonts.HelveticaBold), i: await d2.embedFont(StandardFonts.HelveticaOblique) };
+  await gambarSertifikat(d2, TLuji, isi, f2, readFileSync(kopPath), { kotak: fake, contoh: true }, templat);
+  const b2 = await d2.save();
+  cek('PDF dengan templat Excel: 3 halaman', (await PDFDocument.load(b2)).getPageCount() === 3);
+  if (process.env.KELUAR) writeFileSync(`${process.env.KELUAR}/uji-sphygmo-templat.pdf`, b2);
 } else console.log('(lewati uji PDF: set KOP_NON_KAN=/jalur/KOP_SERTIF_NON_KAN.pdf)');
 
 console.log(`${lulus} lulus, ${gagal} gagal`);
