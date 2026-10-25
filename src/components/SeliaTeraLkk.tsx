@@ -10,10 +10,11 @@
  * Penyelia bisa langsung mengubah isian (SeliaTeraEditor) tanpa mengembalikan ke teknisi.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, FileText, Folder, FolderOpen, Loader2, Pencil, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, FileDown, FileText, Folder, FolderOpen, Loader2, Pencil, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 import { SeliaTeraEditor } from './SeliaTeraEditor';
+import { unduhBapBastp, type JenisDokumen } from '../tera/data/unduhBapBastp';
 
 type Peta = Record<string, any>;
 interface Ringkas {
@@ -140,6 +141,16 @@ export const SeliaTeraLkk: React.FC<{
   // Salinan untuk Google Drive & komputer = TANPA kop (tombol Unduh).
   const [pdfMemuat, setPdfMemuat] = useState<null | 'kop' | 'tanpa'>(null);
   const [pdfGalat, setPdfGalat] = useState<string | null>(null);
+  // Unduh BAP / BASTP satu rumah sakit (Tahap 5.3) — hanya di mode tertanam per jadwal.
+  const [dokMemuat, setDokMemuat] = useState<JenisDokumen | null>(null);
+  const [dokGalat, setDokGalat] = useState<string | null>(null);
+  const unduhDok = async (jenis: JenisDokumen) => {
+    if (!jadwalId || dokMemuat) return;
+    setDokMemuat(jenis); setDokGalat(null);
+    const h = await unduhBapBastp(jadwalId, jenis);
+    if (!h.ok) setDokGalat(h.pesan);
+    setDokMemuat(null);
+  };
   const [pratinjauUrl, setPratinjauUrl] = useState<string | null>(null);
   const bersihkanPratinjau = () => setPratinjauUrl((u) => { if (u) URL.revokeObjectURL(u); return null; });
   const ambilPdf = async (id: string, denganKop: boolean) => {
@@ -285,6 +296,23 @@ export const SeliaTeraLkk: React.FC<{
           ? 'LKK rumah sakit ini yang sudah dikirim teknisi dari Tera SMK. Ketuk satu LKK untuk membukanya di halaman tersendiri. Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'
           : 'Folder per rumah sakit, isinya hanya LKK yang sudah dikirim teknisi. Buka folder, ketuk satu LKK untuk membukanya di halaman tersendiri. Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'}</p>}
       </div>
+
+      {!modeDetail && tertanam && jadwalId && (
+        <div className="rounded-xl border border-[#DCDFE3] bg-slate-50 p-4 space-y-2">
+          <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileDown className="w-4 h-4" aria-hidden="true" />BAP &amp; BASTP rumah sakit ini</p>
+          <p className="text-xs text-slate-600">Dibuat dari LKK yang sudah diterima server (termasuk TIDAK LAIK), 2 rangkap, tanggal = hari ini.</p>
+          <div className="flex flex-wrap gap-2">
+            {(['bap', 'bastp'] as JenisDokumen[]).map((jenis) => (
+              <button key={jenis} type="button" onClick={() => { void unduhDok(jenis); }} disabled={dokMemuat !== null} aria-busy={dokMemuat === jenis}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-[#1C658C] text-[#1C658C] bg-white hover:bg-[#1C658C]/5 disabled:opacity-60 cursor-pointer min-h-[44px]">
+                {dokMemuat === jenis ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileDown className="w-4 h-4" aria-hidden="true" />}
+                {dokMemuat === jenis ? 'Membuat PDF…' : jenis === 'bap' ? 'Unduh BAP' : 'Unduh BASTP'}
+              </button>
+            ))}
+          </div>
+          {dokGalat && <p className="text-xs text-[#991B1B] font-semibold flex items-start gap-1.5" role="alert"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />{dokGalat}</p>}
+        </div>
+      )}
 
       {/* ───────── DAFTAR ───────── */}
       {!modeDetail && <div className="space-y-3">

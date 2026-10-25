@@ -401,3 +401,9 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - `src/tera/shared/dataBapBastp.ts` (murni): realisasi = LKK berstatus diterima server (submitted/under_review/returned/approved/correction_open) termasuk TIDAK LAIK; sisa = PO − realisasi (tidak negatif); alat tambahan = baris sendiri per jenis (nama katalog dari template, PO 0); is_test hanya di BO 999; nomor `BBB/SMK/BAP/<romawi>/<tahun>` & No. Order `BBB/SMK-BO/<romawi>-<tahun>` dari tanggal unduh WIB; RS/alamat/kota/telepon/ketua tim dari data RS di jadwal (Ridhwan 25 Okt: untuk sekarang hanya data uji; RS lain mengikuti alamat RS-nya); ketua tim & petugas + gelar; BASTP urut nomor label, merek/tipe/SN/ruang dari isian Identitas LKK (kosong = "-"), hasil = kesimpulan LKK.
 - Uji `npm run test:tera:bap` 25/25; uji impor server lulus; uji ujung-ke-ujung dengan data BO 999 dari database (Sphygmo PO 6 → realisasi 2, sisa 4; Timbangan PO 4 → 0/4) dirender benar.
 - BERIKUTNYA 5.3: tombol "Unduh BAP" & "Unduh BASTP" di Selia (detail RS) dan di PWA Tera (Detail RS teknisi).
+
+### Hasil 5.3 (25 Okt 2026 ±23.45) — tombol Unduh BAP & Unduh BASTP
+- PWA Tera, Detail RS (`HalamanJadwal.tsx`, kartu "BAP & BASTP" di bawah Nomor stiker): dua tombol; pesan jelas bila offline/galat; memberi tahu jumlah LKK di perangkat yang belum diterima server (tidak ikut dihitung di dokumen).
+- Selia Dashboard, detail RS (`SeliaTeraLkk.tsx` mode tertanam per jadwal): kotak "BAP & BASTP rumah sakit ini" dengan dua tombol.
+- Fungsi bersama `src/tera/data/unduhBapBastp.ts` (apiFetch + unduh file, nama file dari server).
+- Catatan uji 23.34 (layar Ridhwan): tablet menunjukkan "dikerjakan 5" (dihitung dari LKK di perangkat termasuk draft), server baru menerima 2 LKK BO 999 → BAP akan menulis realisasi 2. Selesaikan & kirim LKK draft agar ikut.

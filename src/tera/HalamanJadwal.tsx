@@ -15,7 +15,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle, Building2, Check, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, Plus, RefreshCw, Tag,
+  AlertCircle, Building2, Check, ChevronLeft, ChevronRight, ClipboardCheck, FileDown, Loader2, Plus, RefreshCw, Tag,
 } from 'lucide-react';
 import { useSinkron } from './SinkronKonteks';
 import { BarisLkk, KeadaanKosong, Statistik } from './TeraKerangka';
@@ -25,6 +25,45 @@ import type { LkkLokal } from './data/teraDb';
 import type { TemplateAlat } from './shared/hitung';
 import { templateUntukAlat } from './shared/nomorLabel';
 import { MulaiLkk } from './MulaiLkk';
+import { unduhBapBastp, type JenisDokumen } from './data/unduhBapBastp';
+
+/* ---------- Dokumen RS: unduh BAP & BASTP (Tahap 5.3) ---------- */
+
+/** Dua tombol unduh. Isi dokumen = LKK yang sudah DITERIMA server; LKK yang masih di perangkat belum ikut (diberi tahu). */
+const DokumenRs: React.FC<{ jadwalId: string; belumTerkirim: number }> = ({ jadwalId, belumTerkirim }) => {
+  const [memuat, setMemuat] = useState<JenisDokumen | null>(null);
+  const [galat, setGalat] = useState<string | null>(null);
+  const unduh = async (jenis: JenisDokumen) => {
+    if (memuat) return;
+    setMemuat(jenis); setGalat(null);
+    const h = await unduhBapBastp(jadwalId, jenis);
+    if (!h.ok) setGalat(h.pesan);
+    setMemuat(null);
+  };
+  return (
+    <section className="t-kartu mt-4" aria-labelledby="judul-dokumen">
+      <p id="judul-dokumen" className="text-[15px] font-semibold flex items-center gap-2"><FileDown size={16} aria-hidden="true" />BAP &amp; BASTP</p>
+      <p className="t-ket mt-1">Unduh untuk ditandatangani pihak rumah sakit. Isinya dari LKK yang sudah diterima server.</p>
+      {belumTerkirim > 0 && (
+        <p className="t-ket mt-1" role="status">{belumTerkirim} LKK di perangkat belum diterima server (draft/belum terkirim), jadi belum ikut dihitung.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {(['bap', 'bastp'] as JenisDokumen[]).map((jenis) => (
+          <button key={jenis} type="button" className="t-tombol t-tombol-kedua t-tombol-kecil" aria-busy={memuat === jenis}
+            onClick={() => { void unduh(jenis); }}>
+            {memuat === jenis ? <Loader2 size={18} aria-hidden="true" className="t-putar" /> : <FileDown size={18} aria-hidden="true" />}
+            {memuat === jenis ? 'Membuat PDF…' : jenis === 'bap' ? 'Unduh BAP' : 'Unduh BASTP'}
+          </button>
+        ))}
+      </div>
+      {galat && (
+        <div className="t-info mt-3" role="alert">
+          <AlertCircle size={20} aria-hidden="true" className="shrink-0" /><p className="min-w-0">{galat}</p>
+        </div>
+      )}
+    </section>
+  );
+};
 
 /* ---------- Pembantu ---------- */
 
@@ -247,6 +286,8 @@ export const HalamanDetailRs: React.FC = () => {
           {j.cadanganAwal && j.cadanganAkhir ? `Cadangan (alat tambahan): ${j.cadanganAwal} – ${j.cadanganAkhir}` : 'Tidak ada stiker cadangan.'}
         </p>
       </section>
+
+      <DokumenRs jadwalId={j.jadwalId} belumTerkirim={lkk.filter((l) => l.syncState !== 'diterima').length} />
 
       {kabar && (
         <div className={kabar.jenis === 'ok' ? 't-sukses mt-4' : 't-info mt-4'} role="status">
