@@ -5,7 +5,7 @@
  * Font & kop DISUNTIKKAN sebagai byte (tidak dibaca dari disk/jaringan di sini) agar mudah diuji dan aman.
  * Posisi isi tidak digeser demi kop (CLAUDE.md 9.5).
  */
-import { PDFDocument, PDFName, rgb, type PDFFont, type PDFPage, type PDFEmbeddedPage } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFRawStream, decodePDFRawStream, rgb, type PDFFont, type PDFPage, type PDFEmbeddedPage } from 'pdf-lib';
 import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf } from './susunSertifikat.js';
 
 /** QR tanda tangan elektronik (TTE) di halaman 1, di ruang kosong atas nama Manajer Teknik. `kotak[baris][kolom]` true = gelap. */
@@ -62,11 +62,46 @@ function grupTransparan(doc: PDFDocument) {
   return doc.context.obj({ Type: 'Group', S: 'Transparency', CS: 'DeviceRGB' });
 }
 
+/**
+ * Perbaiki gambar watermark kop untuk iPhone. Watermark kop (dari Word) disimpan "pra-kali" dengan latar hitam (/Matte di soft mask)
+ * dan tembus pandang rata 20 %. Safari/iPhone mengabaikan /Matte → watermark tampil sebagai KOTAK ABU-ABU.
+ * Perbaikan tanpa mengubah tampilan di penampil lain: untuk gambar yang transparansinya rata (satu nilai a), warna
+ * dikembalikan lewat /Decode [0 1/a] (sama dengan membagi a), lalu /Matte dihapus. Gambar dengan transparansi tidak rata
+ * (logo) dibiarkan. Gagal apa pun → kop asli dipakai apa adanya.
+ */
+export async function rapikanMatteKop(kop: Uint8Array): Promise<Uint8Array> {
+  try {
+    const src = await PDFDocument.load(kop);
+    let diubah = 0;
+    for (const [, obj] of src.context.enumerateIndirectObjects()) {
+      if (!(obj instanceof PDFRawStream)) continue;
+      const d = obj.dict;
+      if (d.get(PDFName.of('Subtype')) !== PDFName.of('Image') || d.has(PDFName.of('Decode'))) continue;
+      const sm = d.lookupMaybe(PDFName.of('SMask'), PDFRawStream);
+      if (!sm || !sm.dict.has(PDFName.of('Matte'))) continue; // /Matte ada di kamus soft mask
+      const alfa = decodePDFRawStream(sm).decode();
+      if (!alfa.length) continue;
+      const a = alfa[0];
+      if (a === 0 || alfa.some((v) => v !== a)) continue;
+      const cs = d.get(PDFName.of('ColorSpace'));
+      const n = cs === PDFName.of('DeviceRGB') ? 3 : cs === PDFName.of('DeviceGray') ? 1 : 0;
+      if (!n) continue;
+      const maks = 255 / a;
+      d.set(PDFName.of('Decode'), src.context.obj(Array.from({ length: n * 2 }, (_, i) => (i % 2 ? maks : 0))));
+      sm.dict.delete(PDFName.of('Matte'));
+      diubah += 1;
+    }
+    return diubah ? await src.save() : kop;
+  } catch {
+    return kop;
+  }
+}
+
 export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null, tte?: Tte | null, templat?: Uint8Array | null): Promise<PDFEmbeddedPage[]> {
   const { lebar, tinggi } = tl.ukuran;
   // kop = null → versi TANPA kop (untuk salinan Google Drive & komputer); isi tetap sama persis.
-  const kopHalaman = kop ? (await doc.embedPdf(kop, [0]))[0] : null;
-  const templatHalaman = templat ? await doc.embedPdf(templat, Array.from({ length: tl.halaman }, (_, i) => i)) : null;
+  const kopHalaman = kop ? (await doc.embedPdf(await rapikanMatteKop(kop), [0]))[0] : null;
+  const templatHalaman = templat ? await doc.embedPdf(await rapikanMatteKop(templat), Array.from({ length: tl.halaman }, (_, i) => i)) : null;
   for (const h of susun(tl, isian)) {
     const page = doc.addPage([lebar, tinggi]);
     page.node.set(PDFName.of('Group'), grupTransparan(doc));
