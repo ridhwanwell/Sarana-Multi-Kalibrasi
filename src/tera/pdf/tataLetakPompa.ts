@@ -35,9 +35,9 @@ export const TATA_LETAK_INFUSION_PUMP: TataLetak = {
     2: [
       {j:"f",x:145.81,y:129.61,f:"r",s:9.96,a:"l",k:"nomorOrder",m:292},
       {j:"f",x:398.44,y:129.61,f:"r",s:9.96,a:"l",k:"nomorSertifikat"},
-      {j:"f",x:44.76,y:182.52,f:"r",s:9.96,a:"l",k:"kalibrator1"},
-      {j:"f",x:44.76,y:194.88,f:"r",s:9.96,a:"l",k:"kalibrator2"},
-      {j:"f",x:44.76,y:207.24,f:"r",s:9.96,a:"l",k:"kalibrator3"},
+      {j:"f",x:44.76,y:182.52,f:"r",s:9,a:"l",k:"kalibrator1"},
+      {j:"f",x:44.76,y:194.88,f:"r",s:9,a:"l",k:"kalibrator2"},
+      {j:"f",x:44.76,y:207.24,f:"r",s:9,a:"l",k:"kalibrator3"},
       {j:"f",x:145.81,y:254.52,f:"r",s:9.96,a:"l",k:"tempat",m:292},
       {j:"f",x:398.44,y:254.52,f:"r",s:9.96,a:"l",k:"tanggalPelaksanaan"},
       {j:"f",x:145.81,y:269.76,f:"r",s:9.96,a:"l",k:"ruang",m:292},
