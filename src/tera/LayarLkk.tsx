@@ -16,140 +16,31 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { AlertCircle, Check, ChevronDown, ChevronLeft, ChevronRight, Info, Loader2, Lock, Minus } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock, Minus } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
+import { ChipVonis, Dropdown, fmt2, Galat, HasilKoreksi, KotakAngka, KotakTeks, Segmen, tglPanjang } from './KotakIsian';
 import { MulaiLkk } from './MulaiLkk';
 import { ambilLkk, bolehDiubah, simpanIsian, tandaiSelesai, type LkkLokal, type SyncState } from './data/teraDb';
 import { buatJejakHitung } from './shared/jejak';
-import type { Vonis } from './shared/hitung';
 import { buatSnapshot, daftarKalibrator, templateVersi, type KalibratorLokal } from './data/masterLokal';
-import type { TemplateAlat } from './shared/hitung';
+import type { HasilLkk, TemplateAlat } from './shared/hitung';
+import type { TemplatePompa } from './shared/hitungPompa';
+import { adalahTemplatePompa } from './shared/lkkPompa';
+import { BagianKeselamatanPompa, BagianKinerjaPompa, KesimpulanPompaFinal, barisRingkasPompa } from './BagianPompa';
 import {
-  bagianLengkap, batasLingkungan, bidangIdentitas, daftarBagian, daftarStandar, jepretStandar, periksaIsian,
+  bagianLengkap, batasLingkungan, bidangIdentitas, daftarBagian, daftarStandar, jepretStandar, opsiFisik, periksaIsian,
   statusBerlaku, statusSnapshot, susunPilihan, tabelRh, tabelSuhu,
   type BagianId, type DefStandar, type IsiKerja, type Kurang, type PilihanStandar,
 } from './shared/isian';
-import { diLuarBatas, formatAngka, hitungLingkungan, uraiKetikan } from './shared/lingkungan';
+import { formatAngka, hitungLingkungan } from './shared/lingkungan';
 
 type Peta = Record<string, any>;
 
 /* ---------- Pembantu tampilan ---------- */
 
-const tglPanjang = (v: string | null | undefined): string => {
-  if (!v || !/^\d{4}-\d{2}-\d{2}/.test(v)) return '-';
-  try {
-    return new Date(v.slice(0, 10) + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
-  } catch { return '-'; }
-};
-
 const jamLokal = (d: Date): string => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-const Galat: React.FC<{ id: string; pesan: string | null | undefined }> = ({ id, pesan }) =>
-  pesan ? (
-    <p id={id} className="t-pesan-error">
-      <AlertCircle size={16} aria-hidden="true" className="mt-px shrink-0" />
-      <span>{pesan}</span>
-    </p>
-  ) : null;
-
-interface KotakTeksProps {
-  id: string; label: string; nilai: string; onUbah: (v: string) => void; kunci: boolean;
-  type?: 'text' | 'date'; maksPanjang?: number; bantuan?: string;
-}
-
-/** Kotak teks/tanggal: label selalu di atas, font 16 px, tinggi ≥ 48 px. */
-const KotakTeks: React.FC<KotakTeksProps> = ({ id, label, nilai, onUbah, kunci, type = 'text', maksPanjang, bantuan }) => (
-  <div className="t-isian">
-    <label htmlFor={id} className="t-label">{label}</label>
-    <div className="t-kotak" data-kunci={kunci ? 'true' : undefined}>
-      <input
-        id={id} type={type} value={nilai} readOnly={kunci} maxLength={maksPanjang}
-        autoComplete="off" autoCorrect="off" spellCheck={false}
-        aria-describedby={bantuan ? `${id}-ket` : undefined}
-        onChange={(e) => onUbah(e.target.value)}
-      />
-    </div>
-    {bantuan && <p id={`${id}-ket`} className="t-ket mt-1">{bantuan}</p>}
-  </div>
-);
-
-interface KotakAngkaProps {
-  id: string; label: string; nilai: number | null; onNilai: (n: number | null) => void; kunci: boolean;
-  satuan?: string; batas?: { min: number; maks: number }; pesanBatas?: string; sudahDiisi?: boolean;
-}
-
-/**
- * Kotak angka berkoma Indonesia. Teks yang diketik disimpan terpisah dari angkanya, jadi "27," tidak
- * hilang di tengah ketikan. Galat batas muncul SETELAH kotak ditinggalkan (bukan saat "2" menuju "27").
- */
-const KotakAngka: React.FC<KotakAngkaProps> = ({ id, label, nilai, onNilai, kunci, satuan, batas, pesanBatas }) => {
-  const [teks, setTeks] = useState(() => formatAngka(nilai));
-  const [disentuh, setDisentuh] = useState(nilai !== null);
-  const di_luar = batas ? diLuarBatas(nilai, batas) : false;
-  const galat = disentuh && di_luar ? pesanBatas || 'Angka di luar batas.' : null;
-  return (
-    <div className="t-isian">
-      <label htmlFor={id} className="t-label">{label}</label>
-      <div className="t-kotak" data-error={galat ? 'true' : undefined} data-kunci={kunci ? 'true' : undefined}>
-        <input
-          id={id} type="text" inputMode="decimal" autoComplete="off" readOnly={kunci}
-          className="tabular" value={teks} aria-invalid={galat ? true : undefined}
-          aria-describedby={galat ? `${id}-galat` : undefined}
-          onChange={(e) => { const u = uraiKetikan(e.target.value); setTeks(u.bersih); setDisentuh(false); onNilai(u.nilai); }}
-          onBlur={() => { setDisentuh(true); setTeks(formatAngka(nilai)); }}
-        />
-        {satuan && <span className="t-akhiran" aria-hidden="true">{satuan}</span>}
-      </div>
-      <Galat id={`${id}-galat`} pesan={galat} />
-    </div>
-  );
-};
-
-interface OpsiSegmen { nilai: string | number; label: string; nada?: 'baik' | 'tidak' }
-
-/** Tombol segmen (≥ 48 px) — pengganti dropdown kecil. Terpilih = warna + centang + tulisan. */
-const Segmen: React.FC<{ label: string; opsi: OpsiSegmen[]; nilai: unknown; onPilih: (v: string | number) => void; kunci: boolean }> = ({ label, opsi, nilai, onPilih, kunci }) => (
-  <div role="radiogroup" aria-label={label} className="t-segmen" style={{ gridTemplateColumns: `repeat(${opsi.length}, minmax(0, 1fr))` }}>
-    {opsi.map((o) => {
-      const dipilih = nilai === o.nilai;
-      return (
-        <button
-          key={String(o.nilai)} type="button" role="radio" aria-checked={dipilih} aria-disabled={kunci || undefined}
-          data-nada={o.nada} onClick={() => { if (!kunci) onPilih(o.nilai); }}
-        >
-          {dipilih && (o.nada === 'tidak' ? <AlertCircle size={18} aria-hidden="true" /> : <Check size={18} aria-hidden="true" />)}
-          <span>{o.label}</span>
-        </button>
-      );
-    })}
-  </div>
-);
-
-interface PilihanDropdownProps { id: string; label: string; opsi: [string, string]; nilai: unknown; kunci: boolean; onPilih: (v: string) => void; sembunyikanLabel?: boolean }
-
-/**
- * Dropdown Baik / Tidak Baik (permintaan Ridhwan 22 Okt 2026). Dropdown bawaan perangkat (nyaman di HP/tablet),
- * tinggi ≥ 48 px, font 16 px. Tidak Baik = warna merah + ikon tanda seru + tulisan (bukan warna saja).
- */
-const Dropdown: React.FC<PilihanDropdownProps> = ({ id, label, opsi, nilai, kunci, onPilih, sembunyikanLabel }) => {
-  const tidak = nilai === opsi[1];
-  const sah = nilai === opsi[0] || nilai === opsi[1];
-  return (
-    <div className="t-isian">
-      {sembunyikanLabel ? null : <label htmlFor={id} className="t-label">{label}</label>}
-      <div className="t-kotak t-pilih" data-nada={tidak ? 'tidak' : sah ? 'baik' : undefined} data-kunci={kunci ? 'true' : undefined}>
-        <span className="t-ikon-pilih" aria-hidden="true">{tidak ? <AlertCircle size={18} /> : <Check size={18} />}</span>
-        <select id={id} value={sah ? (nilai as string) : ''} disabled={kunci} aria-label={sembunyikanLabel ? label : undefined} onChange={(e) => onPilih(e.target.value)}>
-          {!sah && <option value="" disabled>Pilih…</option>}
-          {opsi.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <ChevronDown size={20} aria-hidden="true" className="t-panah-pilih" />
-      </div>
-    </div>
-  );
-};
 
 /* ---------- Pilih alat standar ---------- */
 
@@ -215,11 +106,17 @@ const KartuStandar: React.FC<KartuStandarProps> = ({ def, pilihan, snap, tanggal
 
 /* ---------- Bagian 1: Identitas ---------- */
 
+/** Sphygmo/timbangan (naik-turun) atau pompa (aliran + penyumbatan + listrik). */
+type TemplateApa = TemplateAlat | TemplatePompa;
+
 interface BagianProps {
-  tpl: TemplateAlat; isi: IsiKerja; kunci: boolean; kurang: Kurang[];
+  tpl: TemplateApa; isi: IsiKerja; kunci: boolean; kurang: Kurang[];
   ubahData: (blok: string, bidang: string, nilai: unknown) => void;
   ubahBacaan: (kinerjaId: string, titik: number, arah: 'naik' | 'turun', urutan: number, jumlah: number, nilai: number | null) => void;
 }
+
+/** Props bagian khusus naik-turun: template sudah pasti TemplateAlat. */
+type BagianSph = Omit<BagianProps, 'tpl'> & { tpl: TemplateAlat };
 
 const BagianIdentitas: React.FC<BagianProps & {
   namaRs: string; teknisi: string; kalibrator: KalibratorLokal[];
@@ -275,14 +172,6 @@ const BagianIdentitas: React.FC<BagianProps & {
 
 /* ---------- Bagian 2: Lingkungan ---------- */
 
-const HasilKoreksi: React.FC<{ judul: string; teks: string | null; ket: string }> = ({ judul, teks, ket }) => (
-  <div className="t-hasil" role="status">
-    <p className="t-ket">{judul}</p>
-    <p className="t-hasil-angka tabular">{teks ?? '-'}</p>
-    <p className="t-ket">{ket}</p>
-  </div>
-);
-
 const BagianLingkungan: React.FC<BagianProps & { keIdentitas: () => void }> = ({ tpl, isi, kunci, ubahData, keIdentitas }) => {
   const ling = (isi.data.lingkungan ?? {}) as Peta;
   const batas = batasLingkungan(tpl);
@@ -333,7 +222,8 @@ const BagianLingkungan: React.FC<BagianProps & { keIdentitas: () => void }> = ({
 
 const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
   const fisik = (isi.data.fisik ?? {}) as Peta;
-  const [baik, tidak] = tpl.pilihanFisik;
+  const opsi = opsiFisik(tpl);
+  const tambahan = adalahTemplatePompa(tpl) ? [] : (tpl.fisikTambahan ?? []);
   const simpan = (id: string, sisi: 'fisik' | 'fungsi', v: unknown) => ubahData('fisik', id, { ...(fisik[id] ?? {}), [sisi]: v });
   return (
     <>
@@ -343,22 +233,22 @@ const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
           <li key={f.id} className="t-kartu">
             <h3 className="t-judul-kecil">{f.judul}</h3>
             <div className="t-isian-grid mt-2">
-              <Dropdown id={`fisik-${f.id}-fisik`} label="Fisik" opsi={[baik, tidak]} nilai={fisik[f.id]?.fisik} kunci={kunci} onPilih={(v) => simpan(f.id, 'fisik', v)} />
-              <Dropdown id={`fisik-${f.id}-fungsi`} label="Fungsi" opsi={[baik, tidak]} nilai={fisik[f.id]?.fungsi} kunci={kunci} onPilih={(v) => simpan(f.id, 'fungsi', v)} />
+              <Dropdown id={`fisik-${f.id}-fisik`} label="Fisik" opsi={opsi.fisik} nilai={fisik[f.id]?.fisik} kunci={kunci} onPilih={(v) => simpan(f.id, 'fisik', v)} />
+              <Dropdown id={`fisik-${f.id}-fungsi`} label="Fungsi" opsi={opsi.fungsi} nilai={fisik[f.id]?.fungsi} kunci={kunci} onPilih={(v) => simpan(f.id, 'fungsi', v)} />
             </div>
           </li>
         ))}
       </ul>
-      {(tpl.fisikTambahan?.length ?? 0) > 0 && (
+      {tambahan.length > 0 && (
         <>
           <h3 className="t-judul-kecil mt-6">Butir lain yang diperiksa</h3>
           <p className="t-ket">Satu pilihan untuk tiap butir (awalnya Baik).</p>
           <ul className="t-fisik-daftar mt-3">
-            {tpl.fisikTambahan!.map((f) => (
+            {tambahan.map((f) => (
               <li key={f.id} className="t-kartu">
                 <h4 className="t-judul-kecil">{f.judul}</h4>
                 <div className="mt-2">
-                  <Dropdown id={`fisik-lain-${f.id}`} label={f.judul} sembunyikanLabel opsi={[baik, tidak]} nilai={((isi.data.fisikTambahan ?? {}) as Peta)[f.id]} kunci={kunci} onPilih={(v) => ubahData('fisikTambahan', f.id, v)} />
+                  <Dropdown id={`fisik-lain-${f.id}`} label={f.judul} sembunyikanLabel opsi={opsi.fisik} nilai={((isi.data.fisikTambahan ?? {}) as Peta)[f.id]} kunci={kunci} onPilih={(v) => ubahData('fisikTambahan', f.id, v)} />
                 </div>
               </li>
             ))}
@@ -371,17 +261,7 @@ const BagianFisik: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData }) => {
 
 /* ---------- Bagian 5: Kinerja ---------- */
 
-const fmt2 = (n: number | null | undefined) => (typeof n === 'number' && Number.isFinite(n) ? n.toFixed(2).replace('.', ',') : '-');
-
-/** Chip hasil: warna + ikon + tulisan (CLAUDE.md 13.4). */
-const ChipVonis: React.FC<{ vonis: Vonis; teksLaik?: string; teksTidak?: string }> = ({ vonis, teksLaik = 'LAIK', teksTidak = 'TIDAK LAIK' }) => (
-  <span className="t-vonis" data-v={vonis === 'Laik' ? 'laik' : vonis === 'Tidak Laik' ? 'tidak' : 'belum'}>
-    {vonis === 'Laik' ? <Check size={16} aria-hidden="true" /> : vonis === 'Tidak Laik' ? <AlertCircle size={16} aria-hidden="true" /> : <Minus size={16} aria-hidden="true" />}
-    {vonis === 'Laik' ? teksLaik : vonis === 'Tidak Laik' ? teksTidak : 'Belum diisi'}
-  </span>
-);
-
-const BagianKinerja: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData, ubahBacaan }) => {
+const BagianKinerja: React.FC<BagianSph> = ({ tpl, isi, kunci, ubahData, ubahBacaan }) => {
   const jejak = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot), [tpl, isi.data, isi.snapshot]);
   const hasil = jejak?.hasil ?? null;
   const kin = (isi.data.kinerja ?? {}) as Peta;
@@ -461,9 +341,9 @@ const BagianKinerja: React.FC<BagianProps> = ({ tpl, isi, kunci, ubahData, ubahB
 
 const NAMA_BAGIAN: Record<string, string> = { identitas: 'Identitas alat', lingkungan: 'Kondisi lingkungan', fisik: 'Fisik & fungsi', keselamatan: 'Keselamatan listrik', kinerja: 'Kinerja' };
 
-const BagianKesimpulan: React.FC<BagianProps & { keBagian: (id: BagianId) => void }> = ({ tpl, isi, kurang, keBagian }) => {
-  const jejak = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot), [tpl, isi.data, isi.snapshot]);
-  const hasil = jejak?.hasil ?? null;
+const BagianKesimpulan: React.FC<BagianProps & { keBagian: (id: BagianId) => void }> = ({ tpl: tplApa, isi, kurang, keBagian }) => {
+  const jejak = useMemo(() => buatJejakHitung(tplApa, isi.data, isi.snapshot), [tplApa, isi.data, isi.snapshot]);
+  const hasil = (jejak?.hasil ?? null) as HasilLkk | null;
   const final = !!hasil && !!jejak?.lengkap && kurang.length === 0;
   if (!final || !hasil) {
     const bagianKurang = [...new Set(kurang.map((k) => k.bagian))];
@@ -498,6 +378,8 @@ const BagianKesimpulan: React.FC<BagianProps & { keBagian: (id: BagianId) => voi
     );
   }
 
+  if (adalahTemplatePompa(tplApa)) return <KesimpulanPompaFinal tpl={tplApa} isi={isi} />;
+  const tpl: TemplateAlat = tplApa;
   const laik = hasil.kesimpulan === 'Laik Pakai';
   const alasan: string[] = [];
   tpl.skor.item.forEach((it, idx) => {
@@ -543,10 +425,13 @@ const Baris: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
   <div className="t-ringkas-baris"><dt className="t-ket">{label}</dt><dd>{children}</dd></div>
 );
 
-const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl, isi, kunci, kurang, lkk, namaRs, status, terkunci, proses, galat, onSelesai, keBagian }) => {
+const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl: tplApa, isi, kunci, kurang, lkk, namaRs, status, terkunci, proses, galat, onSelesai, keBagian }) => {
   const [tanya, setTanya] = useState(false);
-  const jejak = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot), [tpl, isi.data, isi.snapshot]);
-  const hasil = jejak?.hasil ?? null;
+  const jejak = useMemo(() => buatJejakHitung(tplApa, isi.data, isi.snapshot), [tplApa, isi.data, isi.snapshot]);
+  const pompa = adalahTemplatePompa(tplApa) ? tplApa : null;
+  // Baris khusus naik-turun hanya dipakai bila bukan pompa; untuk pompa, hasil/tpl ini tidak dibaca.
+  const tpl = tplApa as TemplateAlat;
+  const hasil = (pompa ? null : (jejak?.hasil ?? null)) as HasilLkk | null;
   const siap = !!hasil && !!jejak?.lengkap && !!jejak?.kesimpulan && kurang.length === 0;
   const laik = jejak?.kesimpulan === 'Laik Pakai';
   const iden = (isi.data.identitas ?? {}) as Peta;
@@ -586,8 +471,9 @@ const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl, isi, kunci
           <Baris label="Rumah sakit">{namaRs}</Baris>
           <Baris label="Tanggal pelaksanaan">{tglPanjang(isi.tanggal)}</Baris>
           <Baris label="Merek / tipe / no. seri">{[iden.merek, iden.tipe, iden.noSeri].filter((x) => typeof x === 'string' && x.trim()).join(' · ') || '-'}</Baris>
-          <Baris label="Alat standar">{(['tekanan', 'stopwatch', 'termohigrometer'] as const).map((k) => snap[k]?.nama).filter(Boolean).join(' · ') || '-'}</Baris>
+          {!pompa && <Baris label="Alat standar">{(['tekanan', 'stopwatch', 'termohigrometer'] as const).map((k) => snap[k]?.nama).filter(Boolean).join(' · ') || '-'}</Baris>}
           <Baris label="Lingkungan"><span className="tabular">{angka(ling.suhuAwal)}–{angka(ling.suhuAkhir)} °C · {angka(ling.rhAwal)}–{angka(ling.rhAkhir)} %RH</span></Baris>
+          {pompa && barisRingkasPompa(pompa, isi).map((b) => <Baris key={b.label} label={b.label}>{b.isi}</Baris>)}
           {hasil && <Baris label="Fisik & fungsi">{hasil.fisik.jumlahBaik} dari {hasil.fisik.jumlahItem} butir Baik</Baris>}
           {hasil && tpl.ujiAmbang.map((u) => (
             <Baris key={u.id} label={u.judul}><span className="tabular">{hasil.ujiAmbang[u.id]?.nilaiUkur != null ? `${formatAngka(hasil.ujiAmbang[u.id].nilaiUkur)} ${u.satuan}` : '-'}</span> <ChipVonis vonis={hasil.ujiAmbang[u.id]?.hasil ?? '-'} /></Baris>
@@ -680,7 +566,7 @@ const DaftarBagian: React.FC<{
 
 /* ---------- Formulir ---------- */
 
-interface FormulirProps { lkk: LkkLokal; tpl: TemplateAlat; kalibrator: KalibratorLokal[]; namaRs: string; teknisi: string; onMuatUlang: () => void }
+interface FormulirProps { lkk: LkkLokal; tpl: TemplateApa; kalibrator: KalibratorLokal[]; namaRs: string; teknisi: string; onMuatUlang: () => void }
 type Simpan = { k: 'diam' } | { k: 'menyimpan' } | { k: 'tersimpan'; waktu: Date } | { k: 'galat'; pesan: string };
 
 const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, teknisi, onMuatUlang }) => {
@@ -766,6 +652,17 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
     });
   }, [ubah]);
 
+  /** Satu bacaan pompa: data.aliran[kunci][urutan] atau data.sumbat.bacaan[urutan]. */
+  const ubahRun = useCallback((blok: 'aliran' | 'sumbat', kunci: string, urutan: number, jumlah: number, nilai: number | null) => {
+    ubah((i) => {
+      const lama = blok === 'aliran' ? (i.data.aliran as Peta)?.[kunci] : (i.data.sumbat as Peta)?.bacaan;
+      const run: (number | null)[] = Array.from({ length: jumlah }, (_, j) => (typeof lama?.[j] === 'number' ? lama[j] : null));
+      run[urutan] = nilai;
+      if (blok === 'aliran') return { ...i, data: { ...i.data, aliran: { ...((i.data.aliran as Peta) ?? {}), [kunci]: run } } };
+      return { ...i, data: { ...i.data, sumbat: { ...((i.data.sumbat as Peta) ?? {}), bacaan: run } } };
+    });
+  }, [ubah]);
+
   const ubahTanggal = useCallback((v: string) => ubah((i) => ({ ...i, tanggal: v || null })), [ubah]);
 
   const pilihStandar = useCallback((def: DefStandar, p: PilihanStandar<KalibratorLokal>) => {
@@ -782,20 +679,22 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
         hasil = { ...hasil, data: { ...hasil.data, identitas: { ...iden, resolusi: tpl.identitas.resolusi.pilihan[0] } } };
       }
       // Fisik & fungsi: pilihan awal selalu "Baik" (permintaan Ridhwan 22 Okt 2026); hanya yang masih kosong yang diisi
-      const bawaan = tpl.pilihanFisik[0];
+      const opsi = opsiFisik(tpl);
+      const bawaan = opsi.fisik[0];
+      const bawaanFungsi = opsi.fungsi[0];
       const fisikLama = (hasil.data.fisik ?? {}) as Peta;
       const fisikBaru: Peta = { ...fisikLama };
       let ubahFisik = false;
       for (const f of tpl.fisik) {
         const b = (fisikLama[f.id] ?? {}) as Peta;
         const fisikIsi = typeof b.fisik === 'string' && b.fisik ? b.fisik : bawaan;
-        const fungsiIsi = typeof b.fungsi === 'string' && b.fungsi ? b.fungsi : bawaan;
+        const fungsiIsi = typeof b.fungsi === 'string' && b.fungsi ? b.fungsi : bawaanFungsi;
         if (fisikIsi !== b.fisik || fungsiIsi !== b.fungsi) { fisikBaru[f.id] = { ...b, fisik: fisikIsi, fungsi: fungsiIsi }; ubahFisik = true; }
       }
       const tambahLama = (hasil.data.fisikTambahan ?? {}) as Peta;
       const tambahBaru: Peta = { ...tambahLama };
       let ubahTambah = false;
-      for (const f of tpl.fisikTambahan ?? []) {
+      for (const f of adalahTemplatePompa(tpl) ? [] : (tpl.fisikTambahan ?? [])) {
         if (typeof tambahLama[f.id] !== 'string' || !tambahLama[f.id]) { tambahBaru[f.id] = bawaan; ubahTambah = true; }
       }
       if (ubahFisik || ubahTambah) {
@@ -853,6 +752,8 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
   const kurangBagian = kurang.filter((k) => k.bagian === bagian[aktif].id);
   const idBagian: BagianId = bagian[aktif].id;
   const sifat: BagianProps = { tpl, isi, kunci, kurang, ubahData, ubahBacaan };
+  const pompa = adalahTemplatePompa(tpl) ? tpl : null;
+  const sifatSph: BagianSph = { ...sifat, tpl: tpl as TemplateAlat };
   const balik = lkk.jadwalId ? `/tera/rs/${encodeURIComponent(lkk.jadwalId)}` : '/tera/lkk';
 
   return (
@@ -910,7 +811,10 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
             )}
             {idBagian === 'lingkungan' && <BagianLingkungan {...sifat} keIdentitas={() => pindah(0)} />}
             {idBagian === 'fisik' && <BagianFisik {...sifat} />}
-            {idBagian === 'kinerja' && <BagianKinerja {...sifat} />}
+            {idBagian === 'keselamatan' && pompa && <BagianKeselamatanPompa tpl={pompa} isi={isi} kunci={kunci} ubahData={ubahData} ubahRun={ubahRun} />}
+            {idBagian === 'kinerja' && (pompa
+              ? <BagianKinerjaPompa tpl={pompa} isi={isi} kunci={kunci} ubahData={ubahData} ubahRun={ubahRun} />
+              : <BagianKinerja {...sifatSph} />)}
             {idBagian === 'kesimpulan' && <BagianKesimpulan {...sifat} keBagian={(id) => pindah(bagian.findIndex((b) => b.id === id))} />}
             {idBagian === 'ringkasan' && (
               <BagianRingkasan {...sifat} lkk={lkk} namaRs={namaRs} status={statusNyata} terkunci={selesaiLokal} proses={prosesSelesai} galat={galatSelesai}
@@ -952,7 +856,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
 type Muat =
   | { k: 'memuat' }
   | { k: 'tidak'; judul: string; pesan: string }
-  | { k: 'siap'; lkk: LkkLokal; tpl: TemplateAlat; kalibrator: KalibratorLokal[] };
+  | { k: 'siap'; lkk: LkkLokal; tpl: TemplateApa; kalibrator: KalibratorLokal[] };
 
 export const LayarLkk: React.FC = () => {
   const { id = '' } = useParams();

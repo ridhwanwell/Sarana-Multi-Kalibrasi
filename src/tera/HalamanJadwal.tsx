@@ -22,7 +22,7 @@ import { BarisLkk, KeadaanKosong, Statistik } from './TeraKerangka';
 import { hitungAlatPo, type HitunganAlat, type JadwalLokal } from './data/jadwalLokal';
 import { daftarTemplateTerbaru } from './data/masterLokal';
 import type { LkkLokal } from './data/teraDb';
-import type { TemplateAlat } from './shared/hitung';
+import type { TemplateApa } from './data/masterLokal';
 import { templateUntukAlat } from './shared/nomorLabel';
 import { MulaiLkk } from './MulaiLkk';
 import { unduhBapBastp, type JenisDokumen } from './data/unduhBapBastp';
@@ -213,7 +213,7 @@ export const HalamanDetailRs: React.FC = () => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { jadwal, daftar, siap, dorong, statusJadwal } = useSinkron();
-  const [templates, setTemplates] = useState<TemplateAlat[]>([]);
+  const [templates, setTemplates] = useState<TemplateApa[]>([]);
   const [lembar, setLembar] = useState<{ alat: HitunganAlat | null } | null>(null);
   const [kabar, setKabar] = useState<{ jenis: 'ok' | 'info'; teks: string } | null>(null);
   const [tanpaTemplate, setTanpaTemplate] = useState<string | null>(null);

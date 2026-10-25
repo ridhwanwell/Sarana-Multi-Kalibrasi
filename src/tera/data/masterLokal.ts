@@ -12,6 +12,7 @@
  */
 import { minta, tx } from './teraDb';
 import type { TemplateAlat, TitikKalibrator } from '../shared/hitung';
+import type { TemplatePompa } from '../shared/hitungPompa';
 import { TEMPLATE_SPHYGMOMANOMETER_V2, TEMPLATE_SPHYGMOMANOMETER_V3 } from '../shared/templates/sphygmomanometer';
 
 /**
@@ -19,9 +20,12 @@ import { TEMPLATE_SPHYGMOMANOMETER_V2, TEMPLATE_SPHYGMOMANOMETER_V3 } from '../s
  * Bila server sudah pernah mengirim template alat tsb, versi dari server yang dipakai (server = acuan Selia),
  * sehingga versi baru di kode tidak dipakai sebelum template itu ada di database.
  */
-export const TEMPLATE_BAWAAN: TemplateAlat[] = [TEMPLATE_SPHYGMOMANOMETER_V2, TEMPLATE_SPHYGMOMANOMETER_V3];
+export const TEMPLATE_BAWAAN: TemplateApa[] = [TEMPLATE_SPHYGMOMANOMETER_V2, TEMPLATE_SPHYGMOMANOMETER_V3];
 
-export interface TemplateLokal { id: string; kodeAlat: string; versi: number; definition: TemplateAlat; diambilAt: string }
+/** Template naik-turun (Sphygmo, timbangan) atau template pompa (Infusion/Syringe). */
+export type TemplateApa = TemplateAlat | TemplatePompa;
+
+export interface TemplateLokal { id: string; kodeAlat: string; versi: number; definition: TemplateApa; diambilAt: string }
 
 export interface KalibratorLokal {
   id: string;                       // "<asetId>|<parameter>"
@@ -52,11 +56,18 @@ const tanggal = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}
 const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
 
 /** Template rusak dibuang (tidak boleh membuat layar crash). */
-export function bersihkanTemplate(mentah: unknown): TemplateAlat | null {
+export function bersihkanTemplate(mentah: unknown): TemplateApa | null {
   const t = (mentah as any)?.definition ?? mentah;
   if (!t || typeof t !== 'object') return null;
   if (!teks(t.kode_alat) || !Number.isInteger(t.versi) || t.versi < 1 || !teks(t.nama)) return null;
   if (t.kop !== 'KAN' && t.kop !== 'NON_KAN') return null;
+  if (t.tipe === 'pompa') {
+    // Template pompa: bentuk berbeda (aliran + penyumbatan + listrik)
+    if (!Array.isArray(t.fisik) || !Array.isArray(t.listrik) || !Array.isArray(t.standar) || !t.kinerja || !Array.isArray(t.kinerja.titikAliran)) return null;
+    if (!t.kinerja.titikAliran.every(num) || !t.kinerja.sumbat || !t.skor?.laikBila || !t.pilihanFisik?.fisik || !t.pilihanFisik?.fungsi) return null;
+    if (!t.identitas?.resolusi || !Array.isArray(t.identitas.resolusi.pilihan)) return null;
+    return t as TemplatePompa;
+  }
   if (!Array.isArray(t.fisik) || !Array.isArray(t.ujiAmbang) || !Array.isArray(t.kinerja)) return null;
   if (!t.skor || !Array.isArray(t.skor.item) || !t.skor.laikBila) return null;
   if (!t.identitas?.resolusi || !Array.isArray(t.identitas.resolusi.pilihan)) return null;
@@ -93,7 +104,7 @@ export function bersihkanKalibrator(mentah: unknown, diambilAt: string): Kalibra
 /** Simpan kiriman server dalam SATU transaksi. Hasil: jumlah template baru & jumlah kalibrator. */
 export async function simpanMasterServer(isi: { template?: unknown[]; kalibrator?: unknown[] }): Promise<{ templateBaru: number; kalibrator: number }> {
   const w = new Date().toISOString();
-  const tpl = (Array.isArray(isi.template) ? isi.template : []).map(bersihkanTemplate).filter((x): x is TemplateAlat => !!x);
+  const tpl = (Array.isArray(isi.template) ? isi.template : []).map(bersihkanTemplate).filter((x): x is TemplateApa => !!x);
   const kal = (Array.isArray(isi.kalibrator) ? isi.kalibrator : []).map((k) => bersihkanKalibrator(k, w)).filter((x): x is KalibratorLokal => !!x);
   return tx(['template', 'kalibrator'], 'readwrite', async (s) => {
     let templateBaru = 0;
@@ -112,28 +123,28 @@ export async function simpanMasterServer(isi: { template?: unknown[]; kalibrator
 }
 
 /** Versi tertinggi tiap jenis alat: dari server bila ada; template bawaan kode hanya untuk alat yang belum pernah diterima. */
-function pilihTerbaru(lokal: TemplateAlat[]): Map<string, TemplateAlat> {
-  const per = new Map<string, TemplateAlat>();
-  const ambil = (t: TemplateAlat) => { const lama = per.get(t.kode_alat); if (!lama || t.versi > lama.versi) per.set(t.kode_alat, t); };
+function pilihTerbaru(lokal: TemplateApa[]): Map<string, TemplateApa> {
+  const per = new Map<string, TemplateApa>();
+  const ambil = (t: TemplateApa) => { const lama = per.get(t.kode_alat); if (!lama || t.versi > lama.versi) per.set(t.kode_alat, t); };
   lokal.forEach(ambil);
   TEMPLATE_BAWAAN.filter((t) => !lokal.some((l) => l.kode_alat === t.kode_alat)).forEach(ambil);
   return per;
 }
 
 /** Template terbaru untuk satu jenis alat. */
-export async function templateTerbaru(kodeAlat: string): Promise<TemplateAlat | null> {
+export async function templateTerbaru(kodeAlat: string): Promise<TemplateApa | null> {
   const lokal = (await tx(['template'], 'readonly', (s) => minta(s.template.getAll()) as Promise<TemplateLokal[]>)).map((t) => t.definition);
   return pilihTerbaru(lokal).get(kodeAlat) ?? null;
 }
 
 /** Semua jenis alat yang punya template (versi tertinggi tiap jenis). */
-export async function daftarTemplateTerbaru(): Promise<TemplateAlat[]> {
+export async function daftarTemplateTerbaru(): Promise<TemplateApa[]> {
   const lokal = (await tx(['template'], 'readonly', (s) => minta(s.template.getAll()) as Promise<TemplateLokal[]>)).map((t) => t.definition);
   return [...pilihTerbaru(lokal).values()].sort((x, y) => x.nama.localeCompare(y.nama));
 }
 
 /** Template versi tertentu (untuk membuka LKK lama). */
-export async function templateVersi(kodeAlat: string, versi: number): Promise<TemplateAlat | null> {
+export async function templateVersi(kodeAlat: string, versi: number): Promise<TemplateApa | null> {
   const t = (await tx(['template'], 'readonly', (s) => minta(s.template.get(`${kodeAlat}@${versi}`)))) as TemplateLokal | undefined;
   return t?.definition ?? TEMPLATE_BAWAAN.find((x) => x.kode_alat === kodeAlat && x.versi === versi) ?? null;
 }

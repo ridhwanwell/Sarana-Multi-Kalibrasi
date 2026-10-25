@@ -18,7 +18,7 @@ import { AlertCircle, Camera, Check, ChevronLeft, Keyboard, Loader2, Tag, X } fr
 import { cleanLabelString } from '../lib/labelParser';
 import { buatLkk, daftarLkk, simpanIsian, type LkkLokal } from './data/teraDb';
 import type { HitunganAlat, JadwalLokal } from './data/jadwalLokal';
-import type { TemplateAlat } from './shared/hitung';
+import type { TemplateApa } from './data/masterLokal';
 import { cekNomorLabel, nomorDariKetikan, tanggalLokal, templateUntukAlat, type HasilCekNomor } from './shared/nomorLabel';
 
 type Langkah = 'jenis' | 'nomor' | 'kamera' | 'konfirmasi';
@@ -27,10 +27,10 @@ export interface MulaiLkkProps {
   jadwal: JadwalLokal;
   /** Alat PO yang dikerjakan; null = alat tambahan (di luar PO). */
   alat: HitunganAlat | null;
-  templates: TemplateAlat[];
+  templates: TemplateApa[];
   pemilik: string;
   onTutup: () => void;
-  onDibuat: (lkk: LkkLokal, template: TemplateAlat) => void;
+  onDibuat: (lkk: LkkLokal, template: TemplateApa) => void;
   /** Mengganti nomor stiker LKK yang SUDAH ADA (mis. ditolak server karena nomor ganda). Tidak membuat LKK baru. */
   ganti?: LkkLokal;
   onGanti?: () => void;
@@ -111,7 +111,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
   const tambahan = ganti ? ganti.alatTambahan : alat === null;
   const templatePo = alat ? templateUntukAlat(alat.nama, templates) : null;
   const [langkah, setLangkah] = useState<Langkah>(tambahan && !ganti ? 'jenis' : 'nomor');
-  const [template, setTemplate] = useState<TemplateAlat | null>(ganti ? (templates.find((t) => t.kode_alat === ganti.templateKode) ?? null) : templatePo);
+  const [template, setTemplate] = useState<TemplateApa | null>(ganti ? (templates.find((t) => t.kode_alat === ganti.templateKode) ?? null) : templatePo);
   const [ketikan, setKetikan] = useState('');
   const [galat, setGalat] = useState<string | null>(null);
   const [hasil, setHasil] = useState<Extract<HasilCekNomor, { ok: true }> | null>(null);
@@ -181,7 +181,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
         alatTambahan: tambahan, poItemRef: alat?.ref ?? null, jadwalId: jadwal.jadwalId,
         data: {},
       });
-      onDibuat(lkk, template as TemplateAlat);
+      onDibuat(lkk, template as TemplateApa);
     } catch (e: any) {
       setGalat(String(e?.message || 'LKK belum bisa dibuat. Data di perangkat tetap aman. Coba lagi.'));
       setLangkah('konfirmasi');
