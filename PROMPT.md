@@ -424,3 +424,8 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Realisasi = LKK diterima server termasuk TIDAK LAIK; sisa = Batal → tidak ditagih (tagihan = realisasi × harga SPH DEAL). PPN tetap dari data SPH (`sph.ppnPercent`, bawaan 11 %) — migrasi `settings.ppn_persen` TIDAK diperlukan.
 - `realisasiPenagihan()` di `dataBapBastp.ts` (beberapa jadwal satu SPH dijumlah). Uji `test:tera:bap` 38/38. Belum bisa diuji nyata: jadwal BO 999 tidak terhubung SPH → uji pertama dengan jadwal sungguhan.
 - Tahap 5 selesai dari sisi kode. Sisa: uji Ridhwan (unduh BAP/BASTP/Rekap di HP & Selia; Ambil realisasi di Penagihan RS saat ada jadwal sungguhan).
+
+### ⏭️ BERIKUTNYA (26 Okt 2026 00.02) — Tahap 6 di CHAT BARU
+- Ridhwan akan mengunggah LKK (Master Excel + MK + Report All) untuk: **NIBP (Patient Monitor NIBP)**, **Suction Pump**, **Infusion Pump**, **Syringe Pump**, **Keselamatan Listrik (Kelistrikan)**. Keputusan pemilik: daftar ini menggantikan urutan Tahap 6 lama (Timbangan Bayi Digital & Thermohygrometer menyusul); alat dikerjakan SATU PER SATU, mulai dari yang file-nya lengkap.
+- Pola yang dipakai ulang dari Sphygmomanometer: template JSON + golden file ("sama dengan Excel") → layar LKK berbasis template → Selia/Ubah isian/ACC → sertifikat di atas "kertas cetak" Report All (tools/tera/buat_templat_sertifikat.py, geser_pita.py bila perlu) + kop Non-KAN (semua alat ini Non-KAN) → QR TTE. BAP/BASTP/Rekap/Penagihan otomatis ikut (sudah berbasis LKK).
+- Keselamatan listrik (CLAUDE.md 9.6): alat berbaterai tanpa tabel; berkabel selalu diuji; hanya Pacemaker yang punya pilihan Ya/Tidak. Ketidakpastian Kelistrikan di Master v12 rusak (#REF!) — dirapikan saat membuat template, tanya Ridhwan bila ragu.
