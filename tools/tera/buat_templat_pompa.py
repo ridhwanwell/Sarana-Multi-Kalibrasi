@@ -121,7 +121,9 @@ for x in F:
 sat = ["/**", " * TATA LETAK SERTIFIKAT — " + NAMA + " (Report All), 3 halaman A4. DIHASILKAN oleh tools/tera/buat_templat_pompa.py", " * dari PDF cetakan Excel Ridhwan (Master_" + NAMA.replace(' ', '_') + "_terisi.pdf, 26 Okt 2026). Hanya posisi ISIAN (j:'f') yang disimpan;",
        " * semua teks tetap, garis & kotak biru ada di kertas cetak " + BERKAS + ". Jangan diedit tangan.", " */",
        "import type { TataLetak } from './susunSertifikat.js';", "", "export const TATA_LETAK_" + KODE.upper() + ": TataLetak = {",
-       "  kode: 'report_all_" + KODE + "',", "  halaman: 3,", "  ukuran: { lebar: 595.2756, tinggi: 841.8898 },", "  biru: [],", "  kotak: {},", "  teks: {"]
+       "  kode: 'report_all_" + KODE + "',", "  halaman: 3,", "  ukuran: { lebar: 595.2756, tinggi: 841.8898 },", "  biru: [],", "  kotak: {},",
+       "  // Nama RS kepanjangan → 2 baris, isi di bawahnya turun 1 baris (Ridhwan 26 Okt 2026)",
+       "  duaBaris: { 2: { k: 'tempat', dari: 259.5, sampai: 750, jarak: 12.2 } },", "  teks: {"]
 for p in (1, 2, 3):
     sat.append('    %d: [' % p); sat.append(',\n'.join(baris[p])); sat.append('    ],')
 sat += ["  },", "};", ""]

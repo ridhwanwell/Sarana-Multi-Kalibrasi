@@ -5,9 +5,9 @@
  * Font & kop DISUNTIKKAN sebagai byte (tidak dibaca dari disk/jaringan di sini) agar mudah diuji dan aman.
  * Posisi isi tidak digeser demi kop (CLAUDE.md 9.5).
  */
-import { PDFDocument, PDFName, rgb, type PDFFont, type PDFPage, type PDFEmbeddedPage, type PDFImage } from 'pdf-lib';
+import { PDFDocument, PDFName, rgb, pushGraphicsState, popGraphicsState, rectangle, clip, endPath, type PDFFont, type PDFPage, type PDFEmbeddedPage, type PDFImage } from 'pdf-lib';
 import { LOGO_TTE_LEBAR, LOGO_TTE_TINGGI, LOGO_TTE_PNG_B64, LOGO_TTE_TOPENG_B64 } from './logoTte.js';
-import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf } from './susunSertifikat.js';
+import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf, type Kotak, type TeksGambar } from './susunSertifikat.js';
 
 /**
  * QR tanda tangan elektronik (TTE) di halaman 1, di ruang kosong atas nama Manajer Teknik. `kotak[baris][kolom]` true = gelap.
@@ -83,7 +83,11 @@ function gambarHalaman(page: PDFPage, h: HalamanSusun, huruf: HurufTerpasang, ti
     let x = t.rata === 'r' ? t.x - lebar : t.rata === 'c' ? t.x - lebar / 2 : t.x;
     const batas = t.batas ?? BATAS_KANAN;
     let teks = t.teks;
-    if (t.isian && t.rata === 'l' && x + lebar > batas) {
+    if (t.isian && t.rata === 'l' && x + lebar > batas && t.tanpaKecil) {
+      while (teks.length > 1 && x + font.widthOfTextAtSize(teks + '…', ukuran) > batas) teks = teks.slice(0, -1).trimEnd();
+      teks += '…';
+      lebar = font.widthOfTextAtSize(teks, ukuran);
+    } else if (t.isian && t.rata === 'l' && x + lebar > batas) {
       ukuran = Math.max(t.ukuran * UKURAN_MIN_PERSEN, t.ukuran * ((batas - x) / lebar));
       lebar = font.widthOfTextAtSize(teks, ukuran);
       // Batas khusus (kolom kiri): masih kepanjangan setelah diperkecil → dipotong "…" supaya tidak menimpa label di kanannya.
@@ -104,19 +108,73 @@ function grupTransparan(doc: PDFDocument) {
   return doc.context.obj({ Type: 'Group', S: 'Transparency', CS: 'DeviceRGB' });
 }
 
+/** Pecah teks per kata menjadi paling banyak `maks` baris selebar `lebarMaks` (sisa kata ikut baris terakhir). */
+export function pecahBaris(teks: string, lebarMaks: number, ukur: (s: string) => number, maks = 2): string[] {
+  const kata = teks.split(/\s+/).filter(Boolean); const baris: string[] = []; let kini = '';
+  for (const k of kata) {
+    const calon = kini ? `${kini} ${k}` : k;
+    if (kini && ukur(calon) > lebarMaks && baris.length < maks - 1) { baris.push(kini); kini = k; } else kini = calon;
+  }
+  if (kini) baris.push(kini);
+  return baris;
+}
+
+/**
+ * Isian 2 baris (TataLetak.duaBaris): bila isian lebih lebar dari kolomnya, dipecah 2 baris dengan ukuran huruf ASLI,
+ * dan isi halaman di bawahnya turun `jarak` poin. Mengembalikan halaman baru + besar geseran (0 = tidak ada perubahan).
+ */
+export function terapkanDuaBaris(h: HalamanSusun, tl: TataLetak, huruf: Record<GayaHuruf, { widthOfTextAtSize(t: string, s: number): number }>): { h: HalamanSusun; dy: number } {
+  const def = tl.duaBaris?.[h.nomor];
+  if (!def) return { h, dy: 0 };
+  const t = h.teks.find((x) => x.isian && x.kunci === def.k);
+  if (!t || t.rata !== 'l') return { h, dy: 0 };
+  const font = huruf[t.huruf];
+  const lebarMaks = (t.batas ?? BATAS_KANAN) - t.x;
+  if (font.widthOfTextAtSize(t.teks, t.ukuran) <= lebarMaks) return { h, dy: 0 };
+  const baris = pecahBaris(t.teks, lebarMaks, (s) => font.widthOfTextAtSize(s, t.ukuran), 2);
+  if (baris.length < 2) return { h, dy: 0 }; // satu kata sangat panjang: biarkan cara lama (diperkecil)
+  const dy = def.jarak;
+  const turun = (y: number) => (y > def.dari && y < def.sampai ? y + dy : y);
+  const teks: TeksGambar[] = [];
+  for (const x of h.teks) {
+    if (x === t) {
+      teks.push({ ...t, teks: baris[0], tanpaKecil: true });
+      teks.push({ ...t, y: t.y + dy, teks: baris[1], tanpaKecil: true });
+    } else teks.push({ ...x, y: turun(x.y) });
+  }
+  const geserKotak = (k: Kotak): Kotak => (k[1] > def.dari && k[3] < def.sampai ? [k[0], k[1] + dy, k[2], k[3] + dy] : k);
+  return { h: { ...h, teks, kotak: h.kotak.map(geserKotak), biru: h.biru.map(geserKotak) }, dy };
+}
+
+/** Gambar halaman templat dengan pita [dari, sampai) diturunkan dy poin (tiga potongan berpotong-klip). */
+function gambarTemplatBergeser(page: PDFPage, tp: PDFEmbeddedPage, lebar: number, tinggi: number, dari: number, sampai: number, dy: number) {
+  // y PDF dihitung dari BAWAH; dari/sampai dihitung dari ATAS halaman.
+  const potong = (atas: number, bawah: number, geser: number) => {
+    page.pushOperators(pushGraphicsState(), rectangle(0, tinggi - bawah, lebar, bawah - atas), clip(), endPath());
+    page.drawPage(tp, { x: 0, y: -geser, width: lebar, height: tinggi });
+    page.pushOperators(popGraphicsState());
+  };
+  potong(0, dari, 0);                      // atas: tetap
+  potong(dari + dy, sampai + dy, dy);      // pita: turun dy
+  potong(sampai + dy, tinggi, 0);          // kaki: tetap
+}
+
 export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null, tte?: Tte | null, templat?: Uint8Array | null): Promise<PDFEmbeddedPage[]> {
   const { lebar, tinggi } = tl.ukuran;
   // kop = null → versi TANPA kop (untuk salinan Google Drive & komputer); isi tetap sama persis.
   const kopHalaman = kop ? (await doc.embedPdf(kop, [0]))[0] : null;
   const templatHalaman = templat ? await doc.embedPdf(templat, Array.from({ length: tl.halaman }, (_, i) => i)) : null;
   const logo = tte ? await doc.embedPng(dariB64(LOGO_TTE_PNG_B64)) : null;
-  for (const h of susun(tl, isian)) {
+  for (const asli of susun(tl, isian)) {
+    const { h, dy } = terapkanDuaBaris(asli, tl, huruf);
     const page = doc.addPage([lebar, tinggi]);
     page.node.set(PDFName.of('Group'), grupTransparan(doc));
     if (kopHalaman) page.drawPage(kopHalaman, { x: 0, y: 0, width: lebar, height: tinggi });
     if (templatHalaman) {
       // Teks tetap, garis & kotak biru = templat Excel; aplikasi hanya mencetak isian.
-      page.drawPage(templatHalaman[h.nomor - 1], { x: 0, y: 0, width: lebar, height: tinggi });
+      const def = tl.duaBaris?.[h.nomor];
+      if (dy && def) gambarTemplatBergeser(page, templatHalaman[h.nomor - 1], lebar, tinggi, def.dari, def.sampai, dy);
+      else page.drawPage(templatHalaman[h.nomor - 1], { x: 0, y: 0, width: lebar, height: tinggi });
       gambarHalaman(page, { ...h, biru: [], kotak: [], teks: h.teks.filter((t) => t.isian) }, huruf, tinggi);
     } else {
       gambarHalaman(page, h, huruf, tinggi);

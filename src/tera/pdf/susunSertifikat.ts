@@ -38,6 +38,12 @@ export interface TataLetak {
   /** Garis/kotak hitam per halaman */
   kotak: Record<number, Kotak[]>;
   teks: Record<number, OpTeks[]>;
+  /**
+   * Isian yang boleh dipecah menjadi 2 baris (keputusan Ridhwan 26 Okt 2026: nama RS di "Tempat" yang kepanjangan
+   * TIDAK dikecilkan, tetapi dibuat 2 baris). Bila terpecah, semua isi halaman itu dari y `dari` sampai `sampai`
+   * (y dari atas) ikut turun `jarak` poin — seperti baris Excel yang meninggi. Teks kaki (di bawah `sampai`) tetap.
+   */
+  duaBaris?: Record<number, { k: string; dari: number; sampai: number; jarak: number }>;
 }
 
 export type Isian = Record<string, string | null | undefined>;
@@ -48,6 +54,10 @@ export interface TeksGambar {
   isian: boolean;
   /** Batas kanan khusus (lihat OpTeks.m); undefined = tepi kanan tabel. */
   batas?: number;
+  /** Kunci isian (OpTeks.k) — dipakai untuk isian 2 baris. */
+  kunci?: string;
+  /** true = jangan diperkecil; bila kepanjangan dipotong "…" (baris kedua isian 2 baris). */
+  tanpaKecil?: boolean;
 }
 export interface HalamanSusun { nomor: number; biru: Kotak[]; kotak: Kotak[]; teks: TeksGambar[] }
 
@@ -65,7 +75,7 @@ export function susun(tl: TataLetak, isian: Isian): HalamanSusun[] {
       const isiTeks = o.j === 't'
         ? String(o.t ?? '').split('{p}').join(String(p)).split('{n}').join(String(tl.halaman))
         : rapikan(isian[o.k ?? '']);
-      teks.push({ x: o.x, y: o.y, huruf: o.f, ukuran: o.s, rata: o.a ?? 'l', teks: isiTeks, garisBawah: !!o.u, isian: o.j === 'f', batas: o.m });
+      teks.push({ x: o.x, y: o.y, huruf: o.f, ukuran: o.s, rata: o.a ?? 'l', teks: isiTeks, garisBawah: !!o.u, isian: o.j === 'f', batas: o.m, ...(o.j === 'f' && o.k ? { kunci: o.k } : {}) });
     }
     hasil.push({ nomor: p, biru: p === 1 ? tl.biru : [], kotak: tl.kotak[p] ?? [], teks });
   }
