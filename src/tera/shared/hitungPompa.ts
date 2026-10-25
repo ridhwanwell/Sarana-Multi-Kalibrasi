@@ -49,6 +49,11 @@ export interface KinerjaPompa {
   pengulangan: number;
   /** Toleransi aliran = setting × persen (± 10 %). */
   toleransiAliranPersen: number;
+  /**
+   * Aturan Laik per titik aliran. 'u95' (bawaan, Infusion Pump) = |koreksi| + U95 ≤ toleransi.
+   * 'sepertiga' (Syringe Pump, mengikuti Excel View Report L18:L22) = |koreksi| + toleransi/3 ≤ toleransi.
+   */
+  aturanAliran?: 'u95' | 'sepertiga';
   /** Penyumbatan: batas (psi), resolusi tetap IDA (psi), setting bawaan (mL/h). */
   sumbat: { batas: number; banding: Banding; resolusiTetap: number; settingBawaan: number };
   /** Drift standar = persen × U sertifikat. */
@@ -282,7 +287,8 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
     const toleransi = Math.abs(s * kn.toleransiAliranPersen);
     let hasil: Vonis = '-';
     if (b.koreksi !== null && b.u95 !== null) {
-      hasil = Math.abs(b.koreksi) + b.u95 <= toleransi ? 'Laik' : 'Tidak Laik';
+      const tambahan = kn.aturanAliran === 'sepertiga' ? toleransi / 3 : b.u95;
+      hasil = Math.abs(b.koreksi) + tambahan <= toleransi ? 'Laik' : 'Tidak Laik';
       aliran.jumlahDinilai++;
       if (hasil === 'Laik') aliran.jumlahLaik++;
     } else kurang.push(`Aliran ${s} mL/h belum lengkap`);

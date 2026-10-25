@@ -10,7 +10,7 @@ Cara kerja (perumpamaan: menimbang beban yang sama di dua timbangan lalu memband
 Mesin hitung di aplikasi (src/tera/shared/hitungPompa.ts) lalu diuji agar menghasilkan angka yang sama.
 
 Pakai:
-  python3 tools/tera/buat_golden_pompa.py <Master_Infusion_Pump_terisi.xlsx> <folder_kerja> [keluaran.json]
+  python3 tools/tera/buat_golden_pompa.py <Master_..._Pump_terisi.xlsx> <folder_kerja> [keluaran.json] [infusion|syringe]
 Hanya data uji (BO 999 / DATA UJI COBA). Berkas Excel TIDAK ikut commit (_referensi/ & folder kerja).
 """
 import json, os, shutil, subprocess, sys, datetime
@@ -18,7 +18,8 @@ import openpyxl
 
 SUMBER = sys.argv[1]
 KERJA = sys.argv[2]
-KELUAR = sys.argv[3] if len(sys.argv) > 3 else 'tests/tera/fixtures/infusion-golden-v1.json'
+JENIS = sys.argv[4] if len(sys.argv) > 4 else 'infusion'   # 'infusion' atau 'syringe'
+KELUAR = sys.argv[3] if len(sys.argv) > 3 else f'tests/tera/fixtures/{JENIS}-golden-v1.json'
 
 # ───────── kasus uji ─────────
 # aliran: setting -> 6 bacaan standar IDA (mentah, sebelum koreksi)
@@ -73,6 +74,44 @@ KASUS = [
                  200: [201.0, 199.5, 200.8, 200.3, 199.8, 200.6]},
          sumbat=(100, [30.0, 31.0, 29.0, 30.5, 29.5, 30.0])),
 ]
+
+# Syringe Pump (Master_Syringe_Pump_terisi.xlsx): setting 1/5/10/25/50 mL/h, Laik aliran = |koreksi|+toleransi/3 <= toleransi
+_LISTRIK_OK = dict(tegangan=221.5, resistansi_pembumian=0.12, resistansi_isolasi=250.0, arus_bocor=45.0)
+_ALIR_OK = {1: [1.01, 0.99, 1.02, 1.0, 0.98, 1.01], 5: [5.03, 4.98, 5.05, 5.01, 4.97, 5.02],
+            10: [10.05, 9.96, 10.08, 10.02, 9.98, 10.04], 25: [25.1, 24.9, 25.15, 25.05, 24.95, 25.08],
+            50: [50.2, 49.8, 50.3, 50.1, 49.9, 50.15]}
+_SUMBAT_OK = (100, [9.5, 9.9, 10.2, 9.8, 10.1, 9.6])
+KASUS_SYR = [
+    dict(nama='laik-lengkap', skala='Digital', resolusi=0.01, listrik=_LISTRIK_OK, aliran=_ALIR_OK, sumbat=_SUMBAT_OK),
+    dict(nama='satu-titik-aliran-gagal-masih-70persen', skala='Digital', resolusi=0.01,
+         listrik=dict(tegangan=219.0, resistansi_pembumian=0.2, resistansi_isolasi=100.0, arus_bocor=120.0),
+         aliran={**_ALIR_OK, 1: [1.12, 1.1, 1.14, 1.11, 1.13, 1.12]}, sumbat=(100, [12.0, 12.4, 11.8, 12.2, 12.1, 12.3])),
+    dict(nama='tiga-titik-aliran-gagal', skala='Digital', resolusi=0.01, listrik=_LISTRIK_OK,
+         aliran={1: [1.12, 1.1, 1.14, 1.11, 1.13, 1.12], 5: [5.6, 5.55, 5.62, 5.58, 5.6, 5.57], 10: [10.05, 9.96, 10.08, 10.02, 9.98, 10.04],
+                 25: [28.0, 27.8, 28.2, 28.1, 27.9, 28.0], 50: [50.2, 49.8, 50.3, 50.1, 49.9, 50.15]}, sumbat=_SUMBAT_OK),
+    dict(nama='listrik-gagal', skala='Digital', resolusi=0.01,
+         listrik=dict(tegangan=221.5, resistansi_pembumian=0.35, resistansi_isolasi=1.5, arus_bocor=620.0), aliran=_ALIR_OK, sumbat=_SUMBAT_OK),
+    dict(nama='penyumbatan-gagal', skala='Digital', resolusi=0.01, listrik=_LISTRIK_OK, aliran=_ALIR_OK,
+         sumbat=(100, [24.5, 24.9, 24.2, 25.1, 24.7, 24.4])),
+    dict(nama='penyumbatan-dekat-batas', skala='Digital', resolusi=0.01, listrik=_LISTRIK_OK, aliran=_ALIR_OK,
+         sumbat=(100, [19.95, 19.96, 19.94, 19.95, 19.95, 19.96])),
+    dict(nama='resolusi-0-1', skala='Digital', resolusi=0.1, listrik=_LISTRIK_OK,
+         aliran={1: [1.0, 1.1, 0.9, 1.0, 1.0, 1.1], 5: [5.0, 5.1, 4.9, 5.0, 5.1, 5.0], 10: [10.1, 9.9, 10.0, 10.1, 9.9, 10.0],
+                 25: [25.1, 24.9, 25.0, 25.2, 24.8, 25.0], 50: [50.2, 49.8, 50.1, 50.0, 49.9, 50.3]}, sumbat=_SUMBAT_OK),
+    dict(nama='tepi-tabel-kalibrator', skala='Digital', resolusi=0.01,
+         listrik=dict(tegangan=99.0, resistansi_pembumian=0.05, resistansi_isolasi=0.5, arus_bocor=5.0),
+         aliran={1: [1.0, 1.01, 0.99, 1.0, 1.0, 1.01], 5.21: [5.21, 5.2, 5.22, 5.21, 5.2, 5.22], 10.31: [10.31, 10.3, 10.32, 10.31, 10.29, 10.33],
+                 49.82: [49.82, 49.8, 49.84, 49.82, 49.81, 49.83], 300: [300.5, 299.5, 300.8, 300.2, 299.9, 300.4]},
+         sumbat=(100, [0.0, 0.1, 0.0, 0.1, 0.0, 0.1])),
+    dict(nama='listrik-atas-tabel', skala='Digital', resolusi=0.01,
+         listrik=dict(tegangan=250.0, resistansi_pembumian=1.5, resistansi_isolasi=15.0, arus_bocor=520.0), aliran=_ALIR_OK,
+         sumbat=(100, [30.0, 31.0, 29.0, 30.5, 29.5, 30.0])),
+]
+if JENIS == 'syringe':
+    KASUS = KASUS_SYR
+    FISIK_ALIAS = {'penyumbatan-dekat-batas': 'laik-lengkap', 'resolusi-0-1': 'laik-lengkap'}
+else:
+    FISIK_ALIAS = {}
 
 FISIK_ID = ['badan', 'kontrol', 'kabel']
 # 6 kotak: (fisik, fungsi) per butir
@@ -181,7 +220,7 @@ def main():
     hasil = []
     for n, k in enumerate(KASUS):
         wb = openpyxl.load_workbook(os.path.join(keluar, f'kasus{n:02d}.xlsx'), data_only=True)
-        fisik = {i: dict(fisik=a, fungsi=b) for i, (a, b) in zip(FISIK_ID, FISIK_KASUS[k['nama']])}
+        fisik = {i: dict(fisik=a, fungsi=b) for i, (a, b) in zip(FISIK_ID, FISIK_KASUS[FISIK_ALIAS.get(k['nama'], k['nama'])])}
         hasil.append(dict(
             nama=k['nama'],
             titikAliran=list(k['aliran'].keys()),
@@ -193,7 +232,7 @@ def main():
         ))
     os.makedirs(os.path.dirname(KELUAR) or '.', exist_ok=True)
     with open(KELUAR, 'w', encoding='utf-8') as f:
-        json.dump(dict(sumber='Master_Infusion_Pump_terisi.xlsx (26 Okt 2026), dihitung ulang penuh dengan LibreOffice',
+        json.dump(dict(sumber=('Master_Syringe_Pump_terisi.xlsx' if JENIS == 'syringe' else 'Master_Infusion_Pump_terisi.xlsx') + ' (26 Okt 2026), dihitung ulang penuh dengan LibreOffice',
                        dibuat=datetime.date.today().isoformat(),
                        catatan='Fisik & fungsi memakai aturan baru (semua kotak); harapan Excel hanya untuk listrik, aliran, penyumbatan.',
                        kasus=hasil), f, ensure_ascii=False, indent=1)

@@ -1,0 +1,87 @@
+/**
+ * TATA LETAK SERTIFIKAT — Syringe Pump (Report All), 3 halaman A4. DIHASILKAN oleh tools/tera/buat_templat_pompa.py
+ * dari PDF cetakan Excel Ridhwan (Master_Syringe_Pump_terisi.pdf, 26 Okt 2026). Hanya posisi ISIAN (j:'f') yang disimpan;
+ * semua teks tetap, garis & kotak biru ada di kertas cetak templat-syringe-pump.pdf. Jangan diedit tangan.
+ */
+import type { TataLetak } from './susunSertifikat.js';
+
+export const TATA_LETAK_SYRINGE_PUMP: TataLetak = {
+  kode: 'report_all_syringe_pump',
+  halaman: 3,
+  ukuran: { lebar: 595.2756, tinggi: 841.8898 },
+  biru: [],
+  kotak: {},
+  teks: {
+    1: [
+      {j:"f",x:145.81,y:176.42,f:"r",s:9.96,a:"l",k:"nomorOrder",m:292},
+      {j:"f",x:398.44,y:176.42,f:"r",s:9.96,a:"l",k:"nomorSertifikat"},
+      {j:"f",x:145.81,y:213.62,f:"r",s:9.96,a:"l",k:"tanggalTerbit",m:292},
+      {j:"f",x:398.44,y:213.62,f:"r",s:9.96,a:"l",k:"kalibrasiUlang"},
+      {j:"f",x:145.81,y:294.88,f:"r",s:9.96,a:"l",k:"namaPelanggan"},
+      {j:"f",x:145.81,y:321.04,f:"r",s:9.96,a:"l",k:"alamatPelanggan"},
+      {j:"f",x:145.81,y:401.92,f:"r",s:9.96,a:"l",k:"namaAlat",m:292},
+      {j:"f",x:398.44,y:401.92,f:"r",s:9.96,a:"l",k:"noSeri"},
+      {j:"f",x:145.81,y:438.15,f:"r",s:9.96,a:"l",k:"merek",m:292},
+      {j:"f",x:445.45,y:438.15,f:"r",s:9.96,a:"r",k:"rentangUkur"},
+      {j:"f",x:449,y:438.15,f:"r",s:9.96,a:"l",k:"satuanRentang"},
+      {j:"f",x:145.81,y:474.41,f:"r",s:9.96,a:"l",k:"tipe",m:292},
+      {j:"f",x:445.45,y:474.41,f:"r",s:9.96,a:"r",k:"resolusi"},
+      {j:"f",x:449,y:474.41,f:"r",s:9.96,a:"l",k:"satuanResolusi"},
+      {j:"f",x:196.36,y:523.01,f:"r",s:9.96,a:"l",k:"tanggalPenerimaan"},
+      {j:"f",x:44.88,y:679.99,f:"r",s:11.04,a:"l",k:"penandatanganNama"},
+      {j:"f",x:44.88,y:695.1,f:"b",s:11.04,a:"l",k:"penandatanganJabatan"},
+      {j:"f",x:44.52,y:706.86,f:"i",s:8.04,a:"l",k:"penandatanganJabatanEn"}
+    ],
+    2: [
+      {j:"f",x:145.81,y:129.61,f:"r",s:9.96,a:"l",k:"nomorOrder",m:292},
+      {j:"f",x:398.44,y:129.61,f:"r",s:9.96,a:"l",k:"nomorSertifikat"},
+      {j:"f",x:44.76,y:182.52,f:"r",s:9.96,a:"l",k:"kalibrator1"},
+      {j:"f",x:44.76,y:194.88,f:"r",s:9.96,a:"l",k:"kalibrator2"},
+      {j:"f",x:44.76,y:207.24,f:"r",s:9.96,a:"l",k:"kalibrator3"},
+      {j:"f",x:145.81,y:254.52,f:"r",s:9.96,a:"l",k:"tempat",m:292},
+      {j:"f",x:398.44,y:254.52,f:"r",s:9.96,a:"l",k:"tanggalPelaksanaan"},
+      {j:"f",x:145.81,y:269.76,f:"r",s:9.96,a:"l",k:"ruang",m:292},
+      {j:"f",x:398.44,y:269.76,f:"r",s:9.96,a:"l",k:"teknisi"},
+      {j:"f",x:192.89,y:319.1,f:"r",s:9.96,a:"r",k:"suhuRuang"},
+      {j:"f",x:445.46,y:319.1,f:"r",s:9.96,a:"r",k:"rhRuang"},
+      {j:"f",x:397.09,y:408.5,f:"r",s:9.96,a:"c",k:"fisik1"},
+      {j:"f",x:498.17,y:408.5,f:"r",s:9.96,a:"c",k:"fungsi1"},
+      {j:"f",x:397.09,y:423.02,f:"r",s:9.96,a:"c",k:"fisik2"},
+      {j:"f",x:498.17,y:423.02,f:"r",s:9.96,a:"c",k:"fungsi2"},
+      {j:"f",x:397.09,y:437.54,f:"r",s:9.96,a:"c",k:"fisik3"},
+      {j:"f",x:498.17,y:437.54,f:"r",s:9.96,a:"c",k:"fungsi3"}
+    ],
+    3: [
+      {j:"f",x:145.81,y:129.61,f:"r",s:9.96,a:"l",k:"nomorOrder",m:292},
+      {j:"f",x:398.44,y:129.61,f:"r",s:9.96,a:"l",k:"nomorSertifikat"},
+      {j:"f",x:422.4,y:245.64,f:"r",s:9.96,a:"c",k:"listrik0"},
+      {j:"f",x:422.4,y:265.08,f:"r",s:9.96,a:"c",k:"listrik1"},
+      {j:"f",x:422.4,y:284.52,f:"r",s:9.96,a:"c",k:"listrik2"},
+      {j:"f",x:422.4,y:303.99,f:"r",s:9.96,a:"c",k:"listrik3"},
+      {j:"f",x:93.65,y:411.5,f:"r",s:9.96,a:"c",k:"a0_alat"},
+      {j:"f",x:194.6,y:411.5,f:"r",s:9.96,a:"c",k:"a0_std"},
+      {j:"f",x:295.7,y:411.5,f:"r",s:9.96,a:"c",k:"a0_kor"},
+      {j:"f",x:396.7,y:411.5,f:"r",s:9.96,a:"c",k:"a0_u"},
+      {j:"f",x:93.65,y:430.94,f:"r",s:9.96,a:"c",k:"a1_alat"},
+      {j:"f",x:194.6,y:430.94,f:"r",s:9.96,a:"c",k:"a1_std"},
+      {j:"f",x:295.7,y:430.94,f:"r",s:9.96,a:"c",k:"a1_kor"},
+      {j:"f",x:396.7,y:430.94,f:"r",s:9.96,a:"c",k:"a1_u"},
+      {j:"f",x:93.65,y:450.37,f:"r",s:9.96,a:"c",k:"a2_alat"},
+      {j:"f",x:194.6,y:450.37,f:"r",s:9.96,a:"c",k:"a2_std"},
+      {j:"f",x:295.7,y:450.37,f:"r",s:9.96,a:"c",k:"a2_kor"},
+      {j:"f",x:396.7,y:450.37,f:"r",s:9.96,a:"c",k:"a2_u"},
+      {j:"f",x:93.65,y:469.83,f:"r",s:9.96,a:"c",k:"a3_alat"},
+      {j:"f",x:194.6,y:469.83,f:"r",s:9.96,a:"c",k:"a3_std"},
+      {j:"f",x:295.7,y:469.83,f:"r",s:9.96,a:"c",k:"a3_kor"},
+      {j:"f",x:396.7,y:469.83,f:"r",s:9.96,a:"c",k:"a3_u"},
+      {j:"f",x:93.65,y:489.27,f:"r",s:9.96,a:"c",k:"a4_alat"},
+      {j:"f",x:194.6,y:489.27,f:"r",s:9.96,a:"c",k:"a4_std"},
+      {j:"f",x:295.7,y:489.27,f:"r",s:9.96,a:"c",k:"a4_kor"},
+      {j:"f",x:396.7,y:489.27,f:"r",s:9.96,a:"c",k:"a4_u"},
+      {j:"f",x:93.6,y:601.46,f:"r",s:9.96,a:"c",k:"sumbatSetting"},
+      {j:"f",x:194.6,y:601.46,f:"r",s:9.96,a:"c",k:"sumbatStd"},
+      {j:"f",x:396.7,y:601.46,f:"r",s:9.96,a:"c",k:"sumbatU"},
+      {j:"f",x:145.93,y:661.13,f:"b",s:11.04,a:"l",k:"kesimpulan",u:1}
+    ],
+  },
+};

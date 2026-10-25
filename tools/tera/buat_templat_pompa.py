@@ -1,10 +1,13 @@
-# Infusion Pump — buat "kertas cetak" Report All dari PDF cetakan Excel (Master_Infusion_Pump_terisi.pdf, 26 Okt 2026)
+# Infusion Pump — buat "kertas cetak" Report All dari PDF cetakan Excel (Master_" + NAMA.replace(' ', '_') + "_terisi.pdf, 26 Okt 2026)
 # + tata letak isian (src/tera/pdf/tataLetakPompa.ts). Teks PDF Excel memakai font tanpa pemetaan Unicode (tidak bisa dibaca
 # sebagai teks), jadi isian dikenali dari POSISI (halaman, garis dasar, rentang x) — bukan dari isinya.
 #   python3 tools/tera/buat_templat_pompa.py <Master_..._terisi.pdf> <templat-keluaran.pdf> <tataLetakPompa.ts>
 import sys, json, pikepdf, pdfplumber
 
 SRC, DST, TS = sys.argv[1], sys.argv[2], sys.argv[3]
+KODE = sys.argv[4] if len(sys.argv) > 4 else 'infusion_pump'   # 'infusion_pump' atau 'syringe_pump'
+NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump'}[KODE]
+BERKAS = 'templat-' + KODE.replace('_', '-') + '.pdf'
 # (halaman, garis dasar y dari atas, x awal-min, x awal-maks, kunci, rata, x-jangkar|None=awal, huruf, ukuran, garis bawah)
 F = []
 # Halaman 2 & 3: seluruh isi diturunkan 2 baris (24,7 poin) supaya kotak Nomor Order / Nomor Sertifikat tidak mepet kop
@@ -37,7 +40,7 @@ for i, y in enumerate([387.3, 406.7, 426.2, 445.6, 465.1]):
     f(3, y, 80, 106, f'a{i}_alat', 'c', 93.65); f(3, y, 178, 210, f'a{i}_std', 'c', 194.6)
     f(3, y, 284, 308, f'a{i}_kor', 'c', 295.7); f(3, y, 385, 408, f'a{i}_u', 'c', 396.7)
 f(3, 577.2, 80, 106, 'sumbatSetting', 'c', 93.6); f(3, 577.2, 185, 203, 'sumbatStd', 'c', 194.6); f(3, 577.2, 385, 408, 'sumbatU', 'c', 396.7)
-f(3, 636.9, 145, 193, 'kesimpulan', 'l', None, 'b', 11.04, 1)
+f(3, 636.9, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
 
 pdf = pikepdf.open(SRC)
 laporan, ops = [], {1: [], 2: [], 3: []}
@@ -89,6 +92,16 @@ for pi, pg in enumerate(pdf.pages):
     pg.Contents = pdf.make_stream(pikepdf.unparse_content_stream(baru))
     laporan.append((P, 'blok isian dibuang', dibuang, 'garis bawah', garis))
 pdf.save(DST)
+# Sel tanggal di PDF acuan Syringe Pump kosong (tidak ada tulisan untuk dilacak) — posisinya sama persis dengan Infusion Pump
+# (susunan sel Excel identik), jadi dipakai posisi yang sudah terbukti di sertifikat Infusion Pump yang disetujui.
+CADANGAN = {('tanggalTerbit', 1): (145.81, 213.62), ('kalibrasiUlang', 1): (398.44, 213.62),
+            ('tanggalPenerimaan', 1): (196.36, 523.01), ('tanggalPelaksanaan', 2): (398.44, 254.52)}
+if KODE == 'syringe_pump':
+    for x in F:
+        if kena[id(x)] == 0 and (x['k'], x['p']) in CADANGAN:
+            cx, cy = CADANGAN[(x['k'], x['p'])]
+            x['x0'], x['y0'], x['ax'] = cx, cy - GESER.get(x['p'], 0), None
+            kena[id(x)] = 1
 kosong = [x['k'] + '@%s' % x['p'] for x in F if kena[id(x)] == 0]
 print(laporan); print('isian tanpa teks di acuan:', kosong)
 
@@ -100,10 +113,10 @@ for x in F:
     ax = x['ax'] if x['ax'] is not None else x['x0']
     ops_s = '{j:"f",x:%s,y:%s,f:"%s",s:%s,a:"%s",k:"%s"%s}' % (num(ax), num(x['y0'] + GESER.get(x['p'], 0)), x['h'], num(x['s']), x['a'], x['k'], (',u:1' if x['u'] else '') + (',m:%s' % num(x['m']) if x['m'] else ''))
     baris[x['p']].append('      ' + ops_s)
-sat = ["/**", " * TATA LETAK SERTIFIKAT — Infusion Pump (Report All), 3 halaman A4. DIHASILKAN oleh tools/tera/buat_templat_pompa.py", " * dari PDF cetakan Excel Ridhwan (Master_Infusion_Pump_terisi.pdf, 26 Okt 2026). Hanya posisi ISIAN (j:'f') yang disimpan;",
-       " * semua teks tetap, garis & kotak biru ada di kertas cetak templat-infusion-pump.pdf. Jangan diedit tangan.", " */",
-       "import type { TataLetak } from './susunSertifikat.js';", "", "export const TATA_LETAK_INFUSION_PUMP: TataLetak = {",
-       "  kode: 'report_all_infusion_pump',", "  halaman: 3,", "  ukuran: { lebar: 595.2756, tinggi: 841.8898 },", "  biru: [],", "  kotak: {},", "  teks: {"]
+sat = ["/**", " * TATA LETAK SERTIFIKAT — " + NAMA + " (Report All), 3 halaman A4. DIHASILKAN oleh tools/tera/buat_templat_pompa.py", " * dari PDF cetakan Excel Ridhwan (Master_" + NAMA.replace(' ', '_') + "_terisi.pdf, 26 Okt 2026). Hanya posisi ISIAN (j:'f') yang disimpan;",
+       " * semua teks tetap, garis & kotak biru ada di kertas cetak " + BERKAS + ". Jangan diedit tangan.", " */",
+       "import type { TataLetak } from './susunSertifikat.js';", "", "export const TATA_LETAK_" + KODE.upper() + ": TataLetak = {",
+       "  kode: 'report_all_" + KODE + "',", "  halaman: 3,", "  ukuran: { lebar: 595.2756, tinggi: 841.8898 },", "  biru: [],", "  kotak: {},", "  teks: {"]
 for p in (1, 2, 3):
     sat.append('    %d: [' % p); sat.append(',\n'.join(baris[p])); sat.append('    ],')
 sat += ["  },", "};", ""]
