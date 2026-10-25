@@ -13,7 +13,7 @@ export interface BahanBapBastp {
 }
 const UKURAN_MIN = 0.6;
 // Batas pengisian ekor (poin dari atas halaman, sistem contoh) — hanya bagian ini diambil dari templat 'ekor'.
-const EKOR_ATAS = 350, EKOR_BAWAH = 560;
+const EKOR_ATAS = 440, EKOR_BAWAH = 665;
 
 async function siapkan(bahan: BahanBapBastp) {
   const doc = await PDFDocument.create();
@@ -66,7 +66,7 @@ export function gambar(doc: PDFDocument, hal: Halaman[], huruf: Record<Huruf, PD
 /** rangkap = jumlah salinan (2 = instansi & kantor); semua halaman salinan 1 dulu, baru salinan 2 (urutan cetak terjaga). */
 export async function renderBapPdf(data: DataBap, bahan: BahanBapBastp, rangkap = 2): Promise<Uint8Array> {
   const { doc, huruf } = await siapkan(bahan); doc.setTitle('Berita Acara Pekerjaan');
-  const hal = susunBap(data);
+  const hal = susunBap(data, (s, h, uk) => huruf[h].widthOfTextAtSize(s, uk));
   gambar(doc, hal, huruf, await tempelan(doc, bahan, hal), rangkap);
   return doc.save();
 }

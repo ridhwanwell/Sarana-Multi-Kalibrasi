@@ -58,8 +58,7 @@ def saring(pdf, hal, aturan_huruf, aturan_rect=None, buang_gambar=()):
                         a2, t2 = r
                         bawah_abs = H-(a2+t2)
                         ys = (bawah_abs-A[5])/A[3]
-                        ops[j] = ([ops[j][0][0], pikepdf.Object.parse(str(ys).encode()) if False else ys,
-                                   ops[j][0][2], t2/A[3]], ops[j][1])
+                        ops[j] = ([ops[j][0][0], ys, ops[j][0][2], t2/A[3]], ops[j][1])
                 if all(j in buang for j in pend_re) and pend_re:
                     buang.add(i)
             pend_re = []
@@ -78,35 +77,34 @@ def simpan_halaman(pdf, hal, nama):
 
 def main(src, dst):
     os.makedirs(dst, exist_ok=True)
-    # ---------- BAP halaman 1: kepala ----------
+    # ---------- BAP (PDF contoh dari Excel, kop sudah terpisah sebagai bentuk /NxFm0 -> dibuang) ----------
+    # Ukuran dari PDF contoh: header tabel selesai di y=291; baris 14,4 pt; halaman 2 mulai y=144.
     def h_kepala(x, y, s, f):
-        if 145 < y < 153: return True                    # baris "NO. : ..." (digambar ulang, rata tengah)
-        if 170 < y < 195: return True                    # paragraf pembuka (digambar ulang utuh)
-        if 206 < y < 275 and x >= 215: return True       # nilai identitas
-        if y >= 307.5: return True                       # isi tabel
+        if 115 < y < 123: return True                    # baris "NO. : ..." (digambar ulang, rata tengah)
+        if 140 < y < 170: return True                    # paragraf pembuka (digambar ulang utuh, dibungkus per kata)
+        if 185 < y < 252 and x >= 235: return True       # nilai identitas (titik dua di x=226 tetap)
+        if y >= 295: return True                         # isi tabel
         return False
     def r_kepala(x, atas, w, h):
-        if atas > 307.0: return 'buang'
-        if h > 100: return (atas, 307.19-atas)           # garis tegak dipotong di bawah header
+        if atas > 295.0: return 'buang'
+        if h > 100: return (atas, 291.67-atas)           # garis tegak dipotong di bawah header
         return None
     p = pikepdf.open(os.path.join(src, 'bap.pdf'))
-    saring(p, 0, h_kepala, r_kepala)
-    saring(p, 1, lambda *a: True)  # halaman 2 dibuang kosong lalu diganti di bawah
+    saring(p, 0, h_kepala, r_kepala, buang_gambar=('/NxFm0',))
     simpan_halaman(p, 0, os.path.join(dst, 'templat-bap-kepala.pdf'))
-    # ---------- BAP halaman 2: ekor ----------
     p = pikepdf.open(os.path.join(src, 'bap.pdf'))
     def h_ekor(x, y, s, f):
-        if y < 357: return True
-        if 360 <= y <= 375 and x >= 300: return True     # angka TOTAL
-        if 415 < y < 430: return True                    # "Surakarta, ..." (digambar ulang)
-        if 448 < y < 458 and x < 300: return True        # nama RS
-        if 530 < y < 545: return True                    # nama ketua tim
+        if y < 456: return True                          # semua baris tabel
+        if 458 < y < 465 and x >= 300: return True       # angka TOTAL
+        if 510 < y < 525: return True                    # "Surakarta, ..." (digambar ulang)
+        if 545 < y < 556 and x < 300: return True        # nama RS
+        if 636 < y < 650: return True                    # nama ketua tim
         return False
     def r_ekor(x, atas, w, h):
-        if atas < 357.0 and h < 5: return 'buang'
-        if h > 100 or atas < 357.7: return (357.73, atas+h-357.73)
+        if atas < 445.5 and h < 5: return 'buang'
+        if h > 100: return (446.5, atas+h-446.5)         # garis tegak mulai dari pita TOTAL
         return None
-    saring(p, 1, h_ekor, r_ekor)
+    saring(p, 1, h_ekor, r_ekor, buang_gambar=('/NxFm0',))
     simpan_halaman(p, 1, os.path.join(dst, 'templat-bap-ekor.pdf'))
     # ---------- BASTP ----------
     def bastp(tanpa_ringkasan):

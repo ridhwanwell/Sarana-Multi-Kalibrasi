@@ -37,17 +37,20 @@ export interface DataBap {
 }
 
 const A4 = { lebar: 595.2756, tinggi: 841.8898 };
+// Ukuran diukur dari PDF contoh BAP (Excel, margin atas 3,3 cm, kop surat di latar): baris 14,4 pt, huruf 11,4 pt.
 const BAP = {
-  barisTop1: 306.37, barisTop2: 119.94, tinggiBaris: 13.19, batasBawah: 748, tinggiEkor: 192,
-  garis: 0.82, kolomX: [33.62, 61.54, 302.36, 352.56, 405.56, 455.77, 523.36], xKiri: 34.43, lebarTabel: 489.74,
-  tengahNo: 48.2, xNama: 63.8, tengahAngka: [327.9, 379.1, 430.7], tengahKet: 489.6,
-  offTeks: 9.83, offAngka: 10.3, ukuran: 10.39, batasKanan: 564, bandTopAsal: 357.36,
+  barisTop1: 290.67, barisTop2: 144.03, tinggiBaris: 14.4, batasBawah: 740, tinggiEkor: 205,
+  garis: 1.0, kolomX: [34.6, 65.22, 325.9, 380.52, 437.55, 492.18, 565.0], xKiri: 35.6, lebarTabel: 530.4,
+  tengahNo: 50.9, xNama: 67.8, tengahAngka: [354.2, 410.0, 465.8], tengahKet: 529.7,
+  offNama: 11.0, offAngka: 11.61, ukuran: 11.4, batasKanan: 566, bandTopAsal: 446.5,
+  xTeks: 37.2, xNilai: 239.9, tengahJudul: 300.4, tengahKiri: 181.9, tengahKanan: 446.5,
 };
 
-/** Bagi baris ke halaman: halaman 1 muat 33, berikutnya 47; blok TOTAL+tanda tangan tidak boleh sendirian. */
+/** Bagi baris ke halaman: halaman 1 muat 31, berikutnya 41; blok TOTAL+tanda tangan tidak boleh sendirian. */
 export function bagiBarisBap(n: number): { awal: number; jumlah: number; ekor: boolean }[] {
-  const cap = (h: number) => Math.floor((BAP.batasBawah - (h === 0 ? BAP.barisTop1 : BAP.barisTop2)) / BAP.tinggiBaris);
-  const muatEkor = (h: number, jml: number) => (h === 0 ? BAP.barisTop1 : BAP.barisTop2) + jml * BAP.tinggiBaris + BAP.tinggiEkor <= BAP.batasBawah;
+  const mulai = (h: number) => (h === 0 ? BAP.barisTop1 : BAP.barisTop2);
+  const cap = (h: number) => Math.floor((BAP.batasBawah - mulai(h)) / BAP.tinggiBaris);
+  const muatEkor = (h: number, jml: number) => mulai(h) + jml * BAP.tinggiBaris + BAP.tinggiEkor <= BAP.batasBawah;
   const hasil: { awal: number; jumlah: number; ekor: boolean }[] = [];
   let i = 0, h = 0;
   while (true) {
@@ -62,12 +65,20 @@ export function bagiBarisBap(n: number): { awal: number; jumlah: number; ekor: b
   return hasil;
 }
 
-export function paragrafBap(tgl: Date | null): [string, string] {
+/** Paragraf pembuka, dibungkus per kata agar kalimat TIDAK terpotong di tepi kanan (baris pertama menjorok 4 spasi seperti contoh). */
+export function paragrafBap(tgl: Date | null, ukur: (s: string) => number, lebarMaks: number): string[] {
   const hari = tgl ? namaHari(tgl) : '.........', t = tgl ? String(tgl.getDate()) : '...', b = tgl ? namaBulan(tgl) : '....', th = tgl ? String(tgl.getFullYear()) : '....';
-  return [`Pada Hari Ini ${hari} Tanggal ${t} Bulan ${b} Tahun ${th}, Telah Dilaksanakan Pekerjaan Kalibrasi dan/atau Pengujian`, 'Alat-alat Kesehatan pada :'];
+  const kata = `Pada Hari Ini ${hari} Tanggal ${t} Bulan ${b} Tahun ${th}, Telah Dilaksanakan Pekerjaan Kalibrasi dan/atau Pengujian Alat-alat Kesehatan pada :`.split(' ');
+  const baris: string[] = []; let kini = '    ';
+  for (const k of kata) {
+    const calon = kini.trim() === '' ? kini + k : `${kini} ${k}`;
+    if (kini.trim() !== '' && ukur(calon) > lebarMaks) { baris.push(kini); kini = k; } else kini = calon;
+  }
+  baris.push(kini);
+  return baris;
 }
 
-export function susunBap(d: DataBap): Halaman[] {
+export function susunBap(d: DataBap, ukur: (s: string, huruf: Huruf, ukuran: number) => number): Halaman[] {
   const bagi = bagiBarisBap(d.baris.length);
   const total = d.baris.reduce((a, b) => ({ po: a.po + b.po, re: a.re + b.realisasi, si: a.si + b.sisa }), { po: 0, re: 0, si: 0 });
   const halaman: Halaman[] = [];
@@ -78,32 +89,31 @@ export function susunBap(d: DataBap): Halaman[] {
     if (h === 0) {
       top = BAP.barisTop1;
       p.tempel.push({ nama: 'kepala', dy: 0 });
-      T({ x: 279.4, y: 149.5, teks: `NO. : ${d.nomorBap}`, ukuran: BAP.ukuran, huruf: 'b', rata: 'c' });
-      const [p1, p2] = paragrafBap(d.tanggal);
-      T({ x: 35.8, y: 175.5, teks: p1, ukuran: BAP.ukuran, huruf: 'r', rata: 'l', lebarMaks: BAP.batasKanan - 35.8 });
-      T({ x: 35.8, y: 189.5, teks: p2, ukuran: BAP.ukuran, huruf: 'r', rata: 'l' });
-      const nilai = [d.namaPelanggan, d.nomorPo, d.tanggalPo, d.alamat, d.kota]; const ys = [214.5, 227.5, 241, 254, 267];
-      nilai.forEach((v, i) => T({ x: 222.3, y: ys[i], teks: v, ukuran: BAP.ukuran, huruf: 'r', rata: 'l', lebarMaks: BAP.batasKanan - 222.3 }));
+      T({ x: BAP.tengahJudul, y: 119.03, teks: `NO. : ${d.nomorBap}`, ukuran: BAP.ukuran, huruf: 'b', rata: 'c' });
+      paragrafBap(d.tanggal, (s) => ukur(s, 'r', BAP.ukuran), BAP.batasKanan - BAP.xTeks)
+        .forEach((l, i) => T({ x: BAP.xTeks, y: 147.83 + i * 14.59, teks: l, ukuran: BAP.ukuran, huruf: 'r', rata: 'l' }));
+      const nilai = [d.namaPelanggan, d.nomorPo, d.tanggalPo, d.alamat, d.kota]; const ys = [189.85, 204.25, 218.65, 233.05, 247.45];
+      nilai.forEach((v, i) => T({ x: BAP.xNilai, y: ys[i], teks: v, ukuran: BAP.ukuran, huruf: 'r', rata: 'l', lebarMaks: BAP.batasKanan - BAP.xNilai - 2 }));
     }
-    // Garis tabel baris (halaman lanjutan juga menggambar garis atas)
+    // Garis tabel baris (halaman 1: garis atas = bawah header, sudah ada di kertas cetak)
     const n = bg.jumlah, bawah = top + n * BAP.tinggiBaris;
     for (let k = h === 0 ? 1 : 0; k <= n; k++) p.garis.push({ x: BAP.xKiri, y: top + k * BAP.tinggiBaris, w: BAP.lebarTabel, h: BAP.garis });
     if (n > 0) for (const x of BAP.kolomX) p.garis.push({ x, y: top, w: BAP.garis, h: n * BAP.tinggiBaris + BAP.garis });
     for (let k = 0; k < n; k++) {
       const b = d.baris[bg.awal + k]; const y0 = top + k * BAP.tinggiBaris;
       T({ x: BAP.tengahNo, y: y0 + BAP.offAngka, teks: String(bg.awal + k + 1), ukuran: BAP.ukuran, huruf: 'r', rata: 'c' });
-      T({ x: BAP.xNama, y: y0 + BAP.offTeks, teks: b.nama, ukuran: BAP.ukuran, huruf: 'r', rata: 'l', lebarMaks: BAP.kolomX[2] - BAP.xNama - 2 });
+      T({ x: BAP.xNama, y: y0 + BAP.offNama, teks: b.nama, ukuran: BAP.ukuran, huruf: 'r', rata: 'l', lebarMaks: BAP.kolomX[2] - BAP.xNama - 2 });
       [b.po, b.realisasi, b.sisa].forEach((v, c) => T({ x: BAP.tengahAngka[c], y: y0 + BAP.offAngka, teks: String(v), ukuran: BAP.ukuran, huruf: 'r', rata: 'c' }));
       if (b.keterangan) T({ x: BAP.tengahKet, y: y0 + BAP.offAngka, teks: b.keterangan, ukuran: BAP.ukuran, huruf: 'r', rata: 'c', lebarMaks: BAP.kolomX[6] - BAP.kolomX[5] - 4 });
     }
     if (bg.ekor) {
       const dy = bawah - BAP.bandTopAsal; // pita TOTAL menempel di garis bawah baris terakhir (seperti contoh)
       p.tempel.push({ nama: 'ekor', dy });
-      [total.po, total.re, total.si].forEach((v, c) => T({ x: BAP.tengahAngka[c], y: 370.5 + dy, teks: String(v), ukuran: BAP.ukuran, huruf: 'b', rata: 'c', putih: true }));
+      [total.po, total.re, total.si].forEach((v, c) => T({ x: BAP.tengahAngka[c], y: 461.1 + dy, teks: String(v), ukuran: BAP.ukuran, huruf: 'b', rata: 'c', putih: true }));
       const kota = d.tanggal ? `Surakarta, ${tanggalPanjang(d.tanggal)}` : 'Surakarta, ... ........ ....';
-      T({ x: 414.8, y: 424.0 + dy, teks: kota, ukuran: BAP.ukuran, huruf: 'r', rata: 'c' });
-      T({ x: 168, y: 453.5 + dy, teks: d.namaPelanggan, ukuran: BAP.ukuran, huruf: 'b', rata: 'c', lebarMaks: 250 });
-      T({ x: 412.4, y: 537.0 + dy, teks: d.ketuaTim, ukuran: BAP.ukuran, huruf: 'b', rata: 'c', lebarMaks: 200 });
+      T({ x: BAP.tengahKanan, y: 518.92 + dy, teks: kota, ukuran: BAP.ukuran, huruf: 'r', rata: 'c' });
+      T({ x: BAP.tengahKiri, y: 551.13 + dy, teks: d.namaPelanggan, ukuran: BAP.ukuran, huruf: 'b', rata: 'c', lebarMaks: 250 });
+      T({ x: BAP.tengahKanan, y: 642.75 + dy, teks: d.ketuaTim, ukuran: BAP.ukuran, huruf: 'b', rata: 'c', lebarMaks: 200 });
     }
     halaman.push(p);
   });

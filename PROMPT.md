@@ -385,3 +385,9 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - BELUM: data (baca LKK, BO 999/is_test), tombol (Selia + PWA Tera), sambungan penagihan (realisasi per tanggal, harga alat tambahan kosong, PPN dari master).
 - Menunggu Ridhwan: "oke" pratinjau; daftar gelar teknisi; unggah `KOP_SURAT.pdf` ke bucket `tera-assets/kop/`.
 - BERIKUTNYA (setelah "oke"): pasang kertas cetak + kode ke `main`, lalu 5.2 lapisan data (server membaca LKK diterima, Ketua tim dari jadwal), 5.3 tombol unduh, 5.4 penagihan.
+
+### Hasil 5.1b (25 Okt 2026 ±23.40) — BAP disesuaikan dengan CONTOH_BAP.pdf terbaru (pratinjau v2, belum dipasang)
+- Ridhwan mengirim CONTOH_BAP.pdf versi Excel dengan margin & kop surat: huruf 11,4 pt, baris 14,4 pt, halaman 1 muat 31 baris, halaman 2 mulai y=144 pt. Kop di PDF itu adalah bentuk terpisah (/NxFm0) → dibuang dari kertas cetak; kop surat tetap ditempel dari Supabase Storage (`tera-assets/kop/`).
+- Keputusan: tanggal (paragraf & "Surakarta, …") = tanggal UNDUH; Kota/Kab. = nama kota/kabupaten saja dari alamat RS; kolom Ruangan BASTP diisi dari LKK.
+- Paragraf pembuka kini dibungkus per kata (di contoh Excel kalimat terpotong di tepi kanan).
+- `tools/tera/buat_templat_bap_bastp.py`, `susunBapBastp.ts`, `renderBapBastp.ts` disesuaikan. Kode ada di cabang `tahap5-bap-bastp-pratinjau` (BUKAN `main`) sampai Ridhwan bilang "oke".
