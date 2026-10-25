@@ -11,6 +11,7 @@ import { registerTeraMasterRoutes } from "./teraMasterRoutes.js";
 import { registerTeraSeliaRoutes } from "./teraSeliaRoutes.js";
 import { registerTeraSertifikatRoutes } from "./teraSertifikatRoutes.js";
 import { registerTeraNilaiKalibratorRoutes } from "./teraNilaiKalibratorRoutes.js";
+import { registerTeraBapRoutes } from "./teraBapRoutes.js";
 import { tambahSetahun } from "../tera/pdf/formatSertifikat.js";
 
 export interface IdempotencyRecord {
@@ -546,6 +547,8 @@ export function createApp() {
   registerTeraSertifikatRoutes(app, { rateLimitKey });
   // --- API: TERA SMK — NILAI KALIBRATOR (hanya Developer): baca & simpan versi baru ---
   registerTeraNilaiKalibratorRoutes(app, { rateLimitKey });
+  // --- API: TERA SMK — UNDUH BAP & BASTP (Tahap 5.2): baca saja ---
+  registerTeraBapRoutes(app, { rateLimitKey });
 
   // --- API: ADMIN LABELS (Protected by requireAuth with Pagination for ALL labels) ---
   app.get("/api/labels", requireAuth, async (req: AuthRequest, res) => {

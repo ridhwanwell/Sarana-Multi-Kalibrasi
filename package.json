@@ -28,7 +28,8 @@
     "test:tera:lingkungan": "tsx tests/tera/lingkungan.test.mts",
     "test:tera:isian": "tsx tests/tera/isian.test.mts",
     "test:tera:layar-lkk": "tsx tests/tera/layarLkk.uji.mts",
-    "test:tera:ganti-nomor": "tsx tests/tera/gantiNomor.uji.mts"
+    "test:tera:ganti-nomor": "tsx tests/tera/gantiNomor.uji.mts",
+    "test:tera:bap": "tsx tests/tera/dataBapBastp.test.mts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

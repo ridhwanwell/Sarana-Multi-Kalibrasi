@@ -34,7 +34,7 @@ function matriksQr(url: string): boolean[][] {
 }
 
 let fontCache: { r: Uint8Array; b: Uint8Array; i: Uint8Array } | null = null;
-async function ambilFont(sinyal: AbortSignal) {
+export async function ambilFont(sinyal: AbortSignal) {
   if (fontCache) return fontCache;
   const muat = async (nama: string) => {
     const r = await fetch(`${BASE_FONT}/${nama}`, { signal: sinyal });
