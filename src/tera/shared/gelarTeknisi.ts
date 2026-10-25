@@ -2,7 +2,7 @@
  * Gelar teknisi untuk BASTP (kolom Petugas & nama ketua tim): nama + gelar.
  * Master `teknisi` hanya menyimpan nama tanpa gelar; daftar ini dari Ridhwan (25 Okt 2026).
  * Pencocokan tidak peka huruf besar/kecil, spasi, atau tanda baca (mis. "Aziz Arrayya" = "Aziz Ar Rayya").
- * Nama yang tidak ada di daftar dicetak apa adanya (tanpa gelar). BAP memakai nama TANPA gelar.
+ * Nama yang tidak ada di daftar dicetak apa adanya (tanpa gelar). BAP & BASTP sama-sama memakai nama + gelar.
  */
 const DAFTAR = [
   'Hafizh Pasifianto Utomo, S.Tr.T.',

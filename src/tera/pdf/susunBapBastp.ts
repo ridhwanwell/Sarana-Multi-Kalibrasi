@@ -35,7 +35,7 @@ export interface DataBap {
   baris: BarisBap[];
   /** Tanggal dokumen (= tanggal unduh). null → hari/tanggal/bulan/tahun dibiarkan titik-titik SEMUA (tidak setengah terisi). */
   tanggal: Date | null;
-  ketuaTim: string; // tanpa gelar
+  ketuaTim: string; // nama + gelar (keputusan Ridhwan 25 Okt: BAP juga bergelar) — pakai namaDenganGelar()
 }
 
 const A4 = { lebar: 595.2756, tinggi: 841.8898 };

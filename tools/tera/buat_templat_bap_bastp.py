@@ -68,12 +68,18 @@ def saring(pdf, hal, aturan_huruf, aturan_rect=None, buang_gambar=()):
             buang.add(i)
     baru = [x for k, x in enumerate(ops) if k not in buang]
     pg.Contents = pdf.make_stream(pikepdf.unparse_content_stream(baru))
+    # Gambar yang dibuang juga dihapus dari sumber daya halaman (tanda tangan contoh / kop tidak boleh ikut tersimpan di file)
+    xo = pg.Resources.get('/XObject')
+    if xo is not None:
+        for nama in buang_gambar:
+            if nama in xo: del xo[nama]
     return len(buang)
 
 def simpan_halaman(pdf, hal, nama):
     out = pikepdf.Pdf.new()
     out.pages.append(pdf.pages[hal])
-    out.save(nama)
+    out.remove_unreferenced_resources()
+    out.save(nama, compress_streams=True, object_stream_mode=pikepdf.ObjectStreamMode.generate)
 
 def main(src, dst):
     os.makedirs(dst, exist_ok=True)
