@@ -129,10 +129,13 @@ export interface DataBastp {
   ketuaTim: string; // nama + gelar, dicetak di bawah kolom tanda tangan PT SMK
   baris: BarisBastp[]; laikPakai: number; tidakLaik: number;
 }
+// Ukuran dari CONTOH_BASTP.pdf versi 25 Okt 2026 23.52 (tanpa tanda tangan & tanpa stempel SMK di kolom TTD).
 const BASTP = {
-  lebar: 841.8898, tinggi: 595.2756, perHalaman: 30, ukuran: 8.17,
-  barisY: [196.5, 207.5, 218.5, 229.5, 240.5, 252.0, 262.0, 273.0, 284.0, 295.0, 306.5, 317.5, 328.5, 339.5, 350.5, 362.0, 373.0, 384.0, 395.0, 406.0, 417.0, 428.5, 439.5, 450.5, 461.5, 472.5, 484.0, 495.0, 506.0, 517.0],
-  kolomX: [51.06, 73.0, 202.58, 312.91, 385.28, 458.25, 572.4, 650.28, 726.03, 790.25],
+  lebar: 841.8898, tinggi: 595.2756, perHalaman: 30, ukuran: 8.16,
+  barisY: [197.0, 208.0, 219.5, 230.5, 241.5, 252.5, 262.5, 273.5, 284.5, 295.5, 306.5, 317.5, 328.5, 340.0, 351.0, 362.0, 373.0, 384.0, 395.0, 406.0, 417.0, 428.0, 439.0, 450.0, 461.0, 472.5, 483.5, 494.5, 505.5, 516.5],
+  kolomX: [51.73, 73.69, 203.06, 313.24, 385.48, 458.33, 572.32, 650.11, 725.70, 789.78],
+  xNilai: 204.9, yNilai: [118.0, 128.5, 140.5, 152.0], jarakAlamat: 10.5, yJudulRs: 106.0, tengahJudul: 418.5, ukuranJudul: 15.0,
+  tengahKolomRs: 681.05, yTtd: 175.5, tengahTtd: 475.6, tengahRingkasan: 258.2, yRingkasan: [551.0, 562.5, 573.5], ukuranRingkasan: 7.56,
 };
 
 /** Pecah teks ke maksimal `maks` baris menurut lebar (diukur pemanggil lewat fungsi lebar). */
@@ -153,13 +156,14 @@ export function susunBastp(d: DataBastp, ukur: (s: string, huruf: Huruf, ukuran:
     const terakhir = h === jml - 1;
     const p: Halaman = { lebar: BASTP.lebar, tinggi: BASTP.tinggi, kop: false, tempel: [{ nama: terakhir ? 'bastp' : 'bastpTanpaRingkasan', dy: 0 }], garis: [], teks: [] };
     const T = (t: Teks) => p.teks.push(t);
-    T({ x: 416.1, y: 105.5, teks: d.namaCustomer, ukuran: 14.94, huruf: 'tb', rata: 'c', lebarMaks: 540 });
-    T({ x: 204.4, y: 117.5, teks: d.noOrder, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: 178 });
-    T({ x: 681.5, y: 117.5, teks: d.namaCustomer, ukuran: BASTP.ukuran, huruf: 'r', rata: 'c', lebarMaks: 210 });
-    T({ x: 204.4, y: 127.5, teks: d.namaCustomer, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: 178 });
-    if (d.telepon) T({ x: 204.4, y: 139.5, teks: d.telepon, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: 178 });
-    bungkusKata(d.alamat, 178, (s) => ukur(s, 'r', BASTP.ukuran), 2).forEach((l, i) => T({ x: 204.4, y: 151.5 + i * 10.5, teks: l, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: 178 }));
-    T({ x: 475.6, y: 174.5, teks: d.ketuaTim, ukuran: BASTP.ukuran, huruf: 'r', rata: 'c', lebarMaks: 180 });
+    const lebarNilai = BASTP.kolomX[4] - BASTP.xNilai - 4;
+    T({ x: BASTP.tengahJudul, y: BASTP.yJudulRs, teks: d.namaCustomer, ukuran: BASTP.ukuranJudul, huruf: 'tb', rata: 'c', lebarMaks: 540 });
+    T({ x: BASTP.xNilai, y: BASTP.yNilai[0], teks: d.noOrder, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: lebarNilai });
+    T({ x: BASTP.tengahKolomRs, y: BASTP.yNilai[0], teks: d.namaCustomer, ukuran: BASTP.ukuran, huruf: 'r', rata: 'c', lebarMaks: 210 });
+    T({ x: BASTP.xNilai, y: BASTP.yNilai[1], teks: d.namaCustomer, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: lebarNilai });
+    if (d.telepon) T({ x: BASTP.xNilai, y: BASTP.yNilai[2], teks: d.telepon, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: lebarNilai });
+    bungkusKata(d.alamat, lebarNilai, (s) => ukur(s, 'r', BASTP.ukuran), 2).forEach((l, i) => T({ x: BASTP.xNilai, y: BASTP.yNilai[3] + i * BASTP.jarakAlamat, teks: l, ukuran: BASTP.ukuran, huruf: 'r', rata: 'l', lebarMaks: lebarNilai }));
+    T({ x: BASTP.tengahTtd, y: BASTP.yTtd, teks: d.ketuaTim, ukuran: BASTP.ukuran, huruf: 'r', rata: 'c', lebarMaks: 180 });
     const k = BASTP.kolomX; const tengah = (i: number) => (k[i] + k[i + 1]) / 2; const lebarKol = (i: number) => k[i + 1] - k[i] - 4;
     d.baris.slice(h * BASTP.perHalaman, (h + 1) * BASTP.perHalaman).forEach((b, r) => {
       const y = BASTP.barisY[r];
@@ -167,7 +171,7 @@ export function susunBastp(d: DataBastp, ukur: (s: string, huruf: Huruf, ukuran:
       sel.forEach((t, c) => { if (t) T({ x: tengah(c), y, teks: t, ukuran: BASTP.ukuran, huruf: 'i', rata: 'c', lebarMaks: lebarKol(c) }); });
     });
     if (terakhir) {
-      [[d.laikPakai, 551.5], [d.tidakLaik, 563.5], [d.laikPakai + d.tidakLaik, 574.5]].forEach(([v, y]) => T({ x: 257.75, y, teks: String(v), ukuran: 7.47, huruf: 'r', rata: 'c' }));
+      [d.laikPakai, d.tidakLaik, d.laikPakai + d.tidakLaik].forEach((v, i) => T({ x: BASTP.tengahRingkasan, y: BASTP.yRingkasan[i], teks: String(v), ukuran: BASTP.ukuranRingkasan, huruf: 'r', rata: 'c' }));
     }
     halaman.push(p);
   }

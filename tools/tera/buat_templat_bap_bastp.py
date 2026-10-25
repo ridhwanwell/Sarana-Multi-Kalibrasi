@@ -125,7 +125,9 @@ def main(src, dst):
             return False
         def r(x, atas, w, hh):
             return 'buang' if tanpa_ringkasan and atas > 535 else None
-        saring(p, 0, h, r, buang_gambar=('/Im3',))
+        # Contoh BASTP 25 Okt 23.52 sudah tanpa tanda tangan & stempel; '/Im3' (tanda tangan contoh lama) tetap
+        # dibuang bila masih ada, dan '/Im4' (stempel SMK di kolom TTD versi lama) juga dibuang — kolom TTD polos.
+        saring(p, 0, h, r, buang_gambar=('/Im3', '/Im4'))
         return p
     simpan_halaman(bastp(False), 0, os.path.join(dst, 'templat-bastp.pdf'))
     simpan_halaman(bastp(True), 0, os.path.join(dst, 'templat-bastp-tanpa-ringkasan.pdf'))
