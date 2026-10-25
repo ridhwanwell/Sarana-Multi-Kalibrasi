@@ -7,6 +7,9 @@ import sys, json, pikepdf, pdfplumber
 SRC, DST, TS = sys.argv[1], sys.argv[2], sys.argv[3]
 # (halaman, garis dasar y dari atas, x awal-min, x awal-maks, kunci, rata, x-jangkar|None=awal, huruf, ukuran, garis bawah)
 F = []
+# Halaman 2 & 3: seluruh isi diturunkan 2 baris (24,7 poin) supaya kotak Nomor Order / Nomor Sertifikat tidak mepet kop
+# (permintaan Ridhwan 26 Okt 2026). Teks kaki ("Halaman n dari 3" & catatan hak cipta, y > 760) tetap di tempatnya.
+GESER = {2: 24.7, 3: 24.7}
 KIRI = 292  # batas kanan isian kolom kiri (label kolom kanan mulai x≈297)
 def f(p, y, lo, hi, k, a='l', ax=None, h='r', s=9.96, u=0, m=None): F.append(dict(p=p, y=y, lo=lo, hi=hi, k=k, a=a, ax=ax, h=h, s=s, u=u, m=m))
 
@@ -71,11 +74,18 @@ for pi, pg in enumerate(pdf.pages):
             ca, cb, cc, cd, ce, cf = gs[-1]['cm']
             x = ca * e + ce; ytop = H - (cd * f_ + cf)
             m = next((m for m in medan if abs(m['y'] - ytop) < 0.6 and m['lo'] <= x <= m['hi']), None)
+            if not m and P in GESER and ytop > 760:  # teks kaki: batalkan geseran
+                baru.append(pikepdf.ContentStreamInstruction([], pikepdf.Operator('q')))
+                baru.append(pikepdf.ContentStreamInstruction([1, 0, 0, 1, 0, GESER[P] / cd], pikepdf.Operator('cm')))
+                baru.extend(blok); baru.append(pikepdf.ContentStreamInstruction([], pikepdf.Operator('Q')))
+                i = j + 1; continue
             if m:
                 dibuang += 1; kena[id(m)] += 1; m.setdefault('x0', x); m.setdefault('y0', ytop)
                 if x < m['x0']: m['x0'] = x
                 i = j + 1; continue
         baru.append(o); i += 1
+    if P in GESER:
+        baru = [pikepdf.ContentStreamInstruction([], pikepdf.Operator('q')), pikepdf.ContentStreamInstruction([1, 0, 0, 1, 0, -GESER[P]], pikepdf.Operator('cm'))] + baru + [pikepdf.ContentStreamInstruction([], pikepdf.Operator('Q'))]
     pg.Contents = pdf.make_stream(pikepdf.unparse_content_stream(baru))
     laporan.append((P, 'blok isian dibuang', dibuang, 'garis bawah', garis))
 pdf.save(DST)
@@ -88,7 +98,7 @@ baris = {1: [], 2: [], 3: []}
 for x in F:
     if kena[id(x)] == 0: continue
     ax = x['ax'] if x['ax'] is not None else x['x0']
-    ops_s = '{j:"f",x:%s,y:%s,f:"%s",s:%s,a:"%s",k:"%s"%s}' % (num(ax), num(x['y0']), x['h'], num(x['s']), x['a'], x['k'], (',u:1' if x['u'] else '') + (',m:%s' % num(x['m']) if x['m'] else ''))
+    ops_s = '{j:"f",x:%s,y:%s,f:"%s",s:%s,a:"%s",k:"%s"%s}' % (num(ax), num(x['y0'] + GESER.get(x['p'], 0)), x['h'], num(x['s']), x['a'], x['k'], (',u:1' if x['u'] else '') + (',m:%s' % num(x['m']) if x['m'] else ''))
     baris[x['p']].append('      ' + ops_s)
 sat = ["/**", " * TATA LETAK SERTIFIKAT — Infusion Pump (Report All), 3 halaman A4. DIHASILKAN oleh tools/tera/buat_templat_pompa.py", " * dari PDF cetakan Excel Ridhwan (Master_Infusion_Pump_terisi.pdf, 26 Okt 2026). Hanya posisi ISIAN (j:'f') yang disimpan;",
        " * semua teks tetap, garis & kotak biru ada di kertas cetak templat-infusion-pump.pdf. Jangan diedit tangan.", " */",
