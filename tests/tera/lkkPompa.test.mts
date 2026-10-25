@@ -2,7 +2,7 @@
 // jejak hitung, pemeriksa server. Jalankan: npm run test:tera:lkk-pompa
 import { readFileSync } from 'node:fs';
 import { hitungPompa, type KalibratorPompa } from '../../src/tera/shared/hitungPompa.ts';
-import { TEMPLATE_INFUSION_PUMP_V1 as T } from '../../src/tera/shared/templates/infusionPump.ts';
+import { TEMPLATE_INFUSION_PUMP_V1 as T, TEMPLATE_INFUSION_PUMP_V2 as T2 } from '../../src/tera/shared/templates/infusionPump.ts';
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
 import { daftarBagian, daftarStandar, jepretStandar, opsiFisik, periksaIsian, susunPilihan, type KalibratorMin } from '../../src/tera/shared/isian.ts';
 import { kalibratorDariSnapshot, SUMBER_TABEL } from '../../src/tera/shared/lkkPompa.ts';
@@ -94,6 +94,24 @@ const buruk = periksaPaketServer(T, { ...paket, results: diubah });
 cek('server: jejak diubah → ditandai & ACC diblokir', !buruk.jejakCocok && !buruk.bolehAcc && buruk.penanda.some((p) => p.kode === 'jejak_beda'));
 cek('server: tanpa jejak → ditandai', periksaPaketServer(T, { ...paket, results: null }).penanda.some((p) => p.kode === 'jejak_hilang'));
 cek('server: template tidak dikenal → ditandai', periksaPaketServer(null, paket).penanda.some((p) => p.kode === 'template_rusak'));
+
+// ── Template v2 (26 Okt 2026): tanpa jenis skala, resolusi isian bebas; hasil sama dengan v1 Digital ──
+{
+  const { jenisSkala: _x, ...idenV2 } = identitas as any;
+  const dataV2 = { ...(data as any), identitas: idenV2 };
+  const h1 = hitungPompa(T, data as any, kalibratorDariSnapshot(snapshot as any));
+  const h2 = hitungPompa(T2, dataV2, kalibratorDariSnapshot(snapshot as any));
+  cek('v2: tanpa jenis skala di data tetap lengkap & hasil = v1 Digital', h2.kurang.length === 0 && JSON.stringify(h1.skor) === JSON.stringify(h2.skor) && JSON.stringify(h1.aliran) === JSON.stringify(h2.aliran), h2.kurang.join(';'));
+  const j2 = buatJejakHitung(T2, dataV2, snapshot as any) as any;
+  cek('v2: jejak mencatat jenis skala efektif Digital', j2?.masukan?.jenisSkala === 'Digital' && j2.lengkap === true);
+  const kurangV2 = periksaIsian(T2, { data: dataV2, snapshot: snapshot as any, tanggal: '2026-10-26' } as any);
+  cek('v2: periksaIsian tidak meminta jenis skala; resolusi 0,3 (bebas) diterima', !kurangV2.some((k) => /skala/i.test(k.teks)) && !kurangV2.some((k) => /Resolusi/.test(k.teks)), JSON.stringify(kurangV2.slice(0, 4)));
+  const tanpaRes = periksaIsian(T2, { data: { ...dataV2, identitas: { ...idenV2, resolusi: undefined } }, snapshot: snapshot as any, tanggal: '2026-10-26' } as any);
+  cek('v2: resolusi kosong → diminta diisi', tanpaRes.some((k) => /Resolusi belum diisi/.test(k.teks)));
+  const h3 = hitungPompa(T2, { ...dataV2, identitas: { ...idenV2, resolusi: 0.3 } }, kalibratorDariSnapshot(snapshot as any));
+  cek('v2: resolusi bebas 0,3 dihitung (U95 aliran berubah dari 0,1)', h3.kurang.length === 0 && JSON.stringify(h3.aliran) !== JSON.stringify(h2.aliran));
+  cek('v2: label identitas mengikuti Excel & tanpa Jenis', T2.identitasBidang.map((b) => b.label).join('|') === 'Merk Pabrik|Tipe|No. Seri|Rentang Ukur (mis. 1 - 999 mL/h)|Resolusi|Tanggal penerimaan barang kalibrasi|Ruangan');
+}
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

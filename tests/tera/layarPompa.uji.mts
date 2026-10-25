@@ -7,7 +7,7 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { TEMPLATE_INFUSION_PUMP_V1 as TPL } from '../../src/tera/shared/templates/infusionPump.ts';
+import { TEMPLATE_INFUSION_PUMP_V2 as TPL } from '../../src/tera/shared/templates/infusionPump.ts';
 
 const akar = fileURLToPath(new URL('../../', import.meta.url));
 const ASAL = 'http://localhost:9994';
@@ -113,7 +113,7 @@ async function layar(o: Opsi = {}): Promise<{ p: Page; id: string }> {
       ? new Response(JSON.stringify({ jadwal: [jd] }), { status: 200, headers: { 'content-type': 'application/json' } })
       : new Response('{}', { status: 503 });
     await w.master.simpanMasterServer({ kalibrator: kal, template: [tpl] });
-    const l = await w.tera.buatLkk({ pemilik: 'u-t', bo: '095', noLabel: '095.0001', templateKode: 'infusion_pump', templateVersi: 1, tanggalKalibrasi: '2026-10-20', jadwalId: 'j1', poItemRef: 'A', data: {} });
+    const l = await w.tera.buatLkk({ pemilik: 'u-t', bo: '095', noLabel: '095.0001', templateKode: 'infusion_pump', templateVersi: 2, tanggalKalibrasi: '2026-10-20', jadwalId: 'j1', poItemRef: 'A', data: {} });
     w.__params = { id: l.id };
     w.pasang();
     return l.id as string;
@@ -143,13 +143,16 @@ await p.waitForFunction(() => /RS Uji Solo/.test(document.body.innerText), null,
 let t = await teks(p);
 cek('header: Infusion Pump, nomor stiker, RS', /Infusion Pump/.test(t) && /095\.0001/.test(t) && /RS Uji Solo/.test(t), t.slice(0, 200));
 cek('7 penanda bagian, termasuk Keselamatan listrik', await p.getByRole('button', { name: /^Bagian \d,/ }).count() === 7 && await p.getByRole('button', { name: /^Bagian 4, Keselamatan listrik/ }).count() === 1, await p.getByRole('button', { name: /^Bagian \d,/ }).allInnerTexts().then((x) => x.join('|')));
-cek('resolusi bawaan 0,1 mL/h terpilih & alat standar tunggal terpilih otomatis (IDA, ESA, termohigrometer)', await dataTersimpan(p, id, (l) => l.data.identitas?.resolusi === 0.1 && l.calibratorSnapshot?.ida?.asetId === 'CAL-030' && l.calibratorSnapshot?.esa?.asetId === 'CAL-042' && l.calibratorSnapshot?.termohigrometer?.asetId === 'CAL-027'));
+cek('alat standar tunggal terpilih otomatis (IDA, ESA, termohigrometer)', await dataTersimpan(p, id, (l) => l.calibratorSnapshot?.ida?.asetId === 'CAL-030' && l.calibratorSnapshot?.esa?.asetId === 'CAL-042' && l.calibratorSnapshot?.termohigrometer?.asetId === 'CAL-027'));
 let l = await bacaLkk(p, id);
 cek('snapshot IDA 2 tabel, ESA 4 tabel', Object.keys(l.calibratorSnapshot.ida.tabel).length === 2 && Object.keys(l.calibratorSnapshot.esa.tabel).length === 4, JSON.stringify(Object.keys(l.calibratorSnapshot.ida?.tabel || {})));
 cek('tanpa geser samping', !(await geser(p)));
 await p.fill('#iden-merek', 'Terumo'); await p.fill('#iden-tipe', 'TE-LM'); await p.fill('#iden-noSeri', 'SN1');
 await p.locator('#iden-rentangUkur').pressSequentially('1 - 999');
-await p.getByRole('radio', { name: 'Digital' }).click();
+t = await teks(p);
+cek('identitas mengikuti Excel: label Merk Pabrik/No. Seri; TANPA "Jenis skala"; resolusi bukan pilihan', /Merk Pabrik/.test(t) && /No\. Seri/.test(t) && /Tanggal penerimaan barang kalibrasi/.test(t) && !/Jenis skala/.test(t) && await p.getByRole('radio', { name: /mL\/h|Digital|Analog/ }).count() === 0, t.slice(0, 500));
+await p.locator('#iden-resolusi').pressSequentially('0,1');
+cek('resolusi diisi bebas & tersimpan sebagai angka', await dataTersimpan(p, id, (x) => x.data.identitas?.resolusi === 0.1));
 await p.fill('#iden-tanggalPenerimaan', '2026-10-19'); await p.fill('#iden-ruang', 'ICU');
 
 // ---------- 2. Lingkungan ----------

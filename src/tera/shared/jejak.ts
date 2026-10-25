@@ -11,7 +11,7 @@
  * Tidak pernah melempar galat pada data kosong/rusak (hasilnya `lengkap: false`).
  */
 import { hitungLkk, type DataLkk, type HasilLkk, type TemplateAlat, type TitikKalibrator } from './hitung.js';
-import { hitungPompa, type HasilPompa, type TemplatePompa } from './hitungPompa.js';
+import { hitungPompa, jenisSkalaPompa, type HasilPompa, type TemplatePompa } from './hitungPompa.js';
 import { adalahTemplatePompa, dataPompa, kalibratorDariSnapshot } from './lkkPompa.js';
 
 /** Naik bila rumus/susunan jejak berubah. Dicatat di setiap jejak. */
@@ -96,7 +96,7 @@ function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null
       skema: SKEMA_JEJAK, mesinHitung: VERSI_MESIN_HITUNG, jenis: 'pompa' as const,
       template: { kode: tpl.kode_alat, versi: tpl.versi, metode: tpl.metode },
       kalibrator: { ida: identitasAlat('ida'), esa: identitasAlat('esa') },
-      masukan: { resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: typeof iden.jenisSkala === 'string' ? iden.jenisSkala : null },
+      masukan: { resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: jenisSkalaPompa(tpl, dataPompa(data)) },
       aturan: { kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor },
       hasil, lengkap, kesimpulan: lengkap ? hasil.kesimpulan : null,
     });

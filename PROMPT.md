@@ -454,3 +454,8 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Perbaikan kode: `/api/tera/master` tidak lagi menyaring baris aset yang dihapus-lembut (kalau tidak, tablet tidak menerima kalibrator apa pun). Baris aset hanya jadi kartu identitas.
 - Perlu diketahui: halaman "Nilai Kalibrator Tera" di Manajemen Aset memuat daftar aset yang belum dihapus, jadi tidak menampilkan kalibrator ini; nilai baru lewat migrasi/Developer sampai halaman itu disesuaikan.
 - BERIKUTNYA: uji layar Infusion Pump di tablet dengan BO 999; lalu Selia pompa dan pratinjau PDF sertifikat (tunggu "oke").
+
+### Hasil 6.3c (26 Okt 2026) — Infusion Pump v2: identitas mengikuti Excel
+- Permintaan Ridhwan setelah mencoba di HP: hapus "Jenis skala", resolusi bukan pilihan (diketik teknisi), tampilan identitas = sheet Input 1.
+- Kode: `TEMPLATE_INFUSION_PUMP_V2` (label Merk Pabrik / Tipe / No. Seri / Rentang Ukur / Resolusi [angka bebas] / Tanggal penerimaan barang kalibrasi / Ruangan; `identitas.jenisTetap = 'Digital'` → ÷√3 seperti isi bawaan Excel; hasil lebih hati-hati daripada Analog ÷√6). `hitungPompa.jenisSkalaPompa()`; jejak mencatat jenis skala efektif. Uji: lkk-pompa 36, layar-pompa 27, hitung-pompa 134 — semua lulus.
+- MIGRASI 0023 (v2 aktif, v1 dinonaktifkan) DISIAPKAN, BELUM dijalankan — menunggu "lanjutkan". Sampai itu, tablet masih memakai v1 (LKK uji yang sudah dibuat tetap v1).

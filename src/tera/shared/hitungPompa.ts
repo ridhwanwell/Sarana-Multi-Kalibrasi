@@ -69,7 +69,8 @@ export interface TemplatePompa {
   metode: string;
   kop: 'KAN' | 'NON_KAN';
   keselamatan_listrik: 'wajib';
-  identitas: { resolusi: { satuan: string; pilihan: number[] }; jenisSkala: JenisSkala[] };
+  /** v2 (26 Okt 2026): resolusi diisi bebas oleh teknisi (pilihan kosong), jenis skala tidak ditanyakan → `jenisTetap` (Digital, persegi √3). */
+  identitas: { resolusi: { satuan: string; pilihan: number[] }; jenisSkala: JenisSkala[]; jenisTetap?: JenisSkala };
   /** Kolom identitas layar (menimpa bawaan Sphygmo yang bersatuan mmHg). */
   identitasBidang: { id: string; label: string; jenis: 'teks' | 'angka' | 'tanggal' | 'resolusi' | 'skala'; satuan?: string; maksPanjang?: number }[];
   /** Alat standar yang dipilih teknisi; tiap alat membawa beberapa tabel (parameter) sekaligus. */
@@ -222,12 +223,17 @@ function budgetTitik(
 
 // ───────────────────────────── LKK lengkap ─────────────────────────────
 
+/** Jenis skala efektif: pilihan teknisi (template v1) atau nilai tetap template (v2: Digital). */
+export function jenisSkalaPompa(tpl: TemplatePompa, data: DataPompa): JenisSkala | null {
+  const js = tpl.identitas.jenisTetap ?? data.identitas?.jenisSkala;
+  return js === 'Analog' || js === 'Digital' ? js : null;
+}
+
 export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: KalibratorPompa): HasilPompa {
   const kurang: string[] = [];
   const kn = tpl.kinerja;
   const resolusi = angka(data.identitas?.resolusi);
-  const js = data.identitas?.jenisSkala;
-  const jenisSkala: JenisSkala | null = js === 'Analog' || js === 'Digital' ? js : null;
+  const jenisSkala = jenisSkalaPompa(tpl, data);
   if (resolusi === null) kurang.push('Resolusi alat belum diisi');
   if (jenisSkala === null) kurang.push('Jenis skala (Analog/Digital) belum dipilih');
   if (!kal.aliran.length || !kal.tekanan.length) kurang.push('Kalibrator IDA belum dipilih');

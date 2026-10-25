@@ -77,4 +77,25 @@ export const TEMPLATE_INFUSION_PUMP_V1: TemplatePompa = {
   sertifikat: { tata_letak: 'report_all_infusion_pump', halaman: 3 },
 };
 
-export const TEMPLATE_INFUSION_PUMP = TEMPLATE_INFUSION_PUMP_V1;
+/**
+ * VERSI 2 (26 Okt 2026, permintaan Ridhwan): tampilan identitas mengikuti sheet "Input 1" (label & urutan Excel);
+ * RESOLUSI diisi bebas oleh teknisi (bukan pilihan); JENIS SKALA tidak ditanyakan — pompa infus dihitung Digital
+ * (persegi, ÷√3, hasil lebih hati-hati daripada Analog ÷√6). Rumus, toleransi, dan skor sama dengan versi 1.
+ */
+export const TEMPLATE_INFUSION_PUMP_V2: TemplatePompa = {
+  ...TEMPLATE_INFUSION_PUMP_V1,
+  versi: 2,
+  sumber: 'Master_Infusion_Pump.xlsx (26 Okt 2026) + KMK-MK-053.0; identitas mengikuti Input 1, resolusi isian bebas, skala Digital tetap; fisik & fungsi semua kotak, aliran ≤ 200 mL/h, penyumbatan ≤ 20 psi',
+  identitas: { resolusi: { satuan: 'mL/h', pilihan: [] }, jenisSkala: [], jenisTetap: 'Digital' },
+  identitasBidang: [
+    { id: 'merek', label: 'Merk Pabrik', jenis: 'teks', maksPanjang: 80 },
+    { id: 'tipe', label: 'Tipe', jenis: 'teks', maksPanjang: 80 },
+    { id: 'noSeri', label: 'No. Seri', jenis: 'teks', maksPanjang: 80 },
+    { id: 'rentangUkur', label: 'Rentang Ukur (mis. 1 - 999 mL/h)', jenis: 'teks', maksPanjang: 40 },
+    { id: 'resolusi', label: 'Resolusi', jenis: 'angka', satuan: 'mL/h' },
+    { id: 'tanggalPenerimaan', label: 'Tanggal penerimaan barang kalibrasi', jenis: 'tanggal' },
+    { id: 'ruang', label: 'Ruangan', jenis: 'teks', maksPanjang: 80 },
+  ],
+};
+
+export const TEMPLATE_INFUSION_PUMP = TEMPLATE_INFUSION_PUMP_V2;
