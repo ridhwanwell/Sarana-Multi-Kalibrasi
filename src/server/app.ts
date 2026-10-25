@@ -361,6 +361,27 @@ export function createApp() {
       }
 
       if (!data) {
+        // Data uji Tera SMK (BO 999, is_test): stiker uji tidak punya baris di tabel labels. Supaya alur
+        // LKK → ACC → scan QR bisa diuji ujung ke ujung, sertifikat UJI yang berlaku tetap ditampilkan.
+        // Hanya is_test = true; label sungguhan tetap wajib ada di tabel labels (dengan kode verifikasinya).
+        try {
+          const { data: uji } = await supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi, ringkasan')
+            .eq('no_label', noLabel).eq('status', 'berlaku').eq('is_test', true).order('revisi', { ascending: false }).limit(1);
+          const u = (uji as any[])?.[0];
+          if (u && /^[0-9a-f]{24}$/.test(String(u.kode_verifikasi))) {
+            const host = String(req.get('host') || '');
+            const asal = /^([a-z0-9-]+\.)*(saranamultikalibrasi\.com|vercel\.app)$/i.test(host) ? `https://${host}` : 'https://saranamultikalibrasi.com';
+            const tgl = typeof u.ringkasan?.tanggalKalibrasi === 'string' ? u.ringkasan.tanggalKalibrasi : null;
+            return res.json({
+              noLabel, namaRs: u.ringkasan?.namaRs ?? null, namaAlat: u.ringkasan?.namaAlat ?? null, ruangan: null,
+              status: 'Sertifikat Tertaut', calibratedAt: tgl, validUntil: tgl ? tambahSetahun(tgl) || null : null,
+              pdfUrl: `${asal}/api/tera/publik/sertifikat/${u.kode_verifikasi}`, pdfDriveUrl: null,
+              isVoid: false, voidReason: null, verifyCode: null,
+            });
+          }
+        } catch (e: any) {
+          console.warn('[Scan QR] cek sertifikat uji Tera dilewati:', e?.message);
+        }
         return res.status(404).json({ error: "Label tidak ditemukan" });
       }
 

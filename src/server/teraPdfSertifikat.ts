@@ -121,7 +121,7 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
   return { pdf, nama, noLabel };
 }
 
-const KOLOM_SERT = 'kode_verifikasi, revisi, status, lkk_id, no_label, signatory_nama, signatory_jabatan, ditandatangani_at, pdf_path';
+const KOLOM_SERT = 'kode_verifikasi, revisi, status, lkk_id, bo, no_label, signatory_nama, signatory_jabatan, ditandatangani_at, pdf_path, drive_file_id, drive_status, drive_dicoba_at, drive_percobaan';
 
 export async function sertifikatDariKode(kode: string, signal: AbortSignal): Promise<SertifikatTercatat | null> {
   const { data, error } = await supabaseAdmin.from('tera_sertifikat').select(KOLOM_SERT).eq('kode_verifikasi', kode).maybeSingle().abortSignal(signal);

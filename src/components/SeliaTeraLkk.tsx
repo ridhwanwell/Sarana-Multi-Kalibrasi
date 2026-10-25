@@ -19,9 +19,13 @@ interface Ringkas {
   pemeriksaan: { jejakCocok: boolean; bolehAcc: boolean; kesimpulanServer: string | null; jumlahPenanda: number } | null;
 }
 interface Penanda { kode: string; teks: string; blokirAcc: boolean }
-interface SertTerbit { kode: string; revisi: number; status: 'berlaku' | 'digantikan' | string; ditandatanganiAt: string; pdfTersimpan: boolean }
+interface SertTerbit {
+  kode: string; revisi: number; status: 'berlaku' | 'digantikan' | string; ditandatanganiAt: string; pdfTersimpan: boolean;
+  drive?: { status: 'menunggu' | 'terkirim' | 'gagal' | null; pesan: string | null; url: string | null };
+}
 interface Detail {
   sertifikat?: SertTerbit[];
+  driveTersambung?: boolean;
   lkk: Peta; data: Peta | null; jejakHitung: Peta | null; calibratorSnapshot: Peta | null; template: Peta | null;
   pemeriksaan: { jejakCocok: boolean; bolehAcc: boolean; kesimpulanServer: string | null; penanda: Penanda[]; diperiksaAt?: string } | null;
 }
@@ -151,9 +155,15 @@ export const SeliaTeraLkk: React.FC = () => {
   }, []);
 
   useEffect(() => { if (boleh) void muatDaftar(); }, [boleh, muatDaftar]);
+  // Coba ulang otomatis (sekali per buka detail) bila sertifikat terbit belum ada di Drive; server mengatur jeda.
+  useEffect(() => {
+    const b = detail?.sertifikat?.find((x) => x.status === 'berlaku');
+    if (detail?.driveTersambung && b && b.drive?.status !== 'terkirim') void kirimDrive(detail.lkk.id, false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detail?.lkk?.id, detail?.driveTersambung]);
 
   const pilih = (id: string) => {
-    bersihkanPratinjau(); setPdfGalat(null);
+    bersihkanPratinjau(); setPdfGalat(null); setDriveKirim(null); setYakinKoreksi(false); setAlasanKoreksi('');
     setPilihId(id); setDetail(null); setAlasan(''); setYakinAcc(false); setHasilAksi(null);
     void muatDetail(id);
     setTimeout(() => bentang.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 60);
@@ -188,6 +198,17 @@ export const SeliaTeraLkk: React.FC = () => {
   // Buka koreksi (HANYA Developer / admin_utama; server juga memeriksa)
   const [alasanKoreksi, setAlasanKoreksi] = useState('');
   const [yakinKoreksi, setYakinKoreksi] = useState(false);
+  // Salinan tanpa kop ke Google Drive
+  const [driveKirim, setDriveKirim] = useState<null | { sedang: boolean; pesan?: string }>(null);
+  const kirimDrive = useCallback(async (id: string, paksa: boolean) => {
+    setDriveKirim({ sedang: true });
+    try {
+      const r = await apiFetch(`/api/tera/selia/lkk/${id}/drive${paksa ? '?paksa=1' : ''}`, { method: 'POST', body: '{}', retries: 0, timeoutMs: 40000 });
+      const j = await r.json().catch(() => null);
+      setDriveKirim({ sedang: false, pesan: j?.status === 'terkirim' ? 'Salinan tanpa kop sudah terkirim ke Google Drive.' : j?.dilewati ? undefined : (j?.pesan || j?.error || undefined) });
+      if (j?.status === 'terkirim') await muatDetail(id);
+    } catch { setDriveKirim({ sedang: false, pesan: 'Server tidak merespons. Dicoba lagi otomatis nanti.' }); }
+  }, [muatDetail]);
 
   if (!boleh) return null;
 
@@ -479,7 +500,20 @@ export const SeliaTeraLkk: React.FC = () => {
                       <div className="rounded-xl border border-[#0B6FB3] bg-[#E6F3FC] p-3 text-xs text-[#095C95] space-y-2">
                         <p className="font-bold flex items-center gap-1.5"><Stamp className="w-4 h-4" aria-hidden="true" />Sertifikat terbit · revisi {sertBerlaku.revisi} · ACC {tgl(sertBerlaku.ditandatanganiAt)}</p>
                         <p>{sertBerlaku.pdfTersimpan ? 'Lembar asli (dengan kop) sudah tersimpan. Scan QR stiker membuka file ini.' : 'Lembar asli belum tersimpan (mis. kop belum diunggah). Dibuat otomatis saat QR dibuka.'}</p>
+                        <p>
+                          {!detail.driveTersambung
+                            ? 'Salinan Google Drive (tanpa kop): belum tersambung — Developer perlu memasang izin Google di server.'
+                            : sertBerlaku.drive?.status === 'terkirim' ? 'Salinan Google Drive (tanpa kop): terkirim.'
+                            : `Salinan Google Drive (tanpa kop): ${driveKirim?.sedang ? 'sedang dikirim…' : 'belum terkirim'}${sertBerlaku.drive?.pesan ? ` — ${sertBerlaku.drive.pesan}` : ''}`}
+                          {driveKirim?.pesan ? ` ${driveKirim.pesan}` : ''}
+                        </p>
                         <div className="flex flex-wrap gap-3">
+                          {sertBerlaku.drive?.url && <a href={sertBerlaku.drive.url} target="_blank" rel="noopener noreferrer" className="font-bold underline min-h-[40px] inline-flex items-center">Buka di Google Drive</a>}
+                          {detail.driveTersambung && sertBerlaku.drive?.status !== 'terkirim' && (
+                            <button type="button" disabled={!!driveKirim?.sedang} onClick={() => { void kirimDrive(detail.lkk.id, true); }} className="font-bold underline min-h-[40px] inline-flex items-center gap-1 cursor-pointer disabled:opacity-60">
+                              {driveKirim?.sedang && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}Kirim ulang ke Drive
+                            </button>
+                          )}
                           <a href={`/api/tera/publik/sertifikat/${sertBerlaku.kode}`} target="_blank" rel="noopener noreferrer" className="font-bold underline min-h-[40px] inline-flex items-center">Buka sertifikat terbit (PDF)</a>
                           <a href={`/verifikasi/${sertBerlaku.kode}`} target="_blank" rel="noopener noreferrer" className="font-bold underline min-h-[40px] inline-flex items-center">Halaman verifikasi TTE</a>
                         </div>

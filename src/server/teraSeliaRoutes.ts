@@ -20,7 +20,8 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 import { requireAuthTera, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { POLA_UUID } from "../tera/shared/segel.js";
-import { GalatPdf, pdfAsliSertifikat, sertifikatDariKode } from "./teraPdfSertifikat.js";
+import { GalatPdf, pdfAsliSertifikat, sertifikatBerlakuLkk, sertifikatDariKode } from "./teraPdfSertifikat.js";
+import { driveTersambung, kirimKeDrive, waktunyaCobaDrive } from "./teraDrive.js";
 
 const BATAS_WAKTU_DB_MS = 15_000;
 const PESAN_SIBUK = "Server tidak merespons. Coba lagi sebentar.";
@@ -142,7 +143,7 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
         r.jadwal_id ? berbatas((s) => supabaseAdmin.from('tera_jadwal_push').select('nama_rs, kota').eq('jadwal_id', r.jadwal_id).maybeSingle().abortSignal(s)) : Promise.resolve({ data: null, error: null }),
         berbatas((s) => supabaseAdmin.from('profiles').select('full_name').eq('id', r.teknisi_user_id).maybeSingle().abortSignal(s)),
         berbatas((s) => supabaseAdmin.from('tera_device_templates').select('nama, definition').eq('kode_alat', r.template_kode).eq('versi', r.template_versi).maybeSingle().abortSignal(s)),
-        berbatas((s) => supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi, revisi, status, ditandatangani_at, pdf_path').eq('lkk_id', id).order('revisi', { ascending: false }).limit(20).abortSignal(s)),
+        berbatas((s) => supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi, revisi, status, ditandatangani_at, pdf_path, drive_file_id, drive_status, drive_pesan').eq('lkk_id', id).order('revisi', { ascending: false }).limit(20).abortSignal(s)),
       ]);
       if (pem.error || push.error || prof.error || tpl.error || sert.error) {
         console.error('[Tera/Selia] pelengkap detail:', pem.error?.message, push.error?.message, prof.error?.message, tpl.error?.message);
@@ -165,7 +166,9 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
         // Sertifikat terbit (tiap revisi). Kode = kunci tautan publik PDF & halaman verifikasi TTE.
         sertifikat: ((sert.data as any[]) ?? []).map((x) => ({
           kode: x.kode_verifikasi, revisi: x.revisi, status: x.status, ditandatanganiAt: x.ditandatangani_at, pdfTersimpan: !!x.pdf_path,
+          drive: { status: x.drive_status ?? null, pesan: x.drive_pesan ?? null, url: x.drive_file_id ? `https://drive.google.com/file/d/${x.drive_file_id}/view` : null },
         })),
+        driveTersambung: driveTersambung(),
       });
     } catch (e: any) {
       console.error('[Tera/Selia] detail:', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
@@ -212,7 +215,15 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
         const t = setTimeout(() => ctrl.abort(), 25_000);
         try {
           const sert = await sertifikatDariKode(h.kodeVerifikasi, ctrl.signal);
-          if (sert) { await pdfAsliSertifikat(sert, ctrl.signal); h.pdfTersimpan = true; }
+          if (sert) {
+            await pdfAsliSertifikat(sert, ctrl.signal); h.pdfTersimpan = true;
+            // Salinan TANPA kop ke Google Drive (gagal tidak membatalkan apa pun; dicoba ulang nanti)
+            if (driveTersambung()) {
+              const c2 = new AbortController(); const t2 = setTimeout(() => c2.abort(), 20_000);
+              try { const d = await kirimKeDrive(sert as any, c2.signal); h.driveStatus = d.status; if (d.pesan) h.drivePesan = d.pesan; }
+              finally { clearTimeout(t2); }
+            } else h.driveStatus = 'belum_tersambung';
+          }
         } catch (e: any) {
           h.pdfTersimpan = false;
           h.pdfPesan = e instanceof GalatPdf ? e.message : 'PDF sertifikat belum tersimpan; akan dibuat otomatis saat QR dibuka.';
@@ -228,5 +239,22 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
 
   app.post("/api/tera/selia/lkk/:id/kembalikan", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_kembalikan_lkk'));
   app.post("/api/tera/selia/lkk/:id/acc", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_acc_lkk'));
+  // Kirim (ulang) salinan tanpa kop ke Google Drive. ?paksa=1 dari tombol; tanpa paksa mengikuti jeda coba ulang.
+  app.post("/api/tera/selia/lkk/:id/drive", limiter, ...kantor, async (req: AuthRequest, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const id = String(req.params.id || '').toLowerCase();
+    if (!POLA_UUID.test(id)) return res.status(400).json({ error: 'ID LKK tidak sah.' });
+    if (!driveTersambung()) return res.json({ status: 'belum_tersambung' });
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 30_000);
+    try {
+      const sert = await sertifikatBerlakuLkk(id, ctrl.signal);
+      if (!sert) return res.status(404).json({ error: 'Belum ada sertifikat terbit untuk LKK ini.' });
+      if (!waktunyaCobaDrive(sert as any, req.query.paksa === '1')) return res.json({ status: (sert as any).drive_status ?? 'menunggu', dilewati: true });
+      return res.json(await kirimKeDrive(sert as any, ctrl.signal));
+    } catch (e: any) {
+      console.error('[Tera/Drive] rute:', e?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    } finally { clearTimeout(t); }
+  });
   app.post("/api/tera/selia/lkk/:id/buka-koreksi", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_buka_koreksi'));
 }
