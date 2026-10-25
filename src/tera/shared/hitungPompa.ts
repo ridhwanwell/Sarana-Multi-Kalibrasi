@@ -60,6 +60,8 @@ export interface KinerjaPompa {
 }
 
 export interface TemplatePompa {
+  /** Penanda jenis template: mesin & layar memilih cabang pompa dari sini. */
+  tipe: 'pompa';
   kode_alat: string;
   nama: string;
   versi: number;
@@ -68,6 +70,10 @@ export interface TemplatePompa {
   kop: 'KAN' | 'NON_KAN';
   keselamatan_listrik: 'wajib';
   identitas: { resolusi: { satuan: string; pilihan: number[] }; jenisSkala: JenisSkala[] };
+  /** Kolom identitas layar (menimpa bawaan Sphygmo yang bersatuan mmHg). */
+  identitasBidang: { id: string; label: string; jenis: 'teks' | 'angka' | 'tanggal' | 'resolusi' | 'skala'; satuan?: string; maksPanjang?: number }[];
+  /** Alat standar yang dipilih teknisi; tiap alat membawa beberapa tabel (parameter) sekaligus. */
+  standar: { peran: string; judul: string; parameter: string[]; wajib: boolean; hanyaRekomendasi?: boolean }[];
   fisik: { id: string; judul: string }[];
   /** [baik, tidak baik] untuk kolom Fisik dan [berfungsi, tidak berfungsi] untuk kolom Fungsi. */
   pilihanFisik: { fisik: [string, string]; fungsi: [string, string] };

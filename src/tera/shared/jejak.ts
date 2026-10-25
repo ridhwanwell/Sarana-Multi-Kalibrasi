@@ -11,6 +11,8 @@
  * Tidak pernah melempar galat pada data kosong/rusak (hasilnya `lengkap: false`).
  */
 import { hitungLkk, type DataLkk, type HasilLkk, type TemplateAlat, type TitikKalibrator } from './hitung.js';
+import { hitungPompa, type HasilPompa, type TemplatePompa } from './hitungPompa.js';
+import { adalahTemplatePompa, dataPompa, kalibratorDariSnapshot } from './lkkPompa.js';
 
 /** Naik bila rumus/susunan jejak berubah. Dicatat di setiap jejak. */
 export const VERSI_MESIN_HITUNG = 1;
@@ -61,16 +63,62 @@ function aman<T>(x: T): T {
   return JSON.parse(JSON.stringify(x, (_k, v) => (typeof v === 'number' && !Number.isFinite(v) ? null : v)));
 }
 
+/** Jejak hitung pompa (Infusion/Syringe): isi sama maksudnya dengan JejakHitung, rumusnya dari hitungPompa.ts. */
+export interface JejakPompa {
+  skema: number;
+  mesinHitung: number;
+  jenis: 'pompa';
+  template: { kode: string; versi: number; metode: string };
+  kalibrator: Record<string, { asetId: string | null; nama: string | null; nomorSertifikat: string | null; berlakuSampai: string | null; jumlahTabel: number } | null>;
+  masukan: { resolusi: number | null; jenisSkala: string | null };
+  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor'] };
+  hasil: HasilPompa;
+  lengkap: boolean;
+  kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai' | null;
+}
+
+function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null | undefined): JejakPompa | null {
+  try {
+    const hasil = hitungPompa(tpl, dataPompa(data), kalibratorDariSnapshot(snapshot));
+    const lengkap = hasil.kurang.length === 0;
+    const iden = ((data as Peta | null)?.identitas ?? {}) as Peta;
+    const identitasAlat = (peran: string) => {
+      const s = snapshot?.[peran] as Peta | undefined;
+      if (!s || typeof s !== 'object') return null;
+      return {
+        asetId: typeof s.asetId === 'string' ? s.asetId : null, nama: typeof s.nama === 'string' ? s.nama : null,
+        nomorSertifikat: typeof s.nomorSertifikat === 'string' ? s.nomorSertifikat : null,
+        berlakuSampai: typeof s.berlakuSampai === 'string' ? s.berlakuSampai : null,
+        jumlahTabel: s.tabel && typeof s.tabel === 'object' ? Object.keys(s.tabel).length : 0,
+      };
+    };
+    return aman({
+      skema: SKEMA_JEJAK, mesinHitung: VERSI_MESIN_HITUNG, jenis: 'pompa' as const,
+      template: { kode: tpl.kode_alat, versi: tpl.versi, metode: tpl.metode },
+      kalibrator: { ida: identitasAlat('ida'), esa: identitasAlat('esa') },
+      masukan: { resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: typeof iden.jenisSkala === 'string' ? iden.jenisSkala : null },
+      aturan: { kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor },
+      hasil, lengkap, kesimpulan: lengkap ? hasil.kesimpulan : null,
+    });
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Susun jejak hitung. `peranKinerja` = peran alat standar yang tabelnya dipakai hitungan kinerja
  * (Sphygmomanometer: 'tekanan'). Mengembalikan null hanya bila template rusak.
  */
+export function buatJejakHitung(tpl: TemplateAlat, data: DataLkk | Peta | null | undefined, snapshot: Peta | null | undefined, peranKinerja?: string): JejakHitung | null;
+export function buatJejakHitung(tpl: TemplatePompa, data: Peta | null | undefined, snapshot: Peta | null | undefined): JejakPompa | null;
+export function buatJejakHitung(tpl: TemplateAlat | TemplatePompa, data: DataLkk | Peta | null | undefined, snapshot: Peta | null | undefined, peranKinerja?: string): JejakHitung | JejakPompa | null;
 export function buatJejakHitung(
-  tpl: TemplateAlat,
+  tpl: TemplateAlat | TemplatePompa,
   data: DataLkk | Peta | null | undefined,
   snapshot: Peta | null | undefined,
   peranKinerja = 'tekanan',
-): JejakHitung | null {
+): JejakHitung | JejakPompa | null {
+  if (adalahTemplatePompa(tpl)) return buatJejakPompa(tpl, data, snapshot);
   try {
     const snap = (snapshot?.[peranKinerja] ?? null) as Peta | null;
     const tabel = titikDariSnapshot(snap);

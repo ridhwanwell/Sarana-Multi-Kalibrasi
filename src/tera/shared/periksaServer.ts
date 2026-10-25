@@ -9,7 +9,8 @@
  * Murni (tanpa jaringan/database). Tidak pernah melempar galat.
  */
 import type { TemplateAlat } from './hitung.js';
-import { buatJejakHitung, VERSI_MESIN_HITUNG, type JejakHitung } from './jejak.js';
+import type { TemplatePompa } from './hitungPompa.js';
+import { buatJejakHitung, VERSI_MESIN_HITUNG, type JejakHitung, type JejakPompa } from './jejak.js';
 import { periksaIsian } from './isian.js';
 import { jsonKanonik } from './segel.js';
 
@@ -39,7 +40,7 @@ export interface HasilPeriksaServer {
   /** true bila tidak ada penanda yang memblokir ACC. */
   bolehAcc: boolean;
   /** Ringkasan kesimpulan menurut server (null bila belum lengkap/rusak). */
-  kesimpulanServer: JejakHitung['kesimpulan'];
+  kesimpulanServer: JejakHitung['kesimpulan'] | JejakPompa['kesimpulan'];
 }
 
 type Peta = Record<string, any>;
@@ -55,9 +56,9 @@ export interface MasukanPeriksa {
   isTest?: boolean;
 }
 
-export function periksaPaketServer(tpl: TemplateAlat | null, m: MasukanPeriksa): HasilPeriksaServer {
+export function periksaPaketServer(tpl: TemplateAlat | TemplatePompa | null, m: MasukanPeriksa): HasilPeriksaServer {
   const penanda: Penanda[] = [];
-  const selesai = (jejakCocok: boolean, kesimpulanServer: JejakHitung['kesimpulan']): HasilPeriksaServer => ({
+  const selesai = (jejakCocok: boolean, kesimpulanServer: HasilPeriksaServer['kesimpulanServer']): HasilPeriksaServer => ({
     mesinHitung: VERSI_MESIN_HITUNG,
     jejakCocok,
     penanda,

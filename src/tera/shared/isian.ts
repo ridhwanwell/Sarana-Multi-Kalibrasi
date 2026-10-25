@@ -9,6 +9,8 @@
  * `tanggalKalibrasi` (tanggal pelaksanaan) dan `calibratorSnapshot.{tekanan,stopwatch,termohigrometer}`.
  */
 import type { TemplateAlat } from './hitung.js';
+import type { TemplatePompa } from './hitungPompa.js';
+import { adalahTemplatePompa, kurangPompa } from './lkkPompa.js';
 import { BATAS_LINGKUNGAN_BAWAAN, diLuarBatas, type BatasLingkungan } from './lingkungan.js';
 
 // ───────────────────────────── Bagian layar ─────────────────────────────
@@ -18,12 +20,14 @@ export type BagianId = 'identitas' | 'lingkungan' | 'fisik' | 'keselamatan' | 'k
 export interface DefBagian { id: BagianId; nama: string; /** false = layarnya dibuka di langkah pengerjaan berikutnya */ tersedia: boolean }
 
 /** Urutan CLAUDE.md 13.5. Keselamatan listrik hanya bila template memintanya. */
-export function daftarBagian(tpl: Pick<TemplateAlat, 'keselamatan_listrik'>): DefBagian[] {
+export function daftarBagian(tpl: Pick<TemplateAlat, 'keselamatan_listrik'> | Pick<TemplatePompa, 'keselamatan_listrik' | 'tipe'>): DefBagian[] {
+  // Pompa (Infusion/Syringe): bagian Keselamatan listrik sudah ada layarnya (Tahap 6.3).
+  const listrikAda = adalahTemplatePompa(tpl);
   return [
     { id: 'identitas', nama: 'Identitas alat', tersedia: true },
     { id: 'lingkungan', nama: 'Kondisi lingkungan', tersedia: true },
     { id: 'fisik', nama: 'Fisik & fungsi', tersedia: true },
-    ...(tpl.keselamatan_listrik !== 'tidak_ada' ? [{ id: 'keselamatan' as const, nama: 'Keselamatan listrik', tersedia: false }] : []),
+    ...(tpl.keselamatan_listrik !== 'tidak_ada' ? [{ id: 'keselamatan' as const, nama: 'Keselamatan listrik', tersedia: listrikAda }] : []),
     { id: 'kinerja', nama: 'Kinerja', tersedia: true },
     { id: 'kesimpulan', nama: 'Kesimpulan', tersedia: true },
     { id: 'ringkasan', nama: 'Ringkasan & Selesai', tersedia: true },
@@ -54,12 +58,12 @@ export const BIDANG_IDENTITAS_BAWAAN: BidangIdentitas[] = [
 type TemplateLonggar = Partial<{ identitasBidang: BidangIdentitas[]; lingkungan: BatasLingkungan; standar: DefStandar[] }>;
 const longgar = (t: unknown): TemplateLonggar => (t && typeof t === 'object' ? (t as TemplateLonggar) : {});
 
-export function bidangIdentitas(tpl: TemplateAlat): BidangIdentitas[] {
+export function bidangIdentitas(tpl: TemplateAlat | TemplatePompa): BidangIdentitas[] {
   const b = longgar(tpl).identitasBidang;
   return Array.isArray(b) && b.length ? b : BIDANG_IDENTITAS_BAWAAN;
 }
 
-export function batasLingkungan(tpl: TemplateAlat): BatasLingkungan {
+export function batasLingkungan(tpl: TemplateAlat | TemplatePompa): BatasLingkungan {
   const b = longgar(tpl).lingkungan;
   const sah = (x: any) => x && Number.isFinite(x.min) && Number.isFinite(x.maks) && x.min < x.maks;
   return b && sah(b.suhu) && sah(b.rh) ? b : BATAS_LINGKUNGAN_BAWAAN;
@@ -67,7 +71,7 @@ export function batasLingkungan(tpl: TemplateAlat): BatasLingkungan {
 
 // ───────────────────────────── Alat standar ─────────────────────────────
 
-export type PeranStandar = 'tekanan' | 'stopwatch' | 'termohigrometer';
+export type PeranStandar = 'tekanan' | 'stopwatch' | 'termohigrometer' | 'ida' | 'esa';
 
 export interface DefStandar {
   peran: PeranStandar;
@@ -86,7 +90,7 @@ export const STANDAR_BAWAAN: DefStandar[] = [
   { peran: 'termohigrometer', judul: 'Termohigrometer', parameter: ['suhu_c', 'kelembaban_rh'], wajib: true, hanyaRekomendasi: true },
 ];
 
-export function daftarStandar(tpl: TemplateAlat): DefStandar[] {
+export function daftarStandar(tpl: TemplateAlat | TemplatePompa): DefStandar[] {
   const s = longgar(tpl).standar;
   return Array.isArray(s) && s.length ? s : STANDAR_BAWAAN;
 }
@@ -157,6 +161,20 @@ export function jepretStandar<K extends KalibratorMin>(def: DefStandar, p: Pilih
     const k = p.baris.find((b) => b.parameter === def.parameter[0]);
     return jepret(k as K);
   }
+  if (def.peran !== 'termohigrometer') {
+    // Alat standar berparameter banyak (IDA, ESA): satu salinan membawa semua tabelnya (lihat shared/lkkPompa.ts)
+    const induk = p.baris[0];
+    const tabel: Peta = {};
+    for (const pr of def.parameter) {
+      const b = p.baris.find((x) => x.parameter === pr);
+      if (b) tabel[pr] = jepret(b);
+    }
+    return {
+      jenis: 'multi', asetId: p.kunci, nama: induk.nama, merk: induk.merk, model: induk.model, nomorSeri: induk.nomorSeri,
+      nomorSertifikat: induk.nomorSertifikat, tertelusur: induk.tertelusur, tanggalKalibrasi: induk.tanggalKalibrasi,
+      berlakuSampai: p.berlakuSampai, tabel, dijepretAt: new Date().toISOString(),
+    };
+  }
   const lawan = def.parameter.map((pr) => p.baris.find((b) => b.parameter === pr));
   const [suhu, kelembaban] = lawan;
   const induk = p.baris[0];
@@ -203,7 +221,14 @@ export function statusSnapshot(snap: Peta | null | undefined, tanggal: string | 
  * Semua yang masih kurang di bagian 1–3. Bagian lain (kinerja, kesimpulan) ditambahkan langkah berikutnya.
  * Urutan = urutan layar. Tidak pernah melempar galat pada data kosong/rusak.
  */
-export function periksaIsian(tpl: TemplateAlat, isi: IsiKerja): Kurang[] {
+/** Opsi dropdown fisik & fungsi. Sphygmo: satu pasang untuk keduanya; pompa: Baik/Tidak Baik dan Berfungsi/Tidak Berfungsi. */
+export function opsiFisik(tpl: TemplateAlat | TemplatePompa): { fisik: [string, string]; fungsi: [string, string] } {
+  const p = tpl.pilihanFisik as unknown;
+  if (Array.isArray(p)) return { fisik: p as [string, string], fungsi: p as [string, string] };
+  return p as { fisik: [string, string]; fungsi: [string, string] };
+}
+
+export function periksaIsian(tpl: TemplateAlat | TemplatePompa, isi: IsiKerja): Kurang[] {
   const kurang: Kurang[] = [];
   const data = isi?.data && typeof isi.data === 'object' ? isi.data : {};
   const iden = (data.identitas && typeof data.identitas === 'object' ? data.identitas : {}) as Peta;
@@ -229,7 +254,8 @@ export function periksaIsian(tpl: TemplateAlat, isi: IsiKerja): Kurang[] {
     const st = statusSnapshot(snap, isi?.tanggal);
     if (st === null) { if (d.wajib) kurang.push({ bagian: 'identitas', teks: `${d.judul} belum dipilih` }); }
     else if (st === 'expired') kurang.push({ bagian: 'identitas', teks: `${d.judul} expired pada tanggal pelaksanaan — pilih alat lain atau ubah tanggal`, merah: true });
-    else if (d.parameter.length > 1 && (!snap?.suhu || !snap?.kelembaban)) kurang.push({ bagian: 'identitas', teks: `Data ${d.judul.toLowerCase()} belum lengkap (suhu & kelembaban) — pilih alat lain atau hubungi Developer` });
+    else if (d.peran === 'termohigrometer' && d.parameter.length > 1 && (!snap?.suhu || !snap?.kelembaban)) kurang.push({ bagian: 'identitas', teks: `Data ${d.judul.toLowerCase()} belum lengkap (suhu & kelembaban) — pilih alat lain atau hubungi Developer` });
+    else if (d.peran !== 'termohigrometer' && d.parameter.length > 1 && d.parameter.some((pr) => !Array.isArray(snap?.tabel?.[pr]?.points) || snap.tabel[pr].points.length === 0)) kurang.push({ bagian: 'identitas', teks: `Data ${d.judul} belum lengkap (tabel koreksi kurang) — pilih alat lain atau hubungi Developer` });
   }
 
   // 2. Lingkungan
@@ -250,22 +276,27 @@ export function periksaIsian(tpl: TemplateAlat, isi: IsiKerja): Kurang[] {
   const fisik = (data.fisik && typeof data.fisik === 'object' ? data.fisik : {}) as Peta;
   for (const f of tpl.fisik) {
     const baris = fisik[f.id] ?? {};
-    const ok = (x: unknown) => typeof x === 'string' && (tpl.pilihanFisik as string[]).includes(x);
-    if (!ok(baris.fisik) || !ok(baris.fungsi)) kurang.push({ bagian: 'fisik', teks: `${f.judul}: pilih kondisi Fisik dan Fungsi` });
+    const opsi = opsiFisik(tpl);
+    if (!(opsi.fisik as string[]).includes(baris.fisik) || !(opsi.fungsi as string[]).includes(baris.fungsi)) kurang.push({ bagian: 'fisik', teks: `${f.judul}: pilih kondisi Fisik dan Fungsi` });
   }
   const tambahan = (data.fisikTambahan && typeof data.fisikTambahan === 'object' ? data.fisikTambahan : {}) as Peta;
-  for (const f of tpl.fisikTambahan ?? []) {
-    if (typeof tambahan[f.id] !== 'string' || !(tpl.pilihanFisik as string[]).includes(tambahan[f.id])) kurang.push({ bagian: 'fisik', teks: `${f.judul}: pilih kondisi` });
+  const daftarTambahan = adalahTemplatePompa(tpl) ? [] : (tpl.fisikTambahan ?? []);
+  for (const f of daftarTambahan) {
+    if (typeof tambahan[f.id] !== 'string' || !(opsiFisik(tpl).fisik as string[]).includes(tambahan[f.id])) kurang.push({ bagian: 'fisik', teks: `${f.judul}: pilih kondisi` });
   }
 
+  // Pompa: keselamatan listrik + aliran + penyumbatan (rumus di shared/hitungPompa.ts)
+  if (adalahTemplatePompa(tpl)) return [...kurang, ...kurangPompa(tpl, isi)];
+
   // 5. Kinerja: uji ambang (bocor, laju buang, ...) lalu bacaan naik/turun tiap titik
-  for (const u of tpl.ujiAmbang) {
+  const tplNaikTurun = tpl as TemplateAlat;
+  for (const u of tplNaikTurun.ujiAmbang) {
     const isiU = (data[u.id] && typeof data[u.id] === 'object' ? data[u.id] : {}) as Peta;
     const nilai = u.jenis === 'selisih_setting' ? isiU.bacaan : (isiU.waktu ?? isiU.nilai);
     if (!angkaSah(nilai)) kurang.push({ bagian: 'kinerja', teks: `${u.judul} belum diisi` });
   }
   const kin = (data.kinerja && typeof data.kinerja === 'object' ? data.kinerja : {}) as Peta;
-  for (const k of tpl.kinerja) {
+  for (const k of tplNaikTurun.kinerja) {
     for (const t of k.titik) {
       const baris = (kin[k.id]?.[String(t)] ?? {}) as Peta;
       const arahKurang = (['naik', 'turun'] as const).filter((a) => {

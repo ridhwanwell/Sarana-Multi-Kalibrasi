@@ -11,6 +11,7 @@
 import type { TemplatePompa } from '../hitungPompa.js';
 
 export const TEMPLATE_INFUSION_PUMP_V1: TemplatePompa = {
+  tipe: 'pompa',
   kode_alat: 'infusion_pump',
   nama: 'Infusion Pump',
   versi: 1,
@@ -24,6 +25,23 @@ export const TEMPLATE_INFUSION_PUMP_V1: TemplatePompa = {
     // Input 1!E20 + K21:M22 (Digital √3 persegi, Analog √6 segitiga)
     jenisSkala: ['Digital', 'Analog'],
   },
+  // Input 1!A14:E25 — urutan kolom identitas. Rentang ukur di Excel berupa teks ("1 - 999").
+  identitasBidang: [
+    { id: 'merek', label: 'Merek', jenis: 'teks', maksPanjang: 80 },
+    { id: 'tipe', label: 'Tipe', jenis: 'teks', maksPanjang: 80 },
+    { id: 'noSeri', label: 'Nomor seri', jenis: 'teks', maksPanjang: 80 },
+    { id: 'rentangUkur', label: 'Rentang ukur (mis. 1 - 999 mL/h)', jenis: 'teks', maksPanjang: 40 },
+    { id: 'resolusi', label: 'Resolusi', jenis: 'resolusi', satuan: 'mL/h' },
+    { id: 'jenisSkala', label: 'Jenis skala', jenis: 'skala' },
+    { id: 'tanggalPenerimaan', label: 'Tanggal penerimaan alat', jenis: 'tanggal' },
+    { id: 'ruang', label: 'Ruangan', jenis: 'teks', maksPanjang: 80 },
+  ],
+  // Input 1!A29:I34 — alat standar. IDA = aliran + penyumbatan; ESA = 4 tabel listrik; termohigrometer = HTC-1 (rekomendasi).
+  standar: [
+    { peran: 'ida', judul: 'Infusion Device Analyzer (IDA)', parameter: ['aliran_mlh', 'tekanan_psi'], wajib: true },
+    { peran: 'esa', judul: 'Electrical Safety Analyzer (ESA)', parameter: ['tegangan_v', 'resistansi_ohm', 'isolasi_mohm', 'arus_bocor_ua'], wajib: true },
+    { peran: 'termohigrometer', judul: 'Termohigrometer', parameter: ['suhu_c', 'kelembaban_rh'], wajib: true, hanyaRekomendasi: true },
+  ],
   // Input 1!B44:B46 — tiap butir dinilai Kondisi Fisik (Baik) dan Fungsi Alat (Berfungsi)
   fisik: [
     { id: 'badan', judul: 'Badan dan Permukaan / Enclosure and its Surfaces' },
