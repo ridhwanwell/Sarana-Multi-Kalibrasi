@@ -7,6 +7,9 @@
  *  POST /api/tera/selia/lkk/:id/acc         -> ACC (ditolak bila ada penanda merah / belum diperiksa server) — tera_acc_lkk;
  *                                              sesudahnya lembar ASLI PDF (dengan kop) dicetak & disimpan (scan QR membuka ini)
  *  POST /api/tera/selia/lkk/:id/buka-koreksi -> HANYA Developer (admin_utama), alasan wajib — tera_buka_koreksi (revisi naik)
+ *  POST /api/tera/selia/lkk/:id/ubah  -> Penyelia menyunting isian (tanpa alasan); server menghitung ulang jejak dengan
+ *                                        mesin yang sama, tiap kolom yang berubah dicatat di riwayat — tera_ubah_lkk (0020)
+ *  ACC tidak lagi diblokir penanda (keputusan Ridhwan 25 Okt 2026, migrasi 0020).
  *
  * Perumpamaan: meja Penyelia di kantor. Penyelia melihat tumpukan LKK yang sudah diterima loket, tiap lembar
  * diberi stiker penanda hasil periksa ulang petugas loket (4.4a). Penyelia bisa mengembalikan atau meng-ACC.
@@ -22,6 +25,23 @@ import type { AuthRequest } from "../middleware/auth.js";
 import { POLA_UUID } from "../tera/shared/segel.js";
 import { GalatPdf, pdfAsliSertifikat, sertifikatBerlakuLkk, sertifikatDariKode } from "./teraPdfSertifikat.js";
 import { driveTersambung, kirimKeDrive, waktunyaCobaDrive } from "./teraDrive.js";
+import { buatJejakHitung } from "../tera/shared/jejak.js";
+import { periksaPaketServer } from "../tera/shared/periksaServer.js";
+import type { TemplateAlat } from "../tera/shared/hitung.js";
+
+/** Ratakan isian jadi peta "jalur → nilai" (mis. "identitas.merek", "kinerja.tekanan.50.naik.0"). */
+function ratakan(x: unknown, awal = '', keluar: Record<string, unknown> = {}): Record<string, unknown> {
+  if (x !== null && typeof x === 'object') {
+    const entri = Array.isArray(x) ? x.map((v, i) => [String(i), v] as const) : Object.entries(x as Record<string, unknown>);
+    if (entri.length === 0) { if (awal) keluar[awal] = x; return keluar; }
+    for (const [k, v] of entri) ratakan(v, awal ? `${awal}.${k}` : k, keluar);
+    return keluar;
+  }
+  if (awal) keluar[awal] = x === undefined ? null : x;
+  return keluar;
+}
+const sama = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+const POLA_TGL = /^\d{4}-\d{2}-\d{2}$/;
 
 const BATAS_WAKTU_DB_MS = 15_000;
 const PESAN_SIBUK = "Server tidak merespons. Coba lagi sebentar.";
@@ -297,4 +317,70 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
     } finally { clearTimeout(t); }
   });
   app.post("/api/tera/selia/lkk/:id/buka-koreksi", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_buka_koreksi'));
+  // --- Penyelia menyunting isian LKK (tanpa alasan; riwayat internal otomatis) -------------------------
+  app.post("/api/tera/selia/lkk/:id/ubah", limiter, ...kantor, async (req: AuthRequest, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const id = String(req.params.id || '').toLowerCase();
+    if (!POLA_UUID.test(id)) return res.status(400).json({ error: 'ID LKK tidak sah.' });
+    const dataBaru = req.body?.data;
+    if (!dataBaru || typeof dataBaru !== 'object' || Array.isArray(dataBaru)) return res.status(400).json({ hasil: 'ditolak', alasan: 'Isian LKK tidak sah.' });
+    let ukuran = Infinity; try { ukuran = Buffer.byteLength(JSON.stringify(dataBaru), 'utf8'); } catch { /* tidak sah */ }
+    if (ukuran > 1_500_000) return res.status(400).json({ hasil: 'ditolak', alasan: 'Isian terlalu besar.' });
+    const tglMasuk = req.body?.tanggalKalibrasi;
+    if (tglMasuk !== null && tglMasuk !== undefined && (typeof tglMasuk !== 'string' || !POLA_TGL.test(tglMasuk))) {
+      return res.status(400).json({ hasil: 'ditolak', alasan: 'Tanggal kalibrasi tidak sah.' });
+    }
+    try {
+      const { data: r, error } = await berbatas((s) => supabaseAdmin.from('tera_lkk')
+        .select('id, bo, status, data, tanggal_kalibrasi, template_kode, template_versi, calibrator_snapshot, client_version, is_test')
+        .eq('id', id).maybeSingle().abortSignal(s));
+      if (error) { console.error('[Tera/Selia] ubah baca:', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      if (!r) return res.status(404).json({ hasil: 'ditolak', alasan: 'LKK tidak ditemukan.' });
+      if (!['submitted', 'under_review', 'correction_open'].includes(r.status)) {
+        return res.status(409).json({ hasil: 'ditolak', alasan: r.status === 'approved' ? 'LKK sudah ACC dan terkunci. Developer perlu membuka koreksi dulu.' : 'LKK ini tidak bisa diubah sekarang.' });
+      }
+      const { data: t, error: et } = await berbatas((s) => supabaseAdmin.from('tera_device_templates').select('definition')
+        .eq('kode_alat', r.template_kode).eq('versi', r.template_versi).maybeSingle().abortSignal(s));
+      if (et) { console.error('[Tera/Selia] ubah template:', et.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      const tpl = (t?.definition ?? null) as TemplateAlat | null;
+      if (!tpl) return res.status(422).json({ hasil: 'ditolak', alasan: 'Template alat tidak ditemukan di server.' });
+
+      const tanggal = tglMasuk === undefined ? r.tanggal_kalibrasi : (tglMasuk || null);
+      // Hitung ulang dengan mesin yang sama (tablet & server) → jejak hitung baru = hasil di sertifikat.
+      const jejak = buatJejakHitung(tpl, dataBaru, r.calibrator_snapshot);
+      if (!jejak) return res.status(422).json({ hasil: 'ditolak', alasan: 'Isian tidak bisa dihitung. Periksa angkanya.' });
+
+      // Catatan internal: setiap jalur yang berubah (nilai lama → baru).
+      const lama = ratakan(r.data ?? {}), baru = ratakan(dataBaru);
+      const perubahan: { kolom: string; lama: unknown; baru: unknown }[] = [];
+      for (const k of new Set([...Object.keys(lama), ...Object.keys(baru)])) {
+        if (!sama(lama[k], baru[k])) perubahan.push({ kolom: k, lama: lama[k] ?? null, baru: baru[k] ?? null });
+      }
+      if (!sama(r.tanggal_kalibrasi, tanggal)) perubahan.push({ kolom: 'tanggal_kalibrasi', lama: r.tanggal_kalibrasi ?? null, baru: tanggal });
+      if (!perubahan.length) return res.json({ hasil: 'tidak_berubah' });
+
+      const nama = await namaPenyelia(req);
+      const { data: h, error: er } = await berbatas((sg) => supabaseAdmin.rpc('tera_ubah_lkk', {
+        p_id: id, p_user: req.user.id, p_nama: nama, p_data: dataBaru, p_results: jejak, p_tanggal: tanggal, p_perubahan: perubahan,
+      }).abortSignal(sg));
+      if (er || !h) { console.error('[Tera/Selia] tera_ubah_lkk:', er?.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      if ((h as any).hasil !== 'diubah') return res.status(409).json(h);
+
+      // Hasil periksa server ikut diperbarui (hanya info; tidak memblokir ACC).
+      const p = periksaPaketServer(tpl, {
+        data: dataBaru, results: jejak, calibratorSnapshot: r.calibrator_snapshot, tanggalKalibrasi: tanggal,
+        templateKode: r.template_kode, templateVersi: r.template_versi, isTest: !!r.is_test,
+      });
+      const { error: ep } = await supabaseAdmin.from('tera_lkk_pemeriksaan').upsert({
+        lkk_id: id, client_version: r.client_version, mesin_hitung: p.mesinHitung, jejak_cocok: p.jejakCocok,
+        boleh_acc: p.bolehAcc, penanda: p.penanda, kesimpulan_server: p.kesimpulanServer, diperiksa_at: new Date().toISOString(),
+      }, { onConflict: 'lkk_id,client_version' });
+      if (ep) console.error('[Tera/Selia] pemeriksaan sesudah ubah:', ep.message);
+
+      return res.json({ ...(h as any), kesimpulan: jejak.kesimpulan });
+    } catch (e: any) {
+      console.error('[Tera/Selia] ubah:', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    }
+  });
 }

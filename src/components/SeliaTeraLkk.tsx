@@ -5,12 +5,15 @@
  * di bawahnya sebagai SATU lembar panjang (identitas → lingkungan → fisik → uji → kinerja → kalibrator → kesimpulan →
  * hasil periksa server), dan tombol Kembalikan / ACC ada di paling bawah. Tidak ada pindah-pindah halaman/bagian.
  *
- * Hanya untuk admin_teknik & admin_utama (server juga memeriksa). Penanda kuning/merah: warna + ikon + tulisan (CLAUDE.md 13.11).
+ * Hanya untuk admin_teknik & admin_utama (server juga memeriksa).
+ * 25 Okt 2026 (keputusan Ridhwan): penanda mendekati/melewati batas TIDAK ditampilkan dan ACC tidak diblokir;
+ * Penyelia bisa langsung mengubah isian (SeliaTeraEditor) tanpa mengembalikan ke teknisi.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, FileText, Folder, FolderOpen, Loader2, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, FileText, Folder, FolderOpen, Loader2, Pencil, RotateCcw, ShieldCheck, Stamp, Undo2 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
+import { SeliaTeraEditor } from './SeliaTeraEditor';
 
 type Peta = Record<string, any>;
 interface Ringkas {
@@ -115,11 +118,11 @@ export const SeliaTeraLkk: React.FC<{
   const [detail, setDetail] = useState<Detail | null>(null);
   const [gagalDetail, setGagalDetail] = useState<string | null>(null);
   const [memuatDetail, setMemuatDetail] = useState(false);
-  const [diperiksa, setDiperiksa] = useState<Record<string, boolean>>({});
   const [alasan, setAlasan] = useState('');
   const [yakinAcc, setYakinAcc] = useState(false);
   const [bekerja, setBekerja] = useState(false);
   const [hasilAksi, setHasilAksi] = useState<{ ok: boolean; teks: string } | null>(null);
+  const [ubah, setUbah] = useState(false);
   const bentang = useRef<HTMLDivElement | null>(null);
 
   const muatDaftar = useCallback(async () => {
@@ -178,7 +181,7 @@ export const SeliaTeraLkk: React.FC<{
   const pilih = (id: string) => {
     if (onPilih && !modeDetail) { onPilih(id); return; }
     bersihkanPratinjau(); setPdfGalat(null); setDriveKirim(null); setYakinKoreksi(false); setAlasanKoreksi('');
-    setPilihId(id); setDetail(null); setAlasan(''); setYakinAcc(false); setHasilAksi(null);
+    setPilihId(id); setDetail(null); setAlasan(''); setYakinAcc(false); setHasilAksi(null); setUbah(false);
     void muatDetail(id);
     if (!modeDetail) setTimeout(() => bentang.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 60);
   };
@@ -197,8 +200,7 @@ export const SeliaTeraLkk: React.FC<{
       if (saringan === 'acc') return x.status === 'approved';
       return true;
     });
-    const merah = (x: Ringkas) => (!x.pemeriksaan || !x.pemeriksaan.bolehAcc ? 0 : 1);
-    return [...f].sort((a, b) => merah(a) - merah(b));
+    return f;
   }, [daftar, saringan]);
 
   // Folder per RS: yang masih ada pekerjaan (menunggu / merah) di atas, lalu urut nama.
@@ -258,13 +260,9 @@ export const SeliaTeraLkk: React.FC<{
   const bisaAksi = detail && ['submitted', 'under_review', 'correction_open'].includes(detail.lkk.status);
   const bolehKoreksi = role === 'admin_utama' && detail?.lkk.status === 'approved';
   const sertBerlaku = (detail?.sertifikat ?? []).find((x) => x.status === 'berlaku') ?? null;
-  const pem = detail?.pemeriksaan;
 
-  const kunci = (...p: string[]) => p.join(':');
-  const toggle = (k: string) => setDiperiksa((s) => ({ ...s, [k]: !s[k] }));
 
   const barisLkk = (x: Ringkas) => {
-                      const merah = adaMerah(x);
                       return (
                         <li key={x.id}>
                           <button type="button" onClick={() => pilih(x.id)} aria-current={pilihId === x.id}
@@ -272,12 +270,7 @@ export const SeliaTeraLkk: React.FC<{
                             <span className="font-black text-sm text-slate-900 tabular-nums">{x.noLabel}</span>
                             <span className="min-w-0 flex-1 text-xs text-slate-600 truncate">{x.templateKode} · {x.teknisi ?? '-'} · {tglPendek(x.tanggalKalibrasi)}</span>
                             {x.alatTambahan && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">Alat tambahan</span>}
-                            {x.pemeriksaan && <span className={`shrink-0 text-[11px] font-bold ${x.pemeriksaan.kesimpulanServer === 'Tidak Laik Pakai' ? 'text-[#991B1B]' : 'text-[#166534]'}`}>{x.pemeriksaan.kesimpulanServer ?? '-'}</span>}
-                            {merah
-                              ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan ? 'Ada penanda merah' : 'Belum diperiksa server'}</span>
-                              : x.pemeriksaan && x.pemeriksaan.jumlahPenanda > 0
-                              ? <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#D97706]"><AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />{x.pemeriksaan.jumlahPenanda} info</span>
-                              : null}
+                            {x.pemeriksaan && <span className="shrink-0 text-[11px] font-bold text-slate-700">{x.pemeriksaan.kesimpulanServer ?? '-'}</span>}
                             <Chip status={x.status} />
                           </button>
                         </li>
@@ -296,7 +289,7 @@ export const SeliaTeraLkk: React.FC<{
       {/* ───────── DAFTAR ───────── */}
       {!modeDetail && <div className="space-y-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Saring daftar LKK">
-          {([['semua', 'Semua'], ['merah', 'Ada penanda merah'], ['menunggu', 'Menunggu diperiksa'], ['acc', 'Sudah ACC']] as [Saringan, string][]).map(([k, t]) => (
+          {([['semua', 'Semua'], ['menunggu', 'Menunggu diperiksa'], ['acc', 'Sudah ACC']] as [Saringan, string][]).map(([k, t]) => (
             <button key={k} type="button" onClick={() => setSaringan(k)} aria-pressed={saringan === k}
               className={`px-3 py-2 rounded-full text-xs font-semibold border cursor-pointer min-h-[40px] ${saringan === k ? 'bg-[#1C658C] text-white border-[#1C658C]' : 'bg-white text-slate-700 border-[#DCDFE3] hover:bg-slate-100'}`}>{t}</button>
           ))}
@@ -323,7 +316,6 @@ export const SeliaTeraLkk: React.FC<{
                     <span className="block text-xs text-slate-600">BO {f.bo} · {f.isi.length} LKK terkirim</span>
                   </span>
                   {f.isTest && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800">Data uji</span>}
-                  {f.merah > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{f.merah} merah</span>}
                   {f.menunggu > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-300"><Clock className="w-3.5 h-3.5" aria-hidden="true" />{f.menunggu} menunggu</span>}
                   <ChevronDown className={`w-5 h-5 shrink-0 text-slate-500 transition-transform ${buka ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
@@ -358,29 +350,27 @@ export const SeliaTeraLkk: React.FC<{
                 </div>
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <Chip status={detail.lkk.status} />
+                  {bisaAksi && !ubah && (
+                    <button type="button" onClick={() => { setUbah(true); setHasilAksi(null); }}
+                      className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl bg-[#0B6FB3] hover:bg-[#095C95] text-white text-xs font-bold cursor-pointer active:scale-[0.97]">
+                      <Pencil className="w-4 h-4" aria-hidden="true" />Ubah isian
+                    </button>
+                  )}
                 </div>
               </header>
+              {hasilAksi && !ubah && (
+                <p role="status" className={`text-sm flex items-start gap-1.5 font-semibold ${hasilAksi.ok ? 'text-emerald-700' : 'text-rose-700'}`}>{hasilAksi.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />}{hasilAksi.teks}</p>
+              )}
 
-              {/* 1. Hasil periksa server + penanda */}
-              <Bagian id="b-periksa" judul="1. Hasil periksa server">
-                {!pem && <Tanda tingkat="merah" judul="Belum diperiksa server">LKK ini belum punya hasil hitung ulang untuk versi ini. ACC ditolak sampai ada. Tunggu sebentar lalu muat ulang.</Tanda>}
-                {pem && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-slate-600">Hitung ulang server: <strong className={pem.jejakCocok ? 'text-[#166534]' : 'text-[#991B1B]'}>{pem.jejakCocok ? 'COCOK dengan hitungan tablet' : 'BERBEDA dengan hitungan tablet'}</strong> · Kesimpulan server: <strong>{pem.kesimpulanServer ?? '-'}</strong> · Diperiksa {tgl(pem.diperiksaAt)}</p>
-                    {pem.penanda.length === 0 && <p className="text-xs text-[#166534] font-semibold flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" aria-hidden="true" />Tidak ada penanda.</p>}
-                    {pem.penanda.map((p, i) => (
-                      <Tanda key={i} tingkat={p.blokirAcc ? 'merah' : 'info'} judul={p.blokirAcc ? 'Memblokir ACC' : 'Info Penyelia'}
-                        periksa={{ sudah: !!diperiksa[kunci(detail.lkk.id, 'p', String(i))], ubah: () => toggle(kunci(detail.lkk.id, 'p', String(i))) }}>{p.teks}</Tanda>
-                    ))}
-                    {(h?.peringatan || []).map((t: string, i: number) => (
-                      <Tanda key={'w' + i} tingkat="kuning" judul="Peringatan hitungan" periksa={{ sudah: !!diperiksa[kunci(detail.lkk.id, 'w', String(i))], ubah: () => toggle(kunci(detail.lkk.id, 'w', String(i))) }}>{t}</Tanda>
-                    ))}
-                  </div>
-                )}
-              </Bagian>
+              {/* Penyelia mengubah isian langsung (tanpa alasan; riwayat internal otomatis) */}
+              {ubah && bisaAksi && (
+                <SeliaTeraEditor lkkId={detail.lkk.id} data={detail.data} template={detail.template} tanggalKalibrasi={detail.lkk.tanggalKalibrasi ?? null}
+                  onBatal={() => setUbah(false)}
+                  onTersimpan={(teks) => { setUbah(false); setHasilAksi({ ok: true, teks }); void muatDetail(detail.lkk.id); if (!modeDetail) void muatDaftar(); }} />
+              )}
 
               {/* 2. Identitas */}
-              <Bagian id="b-identitas" judul="2. Identitas alat">
+              <Bagian id="b-identitas" judul="1. Identitas alat">
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {Object.entries(data.identitas ?? {}).map(([k, v]) => <Isian key={k} nama={NAMA_IDENTITAS[k] ?? k} nilai={v === null || v === '' ? '-' : (k === 'tanggalPenerimaan' ? tglPendek(String(v)) : String(v))} />)}
                   <Isian nama="Template" nilai={`${detail.lkk.templateKode} v${detail.lkk.templateVersi}`} />
@@ -388,7 +378,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 3. Lingkungan */}
-              <Bagian id="b-lingkungan" judul="3. Kondisi lingkungan">
+              <Bagian id="b-lingkungan" judul="2. Kondisi lingkungan">
                 <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <Isian nama="Suhu awal (°C)" nilai={fmt(data.lingkungan?.suhuAwal, 1)} />
                   <Isian nama="Suhu akhir (°C)" nilai={fmt(data.lingkungan?.suhuAkhir, 1)} />
@@ -398,18 +388,18 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 4. Fisik & fungsi */}
-              <Bagian id="b-fisik" judul="4. Pemeriksaan fisik & fungsi">
+              <Bagian id="b-fisik" judul="3. Pemeriksaan fisik & fungsi">
                 <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-100 text-[11px] text-slate-600"><tr><th className="p-2 text-left">Butir</th><th className="p-2 text-left">Fisik</th><th className="p-2 text-left">Fungsi</th></tr></thead>
                     <tbody>
                       {(tpl.fisik || []).map((b: Peta) => {
                         const v = data.fisik?.[b.id] ?? {};
-                        return <tr key={b.id} className="border-t border-[#DCDFE3]"><td className="p-2">{b.judul}</td><td className={`p-2 ${v.fisik === 'Tidak Baik' ? 'font-bold text-[#991B1B]' : ''}`}>{v.fisik ?? '-'}</td><td className={`p-2 ${v.fungsi === 'Tidak Baik' ? 'font-bold text-[#991B1B]' : ''}`}>{v.fungsi ?? '-'}</td></tr>;
+                        return <tr key={b.id} className="border-t border-[#DCDFE3]"><td className="p-2">{b.judul}</td><td className="p-2">{v.fisik ?? '-'}</td><td className="p-2">{v.fungsi ?? '-'}</td></tr>;
                       })}
                       {(tpl.fisikTambahan || []).map((b: Peta) => {
                         const v = data.fisikTambahan?.[b.id];
-                        return <tr key={b.id} className="border-t border-[#DCDFE3]"><td className="p-2">{b.judul}</td><td colSpan={2} className={`p-2 ${v === 'Tidak Baik' ? 'font-bold text-[#991B1B]' : ''}`}>{v ?? '-'}</td></tr>;
+                        return <tr key={b.id} className="border-t border-[#DCDFE3]"><td className="p-2">{b.judul}</td><td colSpan={2} className="p-2">{v ?? '-'}</td></tr>;
                       })}
                     </tbody>
                   </table>
@@ -419,20 +409,19 @@ export const SeliaTeraLkk: React.FC<{
 
               {/* 5. Uji ambang */}
               {(tpl.ujiAmbang || []).length > 0 && (
-                <Bagian id="b-uji" judul="5. Uji lain">
+                <Bagian id="b-uji" judul="4. Uji lain">
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-100 text-[11px] text-slate-600"><tr><th className="p-2 text-left">Uji</th><th className="p-2 text-left">Nilai ukur</th><th className="p-2 text-left">Batas</th><th className="p-2 text-left">Hasil</th></tr></thead>
                       <tbody>
                         {(tpl.ujiAmbang as Peta[]).map((u) => {
                           const r = h?.ujiAmbang?.[u.id];
-                          const lewat = r?.hasil === 'Tidak Laik';
                           return (
-                            <tr key={u.id} className={`border-t border-[#DCDFE3] ${lewat ? 'bg-[#FEE2E2] text-[#991B1B] font-bold' : ''}`}>
+                            <tr key={u.id} className="border-t border-[#DCDFE3]">
                               <td className="p-2">{u.judul}</td>
                               <td className="p-2 tabular-nums">{fmt(r?.nilaiUkur)} {u.satuan}</td>
                               <td className="p-2 tabular-nums">{u.banding} {fmt(u.batas)} {u.satuan}</td>
-                              <td className="p-2">{lewat ? <span className="inline-flex items-center gap-1"><AlertCircle className="w-4 h-4" aria-hidden="true" />Melewati batas</span> : (r?.hasil ?? '-')}</td>
+                              <td className="p-2">{r?.hasil ?? '-'}</td>
                             </tr>
                           );
                         })}
@@ -448,8 +437,8 @@ export const SeliaTeraLkk: React.FC<{
                 const def = (tpl.kinerja || []).find((x: Peta) => x.id === kid) ?? {};
                 const tol: number | null = typeof aturanKinerja[kid]?.toleransi === 'number' ? aturanKinerja[kid].toleransi : null;
                 return (
-                  <Bagian key={kid} id={`b-kin-${kid}`} judul={`6. ${def.judul ?? kid} — jejak hitung`}>
-                    <p className="text-xs text-slate-600">Toleransi: ± {fmt(tol)} {def.satuan} · Titik Laik: {kin.jumlahLaik} dari {kin.jumlahDinilai}{kin.u95Melebihi ? ' · U95 melebihi batas laporan' : ''}</p>
+                  <Bagian key={kid} id={`b-kin-${kid}`} judul={`5. ${def.judul ?? kid} — jejak hitung`}>
+                    <p className="text-xs text-slate-600">Toleransi: ± {fmt(tol)} {def.satuan} · Titik Laik: {kin.jumlahLaik} dari {kin.jumlahDinilai}</p>
                     <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                       <table className="w-full text-xs tabular-nums">
                         <thead className="bg-slate-100 text-[11px] text-slate-600">
@@ -458,29 +447,17 @@ export const SeliaTeraLkk: React.FC<{
                         <tbody>
                           {(kin.titik as Peta[]).map((t, i) => {
                             const bacaan: unknown[] = data.kinerja?.[kid]?.[String(t.titik)]?.[t.arah] ?? [];
-                            const ukur = typeof t.koreksi === 'number' ? Math.abs(t.koreksi) + (typeof t.u95Laporan === 'number' ? t.u95Laporan : 0) : null;
-                            const lewat = t.hasil === 'Tidak Laik';
-                            const dekat = !lewat && tol !== null && ukur !== null && ukur >= 0.8 * tol;
-                            const k = kunci(detail.lkk.id, 'k', kid, String(i));
                             return (
                               <React.Fragment key={i}>
-                                <tr className={`border-t border-[#DCDFE3] ${lewat ? 'bg-[#FEE2E2] text-[#991B1B] font-bold' : dekat ? 'bg-[#FEF3C7] text-[#92400E]' : ''}`}>
+                                <tr className="border-t border-[#DCDFE3]">
                                   <td className="p-2">{fmt(t.titik)}</td><td className="p-2">{t.arah}</td>
                                   <td className="p-2 whitespace-nowrap">{bacaan.map((b) => fmt(b)).join('; ') || '-'}</td>
                                   <td className="p-2">{fmt(t.rataRata, 3)}</td><td className="p-2">{fmt(t.koreksi, 3)}</td>
                                   <td className="p-2">{fmt(t.uTipeA, 3)}</td><td className="p-2">{fmt(t.uSertifikat, 3)}</td><td className="p-2">{fmt(t.uZero, 3)}</td>
                                   <td className="p-2">{fmt(t.uResolusi, 3)}</td><td className="p-2">{fmt(t.uDrift, 3)}</td><td className="p-2">{fmt(t.uc, 3)}</td>
                                   <td className="p-2">{fmt(t.vEff, 1)}</td><td className="p-2">{fmt(t.k, 3)}</td><td className="p-2">{fmt(t.u95, 3)}</td><td className="p-2">{fmt(t.u95Laporan, 2)}</td>
-                                  <td className="p-2 whitespace-nowrap">{lewat ? 'Tidak Laik' : t.hasil}</td>
+                                  <td className="p-2 whitespace-nowrap">{t.hasil}</td>
                                 </tr>
-                                {(lewat || dekat) && (
-                                  <tr><td colSpan={16} className="p-1.5">
-                                    <Tanda tingkat={lewat ? 'merah' : 'kuning'} judul={lewat ? 'Melewati batas' : 'Mendekati batas'}
-                                      periksa={{ sudah: !!diperiksa[k], ubah: () => toggle(k) }}>
-                                      Titik {fmt(t.titik)} {t.arah}: |koreksi| + U95 = {fmt(ukur, 2)} {def.satuan}; batas (toleransi) ± {fmt(tol)} {def.satuan}; selisih {fmt(tol !== null && ukur !== null ? tol - ukur : null, 2)}. Sumber batas: template {detail.lkk.templateKode} v{detail.lkk.templateVersi}.
-                                    </Tanda>
-                                  </td></tr>
-                                )}
                               </React.Fragment>
                             );
                           })}
@@ -492,7 +469,7 @@ export const SeliaTeraLkk: React.FC<{
               })}
 
               {/* 7. Alat standar */}
-              <Bagian id="b-kal" judul="7. Alat standar yang dipakai (fotokopi sertifikat di LKK)">
+              <Bagian id="b-kal" judul="6. Alat standar yang dipakai (fotokopi sertifikat di LKK)">
                 {detail.calibratorSnapshot && Object.keys(detail.calibratorSnapshot).length > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
@@ -510,7 +487,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 8. Kesimpulan */}
-              <Bagian id="b-kesimpulan" judul="8. Kesimpulan">
+              <Bagian id="b-kesimpulan" judul="7. Kesimpulan">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`px-4 py-2 rounded-full text-sm font-black border ${h?.kesimpulan === 'Tidak Laik Pakai' ? 'bg-[#FEE2E2] text-[#991B1B] border-[#DC2626]' : 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'}`}>{h?.kesimpulan ?? '-'}</span>
                   {h?.skor && <span className="text-xs text-slate-600">Skor total {fmt(h.skor.total, 1)} (rincian: {(h.skor.rincian || []).map((r: Peta) => `${r.dari} ${fmt(r.nilai, 1)}`).join(', ')})</span>}
@@ -518,7 +495,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 9. Pratinjau sertifikat (di paling bawah lembar, sebelum keputusan) */}
-              <Bagian id="b-pratinjau" judul="9. Pratinjau sertifikat">
+              <Bagian id="b-pratinjau" judul="8. Pratinjau sertifikat">
                 {detail.lkk.templateKode !== 'sphygmomanometer' ? (
                   <p className="text-sm text-slate-600">Pratinjau sertifikat untuk alat ini belum tersedia.</p>
                 ) : (
@@ -582,7 +559,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 10. Aksi */}
-              <Bagian id="b-aksi" judul="10. Keputusan Penyelia">
+              <Bagian id="b-aksi" judul="9. Keputusan Penyelia">
                 {!bisaAksi && !bolehKoreksi && <p className="text-sm text-slate-600">LKK berstatus <strong>{STATUS[detail.lkk.status]?.teks ?? detail.lkk.status}</strong>; tidak ada aksi yang tersedia di sini.{detail.lkk.status === 'approved' ? ' Bila ada kesalahan, hanya Developer yang bisa membuka koreksi.' : ''}</p>}
                 {detail.lkk.status === 'correction_open' && (
                   <Tanda tingkat="kuning" judul={`Koreksi dibuka · revisi ${detail.lkk.revisi ?? '-'}`}>Sertifikat lama tetap berlaku sampai ACC ulang. Kembalikan ke teknisi untuk dibetulkan (lalu ACC ulang), atau ACC ulang langsung bila tidak ada isian yang perlu diubah. Sesudah ACC ulang: PDF versi baru dengan nomor sama, QR stiker ikut versi baru, PDF lama tetap disimpan.</Tanda>
@@ -610,7 +587,6 @@ export const SeliaTeraLkk: React.FC<{
                 )}
                 {bisaAksi && (
                   <div className="space-y-4">
-                    {!pem?.bolehAcc && <Tanda tingkat="merah" judul="ACC belum bisa">Ada penanda yang memblokir ACC (lihat bagian 1). Kembalikan ke teknisi untuk diperbaiki.</Tanda>}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <div className="rounded-xl border border-[#DCDFE3] p-4 space-y-2">
                         <label htmlFor="alasan-kembali" className="block text-xs font-bold text-slate-700">Alasan pengembalian (wajib)</label>

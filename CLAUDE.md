@@ -176,7 +176,7 @@ Aplikasi lama pernah **kehilangan data** saat sinkron. **Ini tidak boleh terulan
 10. Tombol **"Backup ke file"** sebagai cadangan darurat. **Draft juga dicadangkan otomatis ke server** (`tera_lkk_drafts`, maks tiap 60 s & saat aplikasi ditutup) — cadangan saja, tidak masuk Selia (PRD F4.16).
 11. **Tidak ada tombol Upload manual.**
 12. Nomor label ganda: **ditolak** dengan pesan jelas *(diubah 19 Okt 2026 atas permintaan pemilik proyek)*. LKK-nya **tetap aman di perangkat** (chip merah, bisa diperbaiki), salinan kiriman disimpan di `tera_sync_conflicts`, mesin kirim berhenti mencoba ulang sampai nomor diperbaiki. Tidak boleh ada penolakan diam-diam.
-13. Server **tidak menolak** LKK berisi kalibrator expired (data tidak boleh hilang): simpan, beri penanda merah, ACC ditolak.
+13. Server **tidak menolak** LKK berisi kalibrator expired (data tidak boleh hilang): simpan, beri penanda merah, ACC ditolak. *(Diubah 25 Okt 2026 atas permintaan pemilik proyek: ACC **tidak diblokir** penanda apa pun — migrasi 0020. Pemblokiran kalibrator expired di tablet teknisi tetap.)*
 14. Pemindaian AI berjalan **setelah** 🟢 dan terpisah dari sinkron.
 15. **Uji wajib** sebelum tahap sinkron selesai: sinyal putus di tengah kirim, tab/aplikasi ditutup paksa, HP mati, ≥ 50 LKK sekaligus, sinyal putus-sambung, memori hampir penuh, update versi saat ada data 🟡.
 
@@ -485,6 +485,7 @@ Teknisi memakai **HP dan tablet**. Tampilan otomatis menyesuaikan lebar layar da
 - [ ] (Layar Selia) Highlight AI kuning/merah sesuai 13.11, tidak tampil di layar teknisi
 
 ### 13.11 Highlight AI pra-penyeliaan (layar Selia)
+> **Diubah 25 Okt 2026 (pemilik proyek):** penanda mendekati/melewati batas **tidak ditampilkan** di layar Selia dan **tidak memblokir ACC**. Penyelia boleh **mengubah semua isian teknisi** langsung (tanpa alasan); setiap perubahan dicatat otomatis di riwayat internal (`tera_lkk_riwayat`, aksi `ubah_nilai`). Aturan di bawah ini berlaku lagi hanya bila pemilik proyek memintanya (Tahap 7).
 Hanya untuk Penyelia & Developer. Tidak tampil ke teknisi, tidak dicetak.
 
 | Level | Kapan | Latar sel | Garis kiri (3 px) | Teks | Ikon | Label |
