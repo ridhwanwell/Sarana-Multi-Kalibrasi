@@ -66,6 +66,22 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
     })();
     return () => { hidup = false; };
   }, [bolehTera, activeRSId, activeTeraId]);
+  // LKK Tera yang dibuka = halaman tersendiri. Riwayat browser ikut diisi agar tombol/gesek "kembali" di iPhone
+  // menutup halaman LKK (bukan keluar dari Selia).
+  const [teraLkkId, setTeraLkkId] = useState<string | null>(null);
+  useEffect(() => {
+    const balik = (e: PopStateEvent) => setTeraLkkId((e.state && typeof e.state.teraLkk === 'string') ? e.state.teraLkk : null);
+    window.addEventListener('popstate', balik);
+    return () => window.removeEventListener('popstate', balik);
+  }, []);
+  const bukaLkk = (id: string) => {
+    try { window.history.pushState({ ...(window.history.state ?? {}), teraLkk: id }, ''); } catch { /* tetap dibuka */ }
+    setTeraLkkId(id);
+    window.scrollTo({ top: 0 });
+  };
+  const tutupLkk = () => {
+    if (window.history.state?.teraLkk) window.history.back(); else setTeraLkkId(null);
+  };
   const teraPer = new Map<string, TeraJadwal>(teraJadwal.map((t: TeraJadwal) => [t.jadwalId, t] as [string, TeraJadwal]));
 
   // Completed / eligible schedules for Selia (+ yang sudah di-Push ke Tera SMK)
@@ -92,6 +108,22 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
     setTimeout(() => setSavedNotice(null), 2500);
   };
 
+  // Tera: halaman satu LKK (dibuka dari daftar LKK di detail RS)
+  if (teraLkkId) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={tutupLkk}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 rounded-xl border border-slate-700/80 font-bold text-xs transition-all shadow-md group min-h-[44px]"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          <span>Kembali ke daftar LKK</span>
+        </button>
+        <SeliaTeraLkk key={teraLkkId} lkkId={teraLkkId} />
+      </div>
+    );
+  }
+
   // Tera: tampilan detail untuk jadwal Tera yang tidak ada di penjadwalan / LKK tanpa jadwal
   if (activeTeraId) {
     const t = teraJadwal.find((x) => x.jadwalId === activeTeraId);
@@ -112,7 +144,7 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
               : <>BO {t?.bo ?? '-'}{t?.labelAwal ? ` · No. Label ${t.labelAwal} s/d ${t.labelAkhir ?? '-'}` : ''}{t?.isTest ? ' · data uji' : ''} · jadwal dari Push Tera SMK</>}
           </p>
         </div>
-        <SeliaTeraLkk jadwalId={activeTeraId === TANPA_JADWAL ? null : activeTeraId} />
+        <SeliaTeraLkk jadwalId={activeTeraId === TANPA_JADWAL ? null : activeTeraId} onPilih={bukaLkk} />
       </div>
     );
   }
@@ -393,7 +425,7 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
         </div>
 
         {/* LKK Digital Tera SMK untuk RS ini (hasil Push jadwal ke Tera → LKK teknisi masuk ke sini) */}
-        {bolehTera && teraPer.has(activeSchedule.id) && <SeliaTeraLkk jadwalId={activeSchedule.id} />}
+        {bolehTera && teraPer.has(activeSchedule.id) && <SeliaTeraLkk jadwalId={activeSchedule.id} onPilih={bukaLkk} />}
 
         {/* Search & Filter Toolbar */}
         <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">

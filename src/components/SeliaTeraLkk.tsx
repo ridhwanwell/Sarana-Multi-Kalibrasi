@@ -96,8 +96,15 @@ const adaMerah = (x: Ringkas) => !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x
  * jadwalId: undefined = semua LKK (folder per RS); string = hanya LKK jadwal itu (ditanam di Selia Dashboard per RS);
  * null = LKK tanpa jadwal (data uji lama).
  */
-export const SeliaTeraLkk: React.FC<{ jadwalId?: string | null }> = ({ jadwalId }) => {
+export const SeliaTeraLkk: React.FC<{
+  jadwalId?: string | null;
+  /** Mode halaman detail: hanya isi satu LKK (dibuka sebagai halaman tersendiri oleh SeliaDashboard). */
+  lkkId?: string;
+  /** Mode daftar: LKK yang diketuk dibuka di halaman baru (bukan dibentangkan di bawah daftar). */
+  onPilih?: (id: string) => void;
+}> = ({ jadwalId, lkkId, onPilih }) => {
   const tertanam = jadwalId !== undefined;
+  const modeDetail = !!lkkId;
   const { role } = useAuth();
   const boleh = role === 'admin_teknik' || role === 'admin_utama';
   const [daftar, setDaftar] = useState<Ringkas[] | null>(null);
@@ -160,7 +167,7 @@ export const SeliaTeraLkk: React.FC<{ jadwalId?: string | null }> = ({ jadwalId 
     setMemuatDetail(false);
   }, []);
 
-  useEffect(() => { if (boleh) void muatDaftar(); }, [boleh, muatDaftar]);
+  useEffect(() => { if (boleh && !modeDetail) void muatDaftar(); }, [boleh, modeDetail, muatDaftar]);
   // Coba ulang otomatis (sekali per buka detail) bila sertifikat terbit belum ada di Drive; server mengatur jeda.
   useEffect(() => {
     const b = detail?.sertifikat?.find((x) => x.status === 'berlaku');
@@ -169,11 +176,18 @@ export const SeliaTeraLkk: React.FC<{ jadwalId?: string | null }> = ({ jadwalId 
   }, [detail?.lkk?.id, detail?.driveTersambung]);
 
   const pilih = (id: string) => {
+    if (onPilih && !modeDetail) { onPilih(id); return; }
     bersihkanPratinjau(); setPdfGalat(null); setDriveKirim(null); setYakinKoreksi(false); setAlasanKoreksi('');
     setPilihId(id); setDetail(null); setAlasan(''); setYakinAcc(false); setHasilAksi(null);
     void muatDetail(id);
-    setTimeout(() => bentang.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 60);
+    if (!modeDetail) setTimeout(() => bentang.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }), 60);
   };
+
+  // Halaman detail: muat LKK yang dibuka (sekali per id).
+  useEffect(() => {
+    if (boleh && lkkId) pilih(lkkId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boleh, lkkId]);
 
   const tampil = useMemo(() => {
     const d = daftar || [];
@@ -274,13 +288,13 @@ export const SeliaTeraLkk: React.FC<{ jadwalId?: string | null }> = ({ jadwalId 
     <section aria-labelledby="selia-tera" className="bg-white rounded-2xl border border-[#DCDFE3] p-5 sm:p-6 space-y-6 mb-6">
       <div>
         <h2 id="selia-tera" className="text-xl font-black text-[#1C658C] flex items-center gap-2"><Stamp className="w-5 h-5" aria-hidden="true" />LKK Digital Tera SMK</h2>
-        <p className="text-sm text-slate-600 mt-1 leading-relaxed">{tertanam
-          ? 'LKK rumah sakit ini yang sudah dikirim teknisi dari Tera SMK. Pilih satu LKK, lalu seluruh isinya terbentang di bawah daftar dalam satu lembar (scroll ke bawah). Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'
-          : 'Folder per rumah sakit, isinya hanya LKK yang sudah dikirim teknisi. Buka folder, pilih satu LKK, lalu seluruh isinya terbentang di bawah daftar dalam satu lembar (scroll ke bawah). Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'}</p>
+        {!modeDetail && <p className="text-sm text-slate-600 mt-1 leading-relaxed">{tertanam
+          ? 'LKK rumah sakit ini yang sudah dikirim teknisi dari Tera SMK. Ketuk satu LKK untuk membukanya di halaman tersendiri. Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'
+          : 'Folder per rumah sakit, isinya hanya LKK yang sudah dikirim teknisi. Buka folder, ketuk satu LKK untuk membukanya di halaman tersendiri. Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'}</p>}
       </div>
 
       {/* ───────── DAFTAR ───────── */}
-      <div className="space-y-3">
+      {!modeDetail && <div className="space-y-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Saring daftar LKK">
           {([['semua', 'Semua'], ['merah', 'Ada penanda merah'], ['menunggu', 'Menunggu diperiksa'], ['acc', 'Sudah ACC']] as [Saringan, string][]).map(([k, t]) => (
             <button key={k} type="button" onClick={() => setSaringan(k)} aria-pressed={saringan === k}
@@ -324,12 +338,12 @@ export const SeliaTeraLkk: React.FC<{ jadwalId?: string | null }> = ({ jadwalId 
         </ul>
         )}
         {terpotong && <p className="text-xs text-slate-500">Hanya 300 LKK terbaru yang ditampilkan. Pakai saringan.</p>}
-      </div>
+      </div>}
 
       {/* ───────── LEMBAR PANJANG ───────── */}
       <div ref={bentang} className="scroll-mt-20" />
       {pilihId && (
-        <article aria-label="Isi LKK terpilih" className="border-t-2 border-[#1C658C]/30 pt-6 space-y-8">
+        <article aria-label="Isi LKK terpilih" className={modeDetail ? 'space-y-8' : 'border-t-2 border-[#1C658C]/30 pt-6 space-y-8'}>
           {memuatDetail && <p role="status" className="text-sm text-slate-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Memuat isi LKK…</p>}
           {gagalDetail && (
             <p role="alert" className="text-sm text-rose-700 flex flex-wrap items-center gap-2"><AlertTriangle className="w-4 h-4" aria-hidden="true" />{gagalDetail}

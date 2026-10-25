@@ -365,4 +365,6 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - `renderSertifikat.ts`: bila ada templat → kop, lalu halaman templat ditempel, lalu HANYA isian dicetak di posisi yang sama. Perbaikan: font Carlito tidak lagi dipotong (`subset:false`; huruf hilang di iPhone) dan halaman/tempelan diberi grup transparansi (kotak abu-abu watermark di iPhone).
 - `teraPdfSertifikat.ts` mengambil templat dari `/tera/sertifikat/` (di-cache seperti font).
 - Catatan: teks tetap kini persis Excel, termasuk salah ketik "Reading after 60 secon" — bila mau dibetulkan, betulkan di Excel lalu kirim ulang PDF Report All-nya.
-- BERIKUTNYA: (1) Selia — klik nomor label/sertifikat/nama alat membuka halaman tersendiri (tombol Kembali iPhone berfungsi); (2) Penyelia bisa menyunting semua isian teknisi (alasan wajib, riwayat per kolom, hitung ulang di server; migrasi 0020 `tera_ubah_lkk`).
+- Produksi READY (fa46da6): /api/health OK, /087.0031 terbuka, templat PDF tersaji di /tera/sertifikat/.
+- Selia: LKK yang diketuk kini dibuka di HALAMAN TERSENDIRI (SeliaDashboard `teraLkkId` + history.pushState; tombol "Kembali ke daftar LKK" & gesek kembali iPhone menutup halaman LKK). `SeliaTeraLkk` prop baru `lkkId` (mode halaman) & `onPilih` (mode daftar). Isi halaman sama seperti sebelumnya.
+- BERIKUTNYA: Penyelia bisa menyunting semua isian teknisi (alasan wajib, riwayat per kolom, hitung ulang di server; migrasi 0020 `tera_ubah_lkk`).
