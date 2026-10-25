@@ -2,7 +2,7 @@
 // Jalankan: npx tsx tests/tera/sertifikatSphygmo.test.mts   (PDF diuji dengan font standar; font Carlito dipasang di server)
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { TEMPLATE_SPHYGMOMANOMETER as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
+import { TEMPLATE_SPHYGMOMANOMETER_V2 as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
 import { TATA_LETAK_SPHYGMOMANOMETER as TL } from '../../src/tera/pdf/tataLetakSphygmo.ts';
 import { susun, kunciIsian } from '../../src/tera/pdf/susunSertifikat.ts';

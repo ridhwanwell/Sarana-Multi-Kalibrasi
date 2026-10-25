@@ -45,7 +45,7 @@ export interface JejakHitung {
   masukan: { resolusi: number | null; jenisSkala: string | null };
   /** Aturan template yang dipakai (disalin, supaya jejak bisa dibaca tanpa template). */
   aturan: {
-    kinerja: Record<string, Pick<TemplateAlat['kinerja'][number], 'toleransi' | 'tipeA' | 'kMetode' | 'derajatBebas' | 'u95MinimumLaporan' | 'u95Maksimum' | 'pembagiResolusi' | 'desimalCetak' | 'k'>>;
+    kinerja: Record<string, Pick<TemplateAlat['kinerja'][number], 'toleransi' | 'tipeA' | 'koreksiPada' | 'kMetode' | 'derajatBebas' | 'u95MinimumLaporan' | 'u95Maksimum' | 'pembagiResolusi' | 'desimalCetak' | 'k'>>;
     ujiAmbang: TemplateAlat['ujiAmbang'];
     skor: TemplateAlat['skor'];
   };
@@ -81,7 +81,7 @@ export function buatJejakHitung(
     const kinerja: JejakHitung['aturan']['kinerja'] = {};
     for (const k of tpl.kinerja) {
       kinerja[k.id] = {
-        toleransi: k.toleransi, tipeA: k.tipeA, kMetode: k.kMetode, derajatBebas: k.derajatBebas, u95MinimumLaporan: k.u95MinimumLaporan,
+        toleransi: k.toleransi, tipeA: k.tipeA, ...(k.koreksiPada ? { koreksiPada: k.koreksiPada } : {}), kMetode: k.kMetode, derajatBebas: k.derajatBebas, u95MinimumLaporan: k.u95MinimumLaporan,
         u95Maksimum: k.u95Maksimum, pembagiResolusi: k.pembagiResolusi, desimalCetak: k.desimalCetak, k: k.k,
       };
     }

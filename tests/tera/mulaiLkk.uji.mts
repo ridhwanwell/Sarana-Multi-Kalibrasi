@@ -171,7 +171,7 @@ await tunggu(p, () => !document.querySelector('.t-lembar'));
 let lkk = await semuaLkk(p);
 cek('ketuk dobel → tetap 1 LKK', lkk.length === 1, String(lkk.length));
 const a = lkk[0] || {};
-cek('LKK terbentuk: nomor, BO, template & versi, tanggal hari ini, draft', a.noLabel === '095.0001' && a.bo === '095' && a.templateKode === 'sphygmomanometer' && a.templateVersi === 2 && a.tanggalKalibrasi === hariIni() && a.syncState === 'draft', JSON.stringify(a));
+cek('LKK terbentuk: nomor, BO, template & versi, tanggal hari ini, draft', a.noLabel === '095.0001' && a.bo === '095' && a.templateKode === 'sphygmomanometer' && a.templateVersi === 3 && a.tanggalKalibrasi === hariIni() && a.syncState === 'draft', JSON.stringify(a));
 cek('LKK PO: bukan alat tambahan, terkait item PO "A" dan jadwal j1, bukan data uji', a.alatTambahan === false && a.poItemRef === 'A' && a.jadwalId === 'j1' && a.isTest === false);
 cek('lembar tertutup lalu langsung pindah ke layar isi LKK (/tera/lkk/<id>)', !(await adaSheet(p)) && (await p.evaluate(() => (window as any).__navigasi)) === `/tera/lkk/${encodeURIComponent(a.id)}`, String(await p.evaluate(() => (window as any).__navigasi)));
 cek('baris LKK di Detail RS menjadi tautan ke layar isi LKK', await tunggu(p, () => !!document.querySelector('a.t-lkk-baris[href^="/tera/lkk/"]')));

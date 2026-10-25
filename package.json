@@ -18,6 +18,7 @@
     "test:tera:jadwal-layar": "tsx tests/tera/jadwalLayar.uji.mts",
     "test:tera:impor": "tsx tests/tera/imporServer.test.mts",
     "test:tera:hitung": "tsx tests/tera/hitungSphygmo.test.mts",
+    "test:tera:hitung-v5": "tsx tests/tera/hitungSphygmoV5.test.mts",
     "test:tera:jejak": "tsx tests/tera/jejak.test.mts",
     "test:tera:sertifikat": "tsx tests/tera/sertifikatSphygmo.test.mts",
     "test:tera:periksa-server": "tsx tests/tera/periksaServer.test.mts",

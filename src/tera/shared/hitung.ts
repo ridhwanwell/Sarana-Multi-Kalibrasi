@@ -25,6 +25,15 @@
  *  - Titik Laik bila |koreksi| + U95 laporan ≤ toleransi
  *  - Fisik: butir utama (2 kotak per baris) + butir tambahan MK 90.7.7 (1 kotak) dibagi SEMUA kotak
  *  - Kesimpulan dari skor (Laik Pakai bila total ≥ 70, keputusan Ridhwan 22 Okt 2026)
+ *
+ * Tambahan Master Sphygmomanometer 25 Okt 2026 (_referensi/sphygmo-v5/, template versi 3; versi lama tetap dihitung
+ * dengan cara lamanya supaya LKK lama tidak berubah):
+ *  - koreksiPada 'bacaan': koreksi kalibrator dicari (interpolasi linier) di NILAI BACAAN tiap run, bukan di titik
+ *    setting; U95 & drift kalibrator dicari di rata-rata bacaan mentah. Di luar tabel lebih dari 0,5 → tidak dihitung
+ *    (Excel #N/A). Ketidakpastian!D37:I42, S:T, AD:AE.
+ *  - tipeA 'stdev_selisih_dari_nol': STDEV.S dari (run − run yang sama di titik nol) / √n (Ketidakpastian!N:Q, AW:BB).
+ *  - derajatBebas.tipeA 'n-1': derajat kebebasan Tipe A per titik = n − 1 (Ketidakpastian!BE:BF).
+ *  - skor kinerja pembagi 'semua': jumlah titik Laik dibagi SEMUA data (6 titik × naik/turun = 12), View Report!AE4.
  */
 
 // ───────────────────────────── Bentuk template ─────────────────────────────
@@ -45,11 +54,13 @@ export interface KinerjaNaikTurun {
   /** U95 ≤ nilai ini dilaporkan sebagai nilai ini (CMC). null = tanpa batas. */
   u95MinimumLaporan: number | null;
   /** Cara menghitung u Tipe A. */
-  tipeA: 'stdev' | 'selisih_maks_dari_nol';
+  tipeA: 'stdev' | 'selisih_maks_dari_nol' | 'stdev_selisih_dari_nol';
+  /** Di mana koreksi kalibrator dicari: di titik setting (bawaan, versi lama) atau di nilai bacaan tiap run (v3). */
+  koreksiPada?: 'setting' | 'bacaan';
   /** 'tetap' = pakai k; 'veff' = k dari derajat kebebasan efektif (Welch–Satterthwaite + polinom Excel). */
   kMetode: 'tetap' | 'veff';
   /** Derajat kebebasan tiap komponen (Ketidakpastian!R, W, Z, AC, AH). Dipakai bila kMetode = 'veff'. */
-  derajatBebas: { tipeA: number; sertifikat: number; zero: number; resolusi: number; drift: number };
+  derajatBebas: { tipeA: number | 'n-1'; sertifikat: number; zero: number; resolusi: number; drift: number };
   /** Peringatan bila U95 laporan melebihi nilai ini (MK 090 butir 90.10.3: 1,5). null = tanpa. */
   u95Maksimum: number | null;
   /** Pembagi resolusi per jenis skala (Analog √6 segitiga, Digital √3 persegi). */
@@ -73,7 +84,7 @@ export interface UjiAmbang {
 export type ItemSkor =
   | { dari: 'fisik'; minimalPersen: number; nilai: number }
   | { dari: 'uji_ambang'; id: string; nilai: number }
-  | { dari: 'kinerja'; id: string; minimalPersen: number; nilai: number };
+  | { dari: 'kinerja'; id: string; minimalPersen: number; nilai: number; pembagi?: 'dinilai' | 'semua' };
 
 export interface TemplateAlat {
   kode_alat: string;
@@ -211,6 +222,21 @@ export function kalibratorDi(tabel: TitikKalibrator[], titik: number, arah: 'nai
   return { koreksi: lerp(a.koreksi, b.koreksi), u95: lerp(a.u95, b.u95), drift: lerp(a.drift, b.drift) };
 }
 
+/**
+ * Cara Excel Master 25 Okt 2026: interpolasi linier pada nilai x (bacaan, atau rata-rata bacaan).
+ * x di bawah titik pertama − 0,5 atau di atas titik terakhir + 0,5 → null (Excel #N/A); di antara ujung dan ±0,5 →
+ * nilai titik ujung. Tabel kurang dari 2 titik → null.
+ */
+export function kalibratorPada(tabel: TitikKalibrator[], x: number, arah: 'naik' | 'turun') {
+  if (tabel.length < 2 || !Number.isFinite(x)) return null;
+  const urut = [...tabel].sort((a, b) => a.titik - b.titik);
+  const awal = urut[0].titik, akhir = urut[urut.length - 1].titik;
+  if (x < awal - 0.5 || x > akhir + 0.5) return null;
+  if (x <= awal) return kalibratorDi(urut, awal, arah);
+  if (x >= akhir) return kalibratorDi(urut, akhir, arah);
+  return kalibratorDi(urut, x, arah);
+}
+
 // ───────────────────────────── Kinerja naik-turun ─────────────────────────────
 
 function runLengkap(v: Angka[] | undefined, n: number): number[] | null {
@@ -227,11 +253,28 @@ export function hitungNaikTurun(
   jenisSkala: JenisSkala | null,
 ): { titik: HasilTitik[]; jumlahLaik: number; jumlahDinilai: number; u95Melebihi: boolean } {
   const n = k.pengulangan;
+  const padaBacaan = k.koreksiPada === 'bacaan';
   const terkoreksi = (titik: number, arah: 'naik' | 'turun'): number[] | null => {
     const run = runLengkap(isian?.[String(titik)]?.[arah], n);
+    if (!run) return null;
+    if (padaBacaan) {
+      const hasil: number[] = [];
+      for (const x of run) {
+        const kal = kalibratorPada(kalibrator, x, arah);
+        if (!kal) return null;
+        hasil.push(x + kal.koreksi);
+      }
+      return hasil;
+    }
     const kal = kalibratorDi(kalibrator, titik, arah);
-    if (!run || !kal) return null;
+    if (!kal) return null;
     return run.map((x) => x + kal.koreksi);
+  };
+  /** U95 & drift kalibrator untuk satu titik: v3 di rata-rata bacaan MENTAH; versi lama di titik setting. */
+  const kalibratorTitik = (titik: number, arah: 'naik' | 'turun') => {
+    if (!padaBacaan) return kalibratorDi(kalibrator, titik, arah);
+    const run = runLengkap(isian?.[String(titik)]?.[arah], n);
+    return kalibratorPada(kalibrator, run ? rataRata(run) : titik, arah);
   };
 
   // Zero error: dari titik nol (titik pertama), berlaku di semua titik.
@@ -249,13 +292,16 @@ export function hitungNaikTurun(
   for (const t of k.titik) {
     for (const arah of ['naik', 'turun'] as const) {
       const x = terkoreksi(t, arah);
-      const kal = kalibratorDi(kalibrator, t, arah);
+      const kal = kalibratorTitik(t, arah);
       const rr = x ? rataRata(x) : null;
       const kor = rr !== null ? rr - t : null;
       let uA: number | null = null;
       if (x) {
         if (k.tipeA === 'stdev') uA = stdevS(x) / Math.sqrt(n);
-        else {
+        else if (k.tipeA === 'stdev_selisih_dari_nol') {
+          const z = arah === 'naik' ? zNaik : zTurun;
+          if (z) uA = stdevS(x.map((v, i) => v - z[i])) / Math.sqrt(n);
+        } else {
           const z = arah === 'naik' ? zNaik : zTurun;
           if (z) {
             const d = x.map((v, i) => v - z[i]);
@@ -274,7 +320,8 @@ export function hitungNaikTurun(
         kk = null;
         if (lengkap && uc! > 0) {
           const v = k.derajatBebas;
-          const bawah = uA! ** 4 / v.tipeA + uStd! ** 4 / v.sertifikat + uZero! ** 4 / v.zero + uRes! ** 4 / v.resolusi + uDrift! ** 4 / v.drift;
+          const vA = v.tipeA === 'n-1' ? Math.max(n - 1, 1) : v.tipeA;
+          const bawah = uA! ** 4 / vA + uStd! ** 4 / v.sertifikat + uZero! ** 4 / v.zero + uRes! ** 4 / v.resolusi + uDrift! ** 4 / v.drift;
           if (bawah > 0) { vEff = uc! ** 4 / bawah; kk = faktorKDariVeff(vEff); }
         }
       }
@@ -358,7 +405,8 @@ export function hitungLkk(tpl: TemplateAlat, data: DataLkk, kalibrator: TitikKal
     else if (s.dari === 'uji_ambang') nilai = ujiAmbang[s.id]?.hasil === 'Laik' ? s.nilai : 0;
     else {
       const h = kinerja[s.id];
-      nilai = h && h.jumlahDinilai > 0 && h.jumlahLaik / h.jumlahDinilai >= s.minimalPersen ? s.nilai : 0;
+      const pembagi = s.pembagi === 'semua' ? (h?.titik.length ?? 0) : (h?.jumlahDinilai ?? 0);
+      nilai = h && pembagi > 0 && h.jumlahLaik / pembagi >= s.minimalPersen ? s.nilai : 0;
     }
     rincian.push({ dari: s.dari === 'fisik' ? 'fisik' : s.id, nilai });
   }

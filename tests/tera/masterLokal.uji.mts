@@ -35,9 +35,13 @@ const o: any = await p.evaluate(async () => {
   o.bawaan = [tplKode?.versi, tplKode?.toleransi ?? tplKode?.kinerja?.[0]?.toleransi];
   o.kalKosong = (await t.daftarKalibrator()).length;
 
+  const sv = (body: any, status = 200) => async () => new Response(JSON.stringify(body), { status });
+  // 1b. Server baru punya v2 (template v3 belum masuk database) → yang dipakai v2 dari server, BUKAN bawaan kode v3
+  await t.tarikMaster(sv({ template: [{ kodeAlat: 'sphygmomanometer', versi: 2, definition: { ...tplKode, versi: 2 } }], kalibrator: [] }));
+  o.dariServerV2 = (await t.templateTerbaru('sphygmomanometer')).versi;
+
   // 2. Kiriman server: template v3 + kalibrator sah + kalibrator rusak dibuang
   const v3 = { ...tplKode, versi: 3, nama: 'Sphygmomanometer' };
-  const sv = (body: any, status = 200) => async () => new Response(JSON.stringify(body), { status });
   o.tarik1 = await t.tarikMaster(sv({ template: [{ kodeAlat: 'sphygmomanometer', versi: 3, definition: v3 }, { definition: { kode_alat: 'rusak' } }],
     kalibrator: [K(), K({ asetId: 'CAL-X', points: [{ titik: 'nol' }] }), K({ asetId: 'CAL-Y', berlakuSampai: null, points: [{ titik: 0, koreksiNaik: 0, koreksiTurun: 0, u95Naik: 0.2, u95Turun: 0.2 }] })] }));
   o.terbaru = (await t.templateTerbaru('sphygmomanometer')).versi;
@@ -74,7 +78,8 @@ const o: any = await p.evaluate(async () => {
   return o;
 });
 
-cek('belum pernah tarik → template bawaan kode v2 (toleransi 4), kalibrator kosong', o.bawaan[0] === 2 && o.bawaan[1] === 4 && o.kalKosong === 0, JSON.stringify(o.bawaan));
+cek('belum pernah tarik → template bawaan kode v3 (toleransi 4), kalibrator kosong', o.bawaan[0] === 3 && o.bawaan[1] === 4 && o.kalKosong === 0, JSON.stringify(o.bawaan));
+cek('server baru punya v2 → v2 dari server yang dipakai (bawaan v3 menunggu database)', o.dariServerV2 === 2, String(o.dariServerV2));
 cek('tarik: 1 template baru, kalibrator rusak dibuang (2 sah)', o.tarik1.ok && o.tarik1.templateBaru === 1 && o.tarik1.kalibrator === 2, JSON.stringify(o.tarik1));
 cek('template terbaru = versi tertinggi (v3), v2 tetap bisa dibuka untuk LKK lama', o.terbaru === 3 && o.v1Masih === 2);
 cek('kalibrator tersimpan per parameter', JSON.stringify(o.kal) === '["CAL-037","CAL-Y"]', JSON.stringify(o.kal));

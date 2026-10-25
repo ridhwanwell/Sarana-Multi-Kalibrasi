@@ -3,6 +3,8 @@
  * DIHASILKAN dari PDF acuan Ridhwan ("Master_Sphygmomanometer_terisi salinan.pdf", dicetak dari iPhone, 22 Okt 2026):
  * posisi (poin PDF, y dihitung dari ATAS halaman) tiap teks & garis diukur langsung dari file itu, supaya margin,
  * ukuran huruf, dan garis SAMA PERSIS. Teks tetap sudah dipecah per kata dengan x dari acuan; isian (j:'f') diisi dari data.
+ * 25 Okt 2026: baris "Toleransi kebocoran < 15 mmHg/min" disesuaikan dengan Sertifikat_Sphygmomanometer.pdf terbaru
+ * (huruf biasa, tanda "<"; posisi diukur dari file itu). Bagian lain sama dengan acuan 22 Okt.
  * Jangan diedit tangan; bila acuan berubah, hasilkan ulang (tests/tera/pdf/README).
  */
 import type { TataLetak } from './susunSertifikat.js';
@@ -466,11 +468,11 @@ export const TATA_LETAK_SPHYGMOMANOMETER: TataLetak = {
       {j:"f",x:93.66,y:254.06,f:"r",s:9.96,a:"c",k:"bocorSetting"},
       {j:"f",x:194.72,y:254.06,f:"r",s:9.96,a:"c",k:"bocorBacaan"},
       {j:"f",x:295.72,y:254.06,f:"r",s:9.96,a:"c",k:"bocorSelisih"},
-      {j:"t",x:44.76,y:269.57,f:"b",s:9.96,t:"Toleransi"},
-      {j:"t",x:84.99,y:269.57,f:"b",s:9.96,t:"kebocoran"},
-      {j:"t",x:131.53,y:269.57,f:"r",s:9.96,t:"≤"},
-      {j:"t",x:138.73,y:269.57,f:"r",s:9.96,t:"15"},
-      {j:"t",x:151.09,y:269.57,f:"r",s:9.96,t:"mmHg/min"},
+      {j:"t",x:44.76,y:269.57,f:"r",s:9.96,t:"Toleransi"},
+      {j:"t",x:84.0,y:269.57,f:"r",s:9.96,t:"kebocoran"},
+      {j:"t",x:129.31,y:269.57,f:"r",s:9.96,t:"<"},
+      {j:"t",x:136.48,y:269.57,f:"r",s:9.96,t:"15"},
+      {j:"t",x:148.93,y:269.57,f:"r",s:9.96,t:"mmHg/min"},
       {j:"t",x:44.88,y:292.0,f:"b",s:11.04,t:"Laju"},
       {j:"t",x:66.18,y:292.0,f:"b",s:11.04,t:"Buang"},
       {j:"t",x:97.42,y:292.0,f:"b",s:11.04,t:"Cepat"},

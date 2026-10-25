@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { periksaPaketServer } from '../../src/tera/shared/periksaServer.ts';
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
-import { TEMPLATE_SPHYGMOMANOMETER as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
+import { TEMPLATE_SPHYGMOMANOMETER_V2 as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
 
 let lulus = 0, gagal = 0;
 const cek = (n: string, ok: boolean, d = '') => { ok ? lulus++ : gagal++; if (!ok || process.env.RINCI) console.log((ok ? '✅ ' : '❌ ') + n + (ok ? '' : '  — ' + d)); };

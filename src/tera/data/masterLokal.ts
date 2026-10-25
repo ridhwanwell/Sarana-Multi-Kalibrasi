@@ -12,10 +12,14 @@
  */
 import { minta, tx } from './teraDb';
 import type { TemplateAlat, TitikKalibrator } from '../shared/hitung';
-import { TEMPLATE_SPHYGMOMANOMETER } from '../shared/templates/sphygmomanometer';
+import { TEMPLATE_SPHYGMOMANOMETER_V2, TEMPLATE_SPHYGMOMANOMETER_V3 } from '../shared/templates/sphygmomanometer';
 
-/** Template bawaan kode (cadangan bila server belum pernah terjangkau). */
-export const TEMPLATE_BAWAAN: TemplateAlat[] = [TEMPLATE_SPHYGMOMANOMETER];
+/**
+ * Template bawaan kode: CADANGAN bila perangkat belum pernah menerima template alat itu dari server.
+ * Bila server sudah pernah mengirim template alat tsb, versi dari server yang dipakai (server = acuan Selia),
+ * sehingga versi baru di kode tidak dipakai sebelum template itu ada di database.
+ */
+export const TEMPLATE_BAWAAN: TemplateAlat[] = [TEMPLATE_SPHYGMOMANOMETER_V2, TEMPLATE_SPHYGMOMANOMETER_V3];
 
 export interface TemplateLokal { id: string; kodeAlat: string; versi: number; definition: TemplateAlat; diambilAt: string }
 
@@ -107,23 +111,25 @@ export async function simpanMasterServer(isi: { template?: unknown[]; kalibrator
   });
 }
 
-/** Template terbaru untuk satu jenis alat (perangkat atau bawaan kode, ambil versi tertinggi). */
-export async function templateTerbaru(kodeAlat: string): Promise<TemplateAlat | null> {
-  const lokal = (await tx(['template'], 'readonly', (s) => minta(s.template.getAll()) as Promise<TemplateLokal[]>))
-    .filter((t) => t.kodeAlat === kodeAlat).map((t) => t.definition);
-  const semua = [...lokal, ...TEMPLATE_BAWAAN.filter((t) => t.kode_alat === kodeAlat)];
-  return semua.sort((a, b) => b.versi - a.versi)[0] ?? null;
+/** Versi tertinggi tiap jenis alat: dari server bila ada; template bawaan kode hanya untuk alat yang belum pernah diterima. */
+function pilihTerbaru(lokal: TemplateAlat[]): Map<string, TemplateAlat> {
+  const per = new Map<string, TemplateAlat>();
+  const ambil = (t: TemplateAlat) => { const lama = per.get(t.kode_alat); if (!lama || t.versi > lama.versi) per.set(t.kode_alat, t); };
+  lokal.forEach(ambil);
+  TEMPLATE_BAWAAN.filter((t) => !lokal.some((l) => l.kode_alat === t.kode_alat)).forEach(ambil);
+  return per;
 }
 
-/** Semua jenis alat yang punya template di perangkat (versi tertinggi tiap jenis) + template bawaan kode. */
+/** Template terbaru untuk satu jenis alat. */
+export async function templateTerbaru(kodeAlat: string): Promise<TemplateAlat | null> {
+  const lokal = (await tx(['template'], 'readonly', (s) => minta(s.template.getAll()) as Promise<TemplateLokal[]>)).map((t) => t.definition);
+  return pilihTerbaru(lokal).get(kodeAlat) ?? null;
+}
+
+/** Semua jenis alat yang punya template (versi tertinggi tiap jenis). */
 export async function daftarTemplateTerbaru(): Promise<TemplateAlat[]> {
   const lokal = (await tx(['template'], 'readonly', (s) => minta(s.template.getAll()) as Promise<TemplateLokal[]>)).map((t) => t.definition);
-  const per = new Map<string, TemplateAlat>();
-  for (const t of [...TEMPLATE_BAWAAN, ...lokal]) {
-    const lama = per.get(t.kode_alat);
-    if (!lama || t.versi > lama.versi) per.set(t.kode_alat, t);
-  }
-  return [...per.values()].sort((x, y) => x.nama.localeCompare(y.nama));
+  return [...pilihTerbaru(lokal).values()].sort((x, y) => x.nama.localeCompare(y.nama));
 }
 
 /** Template versi tertentu (untuk membuka LKK lama). */

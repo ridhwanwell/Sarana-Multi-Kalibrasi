@@ -7,7 +7,7 @@
  */
 import type { TemplateAlat } from '../hitung.js';
 
-export const TEMPLATE_SPHYGMOMANOMETER: TemplateAlat = {
+export const TEMPLATE_SPHYGMOMANOMETER_V2: TemplateAlat = {
   kode_alat: 'sphygmomanometer',
   nama: 'Sphygmomanometer',
   versi: 2,
@@ -73,3 +73,41 @@ export const TEMPLATE_SPHYGMOMANOMETER: TemplateAlat = {
   },
   sertifikat: { tata_letak: 'report_all_sphygmomanometer_v12', halaman: 3 },
 };
+
+/**
+ * VERSI 3 (25 Okt 2026) — Master_sphygmomanometer.xlsx terbaru dari Ridhwan (_referensi/sphygmo-v5/), contoh hasil
+ * Sertifikat_Sphygmomanometer.pdf. Yang berubah dari versi 2 (hanya yang terkena perbaikan Excel):
+ *  - koreksi kalibrator dicari di nilai bacaan tiap run (interpolasi), U95 & drift di rata-rata bacaan (Ketidakpastian!D:I, S:T, AD:AE)
+ *  - u Tipe A = STDEV.S(run − run titik nol)/√n, derajat kebebasan n − 1 per titik (Ketidakpastian!N:Q, AW:BF)
+ *  - bocor: selisih < 15 (View Report!N10), skor akurasi dibagi 12 data (View Report!AE4)
+ * Keputusan |C| + w·U ≤ 4 dengan w = 1 (View Report!AE10) sama dengan versi 2.
+ */
+export const TEMPLATE_SPHYGMOMANOMETER_V3: TemplateAlat = {
+  ...TEMPLATE_SPHYGMOMANOMETER_V2,
+  versi: 3,
+  sumber: 'Master_sphygmomanometer.xlsx (25 Okt 2026) + MK 090; bocor < 15, skor ≥ 70 = Laik',
+  ujiAmbang: [
+    { ...TEMPLATE_SPHYGMOMANOMETER_V2.ujiAmbang[0], banding: '<' }, // View Report!N10: ABS(selisih) < 15
+    TEMPLATE_SPHYGMOMANOMETER_V2.ujiAmbang[1],
+  ],
+  kinerja: [
+    {
+      ...TEMPLATE_SPHYGMOMANOMETER_V2.kinerja[0],
+      tipeA: 'stdev_selisih_dari_nol',
+      koreksiPada: 'bacaan',
+      derajatBebas: { tipeA: 'n-1', sertifikat: 60, zero: 50, resolusi: 50, drift: 50 }, // BE/BF, W37, Z37, AC37, AH37
+    },
+  ],
+  skor: {
+    item: [
+      { dari: 'fisik', minimalPersen: 0.7, nilai: 10 },
+      { dari: 'uji_ambang', id: 'bocor', nilai: 30 },
+      { dari: 'uji_ambang', id: 'lajuBuang', nilai: 30 },
+      { dari: 'kinerja', id: 'tekanan', minimalPersen: 0.7, nilai: 30, pembagi: 'semua' },
+    ],
+    laikBila: { banding: '>=', batas: 70 },
+  },
+};
+
+/** Versi terbaru (dipakai untuk LKK baru bila server belum terjangkau). */
+export const TEMPLATE_SPHYGMOMANOMETER = TEMPLATE_SPHYGMOMANOMETER_V3;
