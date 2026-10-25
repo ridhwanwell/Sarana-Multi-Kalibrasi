@@ -5,25 +5,59 @@
  * Font & kop DISUNTIKKAN sebagai byte (tidak dibaca dari disk/jaringan di sini) agar mudah diuji dan aman.
  * Posisi isi tidak digeser demi kop (CLAUDE.md 9.5).
  */
-import { PDFDocument, PDFName, rgb, type PDFFont, type PDFPage, type PDFEmbeddedPage } from 'pdf-lib';
+import { PDFDocument, PDFName, rgb, type PDFFont, type PDFPage, type PDFEmbeddedPage, type PDFImage } from 'pdf-lib';
+import { LOGO_TTE_LEBAR, LOGO_TTE_TINGGI, LOGO_TTE_PNG_B64, LOGO_TTE_TOPENG_B64 } from './logoTte.js';
 import { susun, type HalamanSusun, type Isian, type TataLetak, type GayaHuruf } from './susunSertifikat.js';
 
-/** QR tanda tangan elektronik (TTE) di halaman 1, di ruang kosong atas nama Manajer Teknik. `kotak[baris][kolom]` true = gelap. */
+/**
+ * QR tanda tangan elektronik (TTE) di halaman 1, di ruang kosong atas nama Manajer Teknik. `kotak[baris][kolom]` true = gelap.
+ * Disetujui Ridhwan 25 Okt 2026: QR 2,1 cm, logo SMK (tanpa latar) di tengah selebar 42 % QR, kotak QR merapat ke bentuk
+ * logo (hanya kotak yang tertimpa logo + celah tipis yang dikosongkan; QR memakai koreksi galat tingkat H / 30 %).
+ * Tanpa tulisan di samping QR; sebelum ACC hanya "TTE CONTOH".
+ */
 export interface Tte { kotak: boolean[][]; contoh: boolean }
 // Ruang kosong antara "Disetujui oleh, / Approved by" (y 605) dan nama (y 680) — posisi isi lain TIDAK digeser.
-const QR_X = 45, QR_Y_ATAS = 613, QR_UKURAN = 54, QR_TEPI = 2;
+const QR_X = 45, QR_Y_ATAS = 610, QR_UKURAN = 60, QR_TEPI = 1;
+const LOGO_PERSEN = 0.42, CELAH_KOTAK = 0.35;
 
-function gambarTte(page: PDFPage, tte: Tte, huruf: HurufTerpasang, tinggi: number) {
+const dariB64 = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+let topengLogo: Uint8Array | null = null;
+const titikLogo = (x: number, y: number) => {
+  topengLogo ??= dariB64(LOGO_TTE_TOPENG_B64);
+  const i = y * LOGO_TTE_LEBAR + x;
+  return ((topengLogo[i >> 3] >> (7 - (i & 7))) & 1) === 1;
+};
+
+/** Ukuran & letak logo di dalam QR (poin, dari kiri-atas area kotak). */
+function letakLogo() {
+  const d = QR_UKURAN - 2 * QR_TEPI;
+  const lebar = LOGO_PERSEN * d, tinggi = lebar * LOGO_TTE_TINGGI / LOGO_TTE_LEBAR;
+  return { d, lebar, tinggi, x0: (d - lebar) / 2, y0: (d - tinggi) / 2 };
+}
+
+/** true bila kotak (baris r, kolom c) tertimpa logo (diperlebar celah tipis) → dikosongkan. */
+function tertimpaLogo(r: number, c: number, n: number): boolean {
+  const L = letakLogo(); const sel = L.d / n; const k = LOGO_TTE_LEBAR / L.lebar; // titik logo per poin
+  const bx0 = (c - CELAH_KOTAK) * sel, bx1 = (c + 1 + CELAH_KOTAK) * sel;
+  const by0 = (r - CELAH_KOTAK) * sel, by1 = (r + 1 + CELAH_KOTAK) * sel;
+  const px0 = Math.max(0, Math.floor((bx0 - L.x0) * k)), px1 = Math.min(LOGO_TTE_LEBAR - 1, Math.ceil((bx1 - L.x0) * k) - 1);
+  const py0 = Math.max(0, Math.floor((by0 - L.y0) * k)), py1 = Math.min(LOGO_TTE_TINGGI - 1, Math.ceil((by1 - L.y0) * k) - 1);
+  for (let y = py0; y <= py1; y++) for (let x = px0; x <= px1; x++) if (titikLogo(x, y)) return true;
+  return false;
+}
+
+function gambarTte(page: PDFPage, tte: Tte, huruf: HurufTerpasang, tinggi: number, logo: PDFImage | null) {
   const n = tte.kotak.length;
   if (n === 0) return;
-  const dalam = QR_UKURAN - 2 * QR_TEPI, sel = dalam / n;
+  const L = letakLogo(); const sel = L.d / n;
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-    if (!tte.kotak[r][c]) continue;
+    if (!tte.kotak[r][c] || (logo && tertimpaLogo(r, c, n))) continue;
     page.drawRectangle({ x: QR_X + QR_TEPI + c * sel, y: tinggi - (QR_Y_ATAS + QR_TEPI + (r + 1) * sel), width: sel + 0.02, height: sel + 0.02, color: rgb(0, 0, 0) });
   }
-  const kiri = QR_X + QR_UKURAN + 6;
-  page.drawText('Tanda tangan elektronik', { x: kiri, y: tinggi - (QR_Y_ATAS + 24), size: 8.04, font: huruf.i, color: rgb(0, 0, 0) });
-  if (tte.contoh) page.drawText('TTE CONTOH', { x: kiri, y: tinggi - (QR_Y_ATAS + 38), size: 9.96, font: huruf.b, color: rgb(0, 0, 0) });
+  if (logo) {
+    page.drawImage(logo, { x: QR_X + QR_TEPI + L.x0, y: tinggi - (QR_Y_ATAS + QR_TEPI + L.y0 + L.tinggi), width: L.lebar, height: L.tinggi });
+  }
+  if (tte.contoh) page.drawText('TTE CONTOH', { x: QR_X + QR_UKURAN + 6, y: tinggi - (QR_Y_ATAS + QR_UKURAN / 2 + 3), size: 9.96, font: huruf.b, color: rgb(0, 0, 0) });
 }
 
 /**
@@ -67,6 +101,7 @@ export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: I
   // kop = null → versi TANPA kop (untuk salinan Google Drive & komputer); isi tetap sama persis.
   const kopHalaman = kop ? (await doc.embedPdf(kop, [0]))[0] : null;
   const templatHalaman = templat ? await doc.embedPdf(templat, Array.from({ length: tl.halaman }, (_, i) => i)) : null;
+  const logo = tte ? await doc.embedPng(dariB64(LOGO_TTE_PNG_B64)) : null;
   for (const h of susun(tl, isian)) {
     const page = doc.addPage([lebar, tinggi]);
     page.node.set(PDFName.of('Group'), grupTransparan(doc));
@@ -78,7 +113,7 @@ export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: I
     } else {
       gambarHalaman(page, h, huruf, tinggi);
     }
-    if (tte && h.nomor === 1) gambarTte(page, tte, huruf, tinggi);
+    if (tte && h.nomor === 1) gambarTte(page, tte, huruf, tinggi, logo);
   }
   return [kopHalaman, ...(templatHalaman ?? [])].filter((x): x is PDFEmbeddedPage => !!x);
 }

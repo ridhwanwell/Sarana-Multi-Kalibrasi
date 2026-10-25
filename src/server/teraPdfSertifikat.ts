@@ -27,7 +27,7 @@ export class GalatPdf extends Error {
 
 /** Matriks QR (true = gelap) dari alamat; digambar sebagai kotak vektor di PDF. */
 function matriksQr(url: string): boolean[][] {
-  const q: any = (QRCode as any).create(url, { errorCorrectionLevel: 'M' });
+  const q: any = (QRCode as any).create(url, { errorCorrectionLevel: 'H' }); // H (30 %): tengahnya ditimpa logo SMK
   const n: number = q.modules.size;
   const ambil = (r: number, c: number) => (typeof q.modules.get === 'function' ? !!q.modules.get(r, c) : !!q.modules.data[r * n + c]);
   return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => ambil(r, c)));
