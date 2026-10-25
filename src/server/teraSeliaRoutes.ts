@@ -75,6 +75,9 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
     if (status && !(STATUS_SAH as readonly string[]).includes(status)) return res.status(400).json({ error: 'Status tidak sah.' });
     const bo = typeof req.query.bo === 'string' ? req.query.bo : '';
     if (bo && !/^[0-9]{3}$/.test(bo)) return res.status(400).json({ error: 'Nomor BO harus 3 angka.' });
+    // ?jadwal=<id> = hanya LKK satu jadwal (dashboard Selia per RS); ?jadwal=__tanpa__ = LKK tanpa jadwal
+    const jadwal = typeof req.query.jadwal === 'string' ? req.query.jadwal : '';
+    if (jadwal && (jadwal.length > 120 || !/^[A-Za-z0-9._:\-]+$/.test(jadwal))) return res.status(400).json({ error: 'ID jadwal tidak sah.' });
     try {
       let q = supabaseAdmin.from('tera_lkk')
         .select('id, bo, no_label, template_kode, template_versi, status, jadwal_id, teknisi_user_id, tanggal_kalibrasi, alat_tambahan, jumlah_titik, client_version, is_test, server_received_at, updated_at')
@@ -82,6 +85,8 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
         .limit(BATAS_DAFTAR);
       if (status) q = q.eq('status', status);
       if (bo) q = q.eq('bo', bo);
+      if (jadwal === '__tanpa__') q = q.is('jadwal_id', null);
+      else if (jadwal) q = q.eq('jadwal_id', jadwal);
       const { data: lkk, error } = await berbatas((s) => q.abortSignal(s));
       if (error) { console.error('[Tera/Selia] daftar:', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
       const baris = lkk || [];
@@ -112,7 +117,7 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
           const p = terbaru.get(r.id);
           const ringkas = p && p.client_version === r.client_version ? keRingkas(p) : null;   // pemeriksaan harus untuk versi yang sama
           return {
-            id: r.id, bo: r.bo, noLabel: r.no_label, templateKode: r.template_kode, templateVersi: r.template_versi,
+            id: r.id, bo: r.bo, noLabel: r.no_label, templateKode: r.template_kode, templateVersi: r.template_versi, jadwalId: r.jadwal_id ?? null,
             status: r.status, namaRs: namaRs.get(r.jadwal_id) ?? null, teknisi: namaTeknisi.get(r.teknisi_user_id) ?? null,
             tanggalKalibrasi: r.tanggal_kalibrasi, alatTambahan: r.alat_tambahan, jumlahTitik: r.jumlah_titik,
             clientVersion: r.client_version, isTest: r.is_test, diterimaAt: r.server_received_at,
@@ -124,6 +129,41 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
       });
     } catch (e: any) {
       console.error('[Tera/Selia] daftar:', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    }
+  });
+
+  // --- Ringkasan per jadwal (Selia Dashboard per RS) ----------------------------
+  // Jadwal yang di-Push ke Tera SMK (belum dicabut) + jumlah LKK per status; juga jumlah LKK tanpa jadwal.
+  app.get("/api/tera/selia/jadwal", limiter, ...kantor, async (_req: AuthRequest, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const [push, lkk] = await Promise.all([
+        berbatas((s) => supabaseAdmin.from('tera_jadwal_push').select('jadwal_id, bo, nama_rs, kota, label_awal, label_akhir, is_test, pushed_at, dicabut_at').is('dicabut_at', null).limit(1000).abortSignal(s)),
+        berbatas((s) => supabaseAdmin.from('tera_lkk').select('jadwal_id, status').limit(20000).abortSignal(s)),
+      ]);
+      if (push.error || lkk.error) { console.error('[Tera/Selia] jadwal:', push.error?.message || lkk.error?.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      type Hitung = { total: number; menunggu: number; dikembalikan: number; acc: number };
+      const per = new Map<string, Hitung>();
+      for (const r of (lkk.data || []) as any[]) {
+        const k = r.jadwal_id ?? '__tanpa__';
+        const h = per.get(k) ?? { total: 0, menunggu: 0, dikembalikan: 0, acc: 0 };
+        h.total++;
+        if (r.status === 'submitted' || r.status === 'under_review' || r.status === 'correction_open') h.menunggu++;
+        else if (r.status === 'returned') h.dikembalikan++;
+        else if (r.status === 'approved') h.acc++;
+        per.set(k, h);
+      }
+      const kosong: Hitung = { total: 0, menunggu: 0, dikembalikan: 0, acc: 0 };
+      return res.json({
+        jadwal: ((push.data || []) as any[]).map((p) => ({
+          jadwalId: p.jadwal_id, bo: p.bo, namaRs: p.nama_rs, kota: p.kota, labelAwal: p.label_awal, labelAkhir: p.label_akhir,
+          isTest: !!p.is_test, pushedAt: p.pushed_at, lkk: per.get(p.jadwal_id) ?? kosong,
+        })),
+        tanpaJadwal: per.get('__tanpa__') ?? kosong,
+      });
+    } catch (e: any) {
+      console.error('[Tera/Selia] jadwal:', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
       return res.status(503).json({ error: PESAN_SIBUK });
     }
   });

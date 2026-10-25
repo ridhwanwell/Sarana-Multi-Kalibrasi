@@ -52,7 +52,7 @@ const Tanda: React.FC<{ tingkat: 'merah' | 'kuning' | 'info'; judul: string; chi
     ? { box: 'bg-[#FEE2E2] border-l-[3px] border-[#DC2626] text-[#991B1B]', ikon: <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-bold' }
     : tingkat === 'kuning'
     ? { box: 'bg-[#FEF3C7] border-l-[3px] border-[#D97706] text-[#92400E]', ikon: <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-semibold' }
-    : { box: 'bg-[#E6F3FC] border-l-[3px] border-[#0B6FB3] text-[#095C95]', ikon: <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-semibold' };
+    : { box: 'bg-sky-50 border-l-[3px] border-[#0B6FB3] text-[#095C95]', ikon: <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />, tebal: 'font-semibold' };
   return (
     <div className={`rounded-lg px-3 py-2 text-xs flex gap-2 ${g.box}`}>
       {g.ikon}
@@ -92,7 +92,12 @@ const NAMA_IDENTITAS: Record<string, string> = {
 interface FolderRs { kunci: string; nama: string; bo: string; isTest: boolean; isi: Ringkas[]; menunggu: number; merah: number }
 const adaMerah = (x: Ringkas) => !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x.pemeriksaan.jejakCocok;
 
-export const SeliaTeraLkk: React.FC = () => {
+/**
+ * jadwalId: undefined = semua LKK (folder per RS); string = hanya LKK jadwal itu (ditanam di Selia Dashboard per RS);
+ * null = LKK tanpa jadwal (data uji lama).
+ */
+export const SeliaTeraLkk: React.FC<{ jadwalId?: string | null }> = ({ jadwalId }) => {
+  const tertanam = jadwalId !== undefined;
   const { role } = useAuth();
   const boleh = role === 'admin_teknik' || role === 'admin_utama';
   const [daftar, setDaftar] = useState<Ringkas[] | null>(null);
@@ -113,12 +118,13 @@ export const SeliaTeraLkk: React.FC = () => {
   const muatDaftar = useCallback(async () => {
     setGagalDaftar(null);
     try {
-      const r = await apiFetch('/api/tera/selia/lkk', { retries: 1, timeoutMs: 20000 });
+      const url = jadwalId === undefined ? '/api/tera/selia/lkk' : `/api/tera/selia/lkk?jadwal=${encodeURIComponent(jadwalId ?? '__tanpa__')}`;
+      const r = await apiFetch(url, { retries: 1, timeoutMs: 20000 });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j) { setGagalDaftar(j?.error || 'Daftar LKK belum bisa dimuat.'); return; }
       setDaftar(j.lkk || []); setTerpotong(!!j.terpotong);
     } catch { setGagalDaftar('Server tidak merespons. Coba lagi.'); }
-  }, []);
+  }, [jadwalId]);
 
   // Pratinjau sertifikat DENGAN kop (tampil di layar Selia; kop ini juga yang tertaut ke QR).
   // Salinan untuk Google Drive & komputer = TANPA kop (tombol Unduh).
@@ -243,52 +249,12 @@ export const SeliaTeraLkk: React.FC = () => {
   const kunci = (...p: string[]) => p.join(':');
   const toggle = (k: string) => setDiperiksa((s) => ({ ...s, [k]: !s[k] }));
 
-  return (
-    <section aria-labelledby="selia-tera" className="bg-white rounded-2xl border border-[#DCDFE3] p-5 sm:p-6 space-y-6 mb-6">
-      <div>
-        <h2 id="selia-tera" className="text-xl font-black text-[#1C658C] flex items-center gap-2"><Stamp className="w-5 h-5" aria-hidden="true" />LKK Digital Tera SMK</h2>
-        <p className="text-sm text-slate-600 mt-1 leading-relaxed">Folder per rumah sakit, isinya hanya LKK yang sudah dikirim teknisi. Buka folder, pilih satu LKK, lalu seluruh isinya terbentang di bawah daftar dalam satu lembar (scroll ke bawah). Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.</p>
-      </div>
-
-      {/* ───────── DAFTAR ───────── */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Saring daftar LKK">
-          {([['semua', 'Semua'], ['merah', 'Ada penanda merah'], ['menunggu', 'Menunggu diperiksa'], ['acc', 'Sudah ACC']] as [Saringan, string][]).map(([k, t]) => (
-            <button key={k} type="button" onClick={() => setSaringan(k)} aria-pressed={saringan === k}
-              className={`px-3 py-2 rounded-full text-xs font-semibold border cursor-pointer min-h-[40px] ${saringan === k ? 'bg-[#1C658C] text-white border-[#1C658C]' : 'bg-white text-slate-700 border-[#DCDFE3] hover:bg-[#EEF3F7]'}`}>{t}</button>
-          ))}
-          <button type="button" onClick={() => { void muatDaftar(); }} className="ml-auto px-3 py-2 rounded-full text-xs font-semibold border border-[#DCDFE3] text-slate-700 hover:bg-[#EEF3F7] cursor-pointer min-h-[40px]">Muat ulang</button>
-        </div>
-        {gagalDaftar && <p role="alert" className="text-sm text-rose-700 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" aria-hidden="true" />{gagalDaftar}</p>}
-        {daftar === null && !gagalDaftar && <p role="status" className="text-sm text-slate-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Memuat daftar LKK…</p>}
-        {daftar && tampil.length === 0 && <p className="text-sm text-slate-600">Belum ada LKK pada saringan ini.</p>}
-        <ul className="space-y-3">
-          {folder.map((f) => {
-            const terpilihDiSini = f.isi.some((x) => x.id === pilihId);
-            const buka = bukaF[f.kunci] ?? (saringan !== 'semua' || terpilihDiSini);
-            const idIsi = `folder-${f.kunci.replace(/[^a-z0-9]/gi, '-')}`;
-            return (
-              <li key={f.kunci} className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
-                <button type="button" aria-expanded={buka} aria-controls={idIsi} onClick={() => setBukaF((s) => ({ ...s, [f.kunci]: !buka }))}
-                  className="w-full text-left px-3 py-3 flex items-center gap-3 cursor-pointer min-h-[56px] bg-[#F6F9FB] hover:bg-[#EEF3F7]">
-                  {buka ? <FolderOpen className="w-5 h-5 shrink-0 text-[#1C658C]" aria-hidden="true" /> : <Folder className="w-5 h-5 shrink-0 text-[#1C658C]" aria-hidden="true" />}
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-black text-sm text-slate-900 truncate">{f.nama}</span>
-                    <span className="block text-xs text-slate-600">BO {f.bo} · {f.isi.length} LKK terkirim</span>
-                  </span>
-                  {f.isTest && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800">Data uji</span>}
-                  {f.merah > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{f.merah} merah</span>}
-                  {f.menunggu > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-300"><Clock className="w-3.5 h-3.5" aria-hidden="true" />{f.menunggu} menunggu</span>}
-                  <ChevronDown className={`w-5 h-5 shrink-0 text-slate-500 transition-transform ${buka ? 'rotate-180' : ''}`} aria-hidden="true" />
-                </button>
-                {buka && (
-                  <ul id={idIsi} className="p-2 space-y-2 border-t border-[#DCDFE3]">
-                    {f.isi.map((x) => {
+  const barisLkk = (x: Ringkas) => {
                       const merah = adaMerah(x);
                       return (
                         <li key={x.id}>
                           <button type="button" onClick={() => pilih(x.id)} aria-current={pilihId === x.id}
-                            className={`w-full text-left rounded-xl border px-3 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 cursor-pointer min-h-[56px] ${pilihId === x.id ? 'border-[#1C658C] bg-[#EEF3F7]' : 'border-[#DCDFE3] bg-white hover:bg-[#F6F9FB]'}`}>
+                            className={`w-full text-left rounded-xl border px-3 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 cursor-pointer min-h-[56px] ${pilihId === x.id ? 'border-[#1C658C] bg-slate-100' : 'border-[#DCDFE3] bg-white hover:bg-slate-50'}`}>
                             <span className="font-black text-sm text-slate-900 tabular-nums">{x.noLabel}</span>
                             <span className="min-w-0 flex-1 text-xs text-slate-600 truncate">{x.templateKode} · {x.teknisi ?? '-'} · {tglPendek(x.tanggalKalibrasi)}</span>
                             {x.alatTambahan && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">Alat tambahan</span>}
@@ -302,13 +268,61 @@ export const SeliaTeraLkk: React.FC = () => {
                           </button>
                         </li>
                       );
-                    })}
+  };
+
+  return (
+    <section aria-labelledby="selia-tera" className="bg-white rounded-2xl border border-[#DCDFE3] p-5 sm:p-6 space-y-6 mb-6">
+      <div>
+        <h2 id="selia-tera" className="text-xl font-black text-[#1C658C] flex items-center gap-2"><Stamp className="w-5 h-5" aria-hidden="true" />LKK Digital Tera SMK</h2>
+        <p className="text-sm text-slate-600 mt-1 leading-relaxed">{tertanam
+          ? 'LKK rumah sakit ini yang sudah dikirim teknisi dari Tera SMK. Pilih satu LKK, lalu seluruh isinya terbentang di bawah daftar dalam satu lembar (scroll ke bawah). Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'
+          : 'Folder per rumah sakit, isinya hanya LKK yang sudah dikirim teknisi. Buka folder, pilih satu LKK, lalu seluruh isinya terbentang di bawah daftar dalam satu lembar (scroll ke bawah). Pratinjau sertifikat serta tombol Kembalikan / ACC ada di paling bawah.'}</p>
+      </div>
+
+      {/* ───────── DAFTAR ───────── */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Saring daftar LKK">
+          {([['semua', 'Semua'], ['merah', 'Ada penanda merah'], ['menunggu', 'Menunggu diperiksa'], ['acc', 'Sudah ACC']] as [Saringan, string][]).map(([k, t]) => (
+            <button key={k} type="button" onClick={() => setSaringan(k)} aria-pressed={saringan === k}
+              className={`px-3 py-2 rounded-full text-xs font-semibold border cursor-pointer min-h-[40px] ${saringan === k ? 'bg-[#1C658C] text-white border-[#1C658C]' : 'bg-white text-slate-700 border-[#DCDFE3] hover:bg-slate-100'}`}>{t}</button>
+          ))}
+          <button type="button" onClick={() => { void muatDaftar(); }} className="ml-auto px-3 py-2 rounded-full text-xs font-semibold border border-[#DCDFE3] text-slate-700 hover:bg-slate-100 cursor-pointer min-h-[40px]">Muat ulang</button>
+        </div>
+        {gagalDaftar && <p role="alert" className="text-sm text-rose-700 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" aria-hidden="true" />{gagalDaftar}</p>}
+        {daftar === null && !gagalDaftar && <p role="status" className="text-sm text-slate-600 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />Memuat daftar LKK…</p>}
+        {daftar && tampil.length === 0 && <p className="text-sm text-slate-600">Belum ada LKK pada saringan ini.</p>}
+        {tertanam ? (
+          <ul className="space-y-2">{tampil.map(barisLkk)}</ul>
+        ) : (
+        <ul className="space-y-3">
+          {folder.map((f) => {
+            const terpilihDiSini = f.isi.some((x) => x.id === pilihId);
+            const buka = bukaF[f.kunci] ?? (saringan !== 'semua' || terpilihDiSini);
+            const idIsi = `folder-${f.kunci.replace(/[^a-z0-9]/gi, '-')}`;
+            return (
+              <li key={f.kunci} className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
+                <button type="button" aria-expanded={buka} aria-controls={idIsi} onClick={() => setBukaF((s) => ({ ...s, [f.kunci]: !buka }))}
+                  className="w-full text-left px-3 py-3 flex items-center gap-3 cursor-pointer min-h-[56px] bg-slate-50 hover:bg-slate-100">
+                  {buka ? <FolderOpen className="w-5 h-5 shrink-0 text-[#1C658C]" aria-hidden="true" /> : <Folder className="w-5 h-5 shrink-0 text-[#1C658C]" aria-hidden="true" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-black text-sm text-slate-900 truncate">{f.nama}</span>
+                    <span className="block text-xs text-slate-600">BO {f.bo} · {f.isi.length} LKK terkirim</span>
+                  </span>
+                  {f.isTest && <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-800">Data uji</span>}
+                  {f.merah > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] text-[#991B1B] border border-[#DC2626]"><AlertCircle className="w-3.5 h-3.5" aria-hidden="true" />{f.merah} merah</span>}
+                  {f.menunggu > 0 && <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-300"><Clock className="w-3.5 h-3.5" aria-hidden="true" />{f.menunggu} menunggu</span>}
+                  <ChevronDown className={`w-5 h-5 shrink-0 text-slate-500 transition-transform ${buka ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </button>
+                {buka && (
+                  <ul id={idIsi} className="p-2 space-y-2 border-t border-[#DCDFE3]">
+                    {f.isi.map(barisLkk)}
                   </ul>
                 )}
               </li>
             );
           })}
         </ul>
+        )}
         {terpotong && <p className="text-xs text-slate-500">Hanya 300 LKK terbaru yang ditampilkan. Pakai saringan.</p>}
       </div>
 
@@ -373,7 +387,7 @@ export const SeliaTeraLkk: React.FC = () => {
               <Bagian id="b-fisik" judul="4. Pemeriksaan fisik & fungsi">
                 <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                   <table className="w-full text-sm">
-                    <thead className="bg-[#EEF3F7] text-[11px] text-slate-600"><tr><th className="p-2 text-left">Butir</th><th className="p-2 text-left">Fisik</th><th className="p-2 text-left">Fungsi</th></tr></thead>
+                    <thead className="bg-slate-100 text-[11px] text-slate-600"><tr><th className="p-2 text-left">Butir</th><th className="p-2 text-left">Fisik</th><th className="p-2 text-left">Fungsi</th></tr></thead>
                     <tbody>
                       {(tpl.fisik || []).map((b: Peta) => {
                         const v = data.fisik?.[b.id] ?? {};
@@ -394,7 +408,7 @@ export const SeliaTeraLkk: React.FC = () => {
                 <Bagian id="b-uji" judul="5. Uji lain">
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
-                      <thead className="bg-[#EEF3F7] text-[11px] text-slate-600"><tr><th className="p-2 text-left">Uji</th><th className="p-2 text-left">Nilai ukur</th><th className="p-2 text-left">Batas</th><th className="p-2 text-left">Hasil</th></tr></thead>
+                      <thead className="bg-slate-100 text-[11px] text-slate-600"><tr><th className="p-2 text-left">Uji</th><th className="p-2 text-left">Nilai ukur</th><th className="p-2 text-left">Batas</th><th className="p-2 text-left">Hasil</th></tr></thead>
                       <tbody>
                         {(tpl.ujiAmbang as Peta[]).map((u) => {
                           const r = h?.ujiAmbang?.[u.id];
@@ -424,7 +438,7 @@ export const SeliaTeraLkk: React.FC = () => {
                     <p className="text-xs text-slate-600">Toleransi: ± {fmt(tol)} {def.satuan} · Titik Laik: {kin.jumlahLaik} dari {kin.jumlahDinilai}{kin.u95Melebihi ? ' · U95 melebihi batas laporan' : ''}</p>
                     <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                       <table className="w-full text-xs tabular-nums">
-                        <thead className="bg-[#EEF3F7] text-[11px] text-slate-600">
+                        <thead className="bg-slate-100 text-[11px] text-slate-600">
                           <tr>{['Titik', 'Arah', 'Bacaan', 'Rata-rata', 'Koreksi', 'u Tipe A', 'u Sert.', 'u Zero', 'u Resol.', 'u Drift', 'uc', 'v eff', 'k', 'U95', 'U95 lap.', 'Hasil'].map((c) => <th key={c} className="p-2 text-left whitespace-nowrap">{c}</th>)}</tr>
                         </thead>
                         <tbody>
@@ -468,7 +482,7 @@ export const SeliaTeraLkk: React.FC = () => {
                 {detail.calibratorSnapshot && Object.keys(detail.calibratorSnapshot).length > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
-                      <thead className="bg-[#EEF3F7] text-[11px] text-slate-600"><tr><th className="p-2 text-left">Peran</th><th className="p-2 text-left">Alat</th><th className="p-2 text-left">No. sertifikat</th><th className="p-2 text-left">Berlaku sampai</th></tr></thead>
+                      <thead className="bg-slate-100 text-[11px] text-slate-600"><tr><th className="p-2 text-left">Peran</th><th className="p-2 text-left">Alat</th><th className="p-2 text-left">No. sertifikat</th><th className="p-2 text-left">Berlaku sampai</th></tr></thead>
                       <tbody>
                         {Object.entries(detail.calibratorSnapshot).map(([peran, v]: [string, any]) => (
                           <tr key={peran} className="border-t border-[#DCDFE3]">
@@ -497,7 +511,7 @@ export const SeliaTeraLkk: React.FC = () => {
                   <div className="space-y-3">
                     <p className="text-xs text-slate-600">Versi <strong>dengan kop</strong> hanya untuk dilihat di sini dan tertaut ke QR. Salinan untuk Google Drive dan komputer adalah versi <strong>tanpa kop</strong>. {detail.lkk.status === 'approved' ? 'Sudah ACC: isi pratinjau sama dengan sertifikat terbit (tanggal ACC, QR tanda tangan asli).' : 'Sebelum ACC, QR yang tampil hanya contoh (TTE CONTOH).'}</p>
                     {sertBerlaku && (
-                      <div className="rounded-xl border border-[#0B6FB3] bg-[#E6F3FC] p-3 text-xs text-[#095C95] space-y-2">
+                      <div className="rounded-xl border border-[#0B6FB3] bg-sky-50 p-3 text-xs text-[#095C95] space-y-2">
                         <p className="font-bold flex items-center gap-1.5"><Stamp className="w-4 h-4" aria-hidden="true" />Sertifikat terbit · revisi {sertBerlaku.revisi} · ACC {tgl(sertBerlaku.ditandatanganiAt)}</p>
                         <p>{sertBerlaku.pdfTersimpan ? 'Lembar asli (dengan kop) sudah tersimpan. Scan QR stiker membuka file ini.' : 'Lembar asli belum tersimpan (mis. kop belum diunggah). Dibuat otomatis saat QR dibuka.'}</p>
                         <p>
@@ -539,7 +553,7 @@ export const SeliaTeraLkk: React.FC = () => {
                     {pdfGalat && <p className="text-xs text-[#991B1B] font-semibold flex items-start gap-1.5" role="alert"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />{pdfGalat}</p>}
                     {pratinjauUrl && (
                       <div className="rounded-xl border border-[#DCDFE3] bg-white overflow-hidden">
-                        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#EEF3F7] text-xs">
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-100 text-xs">
                           <p className="font-bold text-slate-800">Pratinjau sertifikat (dengan kop)</p>
                           <div className="flex gap-3 shrink-0">
                             <a href={pratinjauUrl} target="_blank" rel="noreferrer" className="font-bold text-[#0B6FB3] underline">Layar penuh</a>

@@ -17,7 +17,6 @@ import { downloadSphPdf } from '../utils/sphPdfExport';
 import { TabletLoanManager } from '../components/TabletLoanManager';
 import { TemplateSettings } from '../components/TemplateSettings';
 import { SeliaDashboard } from '../components/SeliaDashboard';
-import { SeliaTeraLkk } from '../components/SeliaTeraLkk';
 import { NilaiKalibratorTera } from '../components/NilaiKalibratorTera';
 import { LabelModuleView } from '../components/LabelModuleView';
 import { HospitalBillingManager } from '../components/HospitalBillingManager';
@@ -1164,7 +1163,7 @@ function AsetPortalMain() {
               key="tab-selia"
               {...pageMotion(slideDirection)}
             >
-              <SeliaTeraLkk />
+              {/* LKK Digital Tera SMK kini tampil DI DALAM kartu RS masing-masing (SeliaDashboard) */}
               <SeliaDashboard
                 schedules={effectiveSchedules}
                 sphList={sphList}

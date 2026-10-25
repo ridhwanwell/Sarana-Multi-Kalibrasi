@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   CheckCircle2, 
   Clock, 
@@ -10,8 +10,19 @@ import {
   ChevronRight,
   Check,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Stamp
 } from 'lucide-react';
+import { SeliaTeraLkk } from './SeliaTeraLkk';
+import { apiFetch } from '../lib/apiClient';
+import { useAuth } from '../lib/AuthContext';
+
+/** Ringkasan jadwal yang di-Push ke Tera SMK (dari server) — dipakai untuk menaruh LKK Tera di kartu RS masing-masing. */
+interface TeraJadwal {
+  jadwalId: string; bo: string; namaRs: string; kota: string | null; labelAwal: string | null; labelAkhir: string | null;
+  isTest: boolean; lkk: { total: number; menunggu: number; dikembalikan: number; acc: number };
+}
+const TANPA_JADWAL = '__tanpa__';
 import { CalibrationSchedule, DeviceSeliaItem, SeliaStatus, SphQuotation } from '../types';
 import { 
   ensureDeviceSeliaItems, 
@@ -32,17 +43,43 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
   sphList = [],
   onUpdateSchedule
 }) => {
-  // Completed / eligible schedules for Selia
+  // Active view state: null = Stage 1 (Daftar RS), string = Stage 2 (Detail RS ID)
+  const [activeRSId, setActiveRSId] = useState<string | null>(null);
+
+  // Tera SMK: jadwal yang di-Push ke Tera ikut tampil di Selia; LKK hasil Tera masuk ke kartu RS-nya masing-masing.
+  const { role } = useAuth();
+  const bolehTera = role === 'admin_teknik' || role === 'admin_utama';
+  const [teraJadwal, setTeraJadwal] = useState<TeraJadwal[]>([]);
+  const [teraTanpaJadwal, setTeraTanpaJadwal] = useState(0);
+  const [activeTeraId, setActiveTeraId] = useState<string | null>(null); // jadwal Tera yang tidak ada di daftar penjadwalan (mis. data uji)
+  useEffect(() => {
+    if (!bolehTera) return;
+    let hidup = true;
+    (async () => {
+      try {
+        const r = await apiFetch('/api/tera/selia/jadwal', { retries: 1, timeoutMs: 20000 });
+        const j = await r.json().catch(() => null);
+        if (!hidup || !r.ok || !j) return;
+        setTeraJadwal(Array.isArray(j.jadwal) ? j.jadwal : []);
+        setTeraTanpaJadwal(Number(j.tanpaJadwal?.total) || 0);
+      } catch { /* Tera tidak terjangkau: dashboard lama tetap jalan */ }
+    })();
+    return () => { hidup = false; };
+  }, [bolehTera, activeRSId, activeTeraId]);
+  const teraPer = new Map<string, TeraJadwal>(teraJadwal.map((t: TeraJadwal) => [t.jadwalId, t] as [string, TeraJadwal]));
+
+  // Completed / eligible schedules for Selia (+ yang sudah di-Push ke Tera SMK)
   const completedSchedules = schedules.filter(s => 
     s.status === 'Selesai Kalibrasi' || 
     s.status === 'Sertifikat Terbit' || 
     s.progressPercent === 100 ||
     !!s.completedDate ||
-    (s.seliaItems && s.seliaItems.length > 0)
+    (s.seliaItems && s.seliaItems.length > 0) ||
+    teraPer.has(s.id)
   );
+  // Jadwal Tera yang tidak ada di daftar penjadwalan (mis. jadwal uji BO 999) → kartu tersendiri
+  const teraLepas = teraJadwal.filter((t) => !schedules.some((s) => s.id === t.jadwalId));
 
-  // Active view state: null = Stage 1 (Daftar RS), string = Stage 2 (Detail RS ID)
-  const [activeRSId, setActiveRSId] = useState<string | null>(null);
 
   // Search queries
   const [rsSearchQuery, setRsSearchQuery] = useState('');
@@ -55,8 +92,33 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
     setTimeout(() => setSavedNotice(null), 2500);
   };
 
+  // Tera: tampilan detail untuk jadwal Tera yang tidak ada di penjadwalan / LKK tanpa jadwal
+  if (activeTeraId) {
+    const t = teraJadwal.find((x) => x.jadwalId === activeTeraId);
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setActiveTeraId(null)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 rounded-xl border border-slate-700/80 font-bold text-xs transition-all shadow-md group min-h-[44px]"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          <span>Kembali ke Daftar Rumah Sakit</span>
+        </button>
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-cyan-950 p-5 rounded-2xl border border-slate-800 shadow-xl text-white">
+          <h2 className="text-xl font-black uppercase tracking-wide">{activeTeraId === TANPA_JADWAL ? 'LKK Tera tanpa jadwal' : (t?.namaRs || 'Rumah sakit')}</h2>
+          <p className="text-xs text-slate-300 mt-1">
+            {activeTeraId === TANPA_JADWAL
+              ? 'LKK uji lama yang dikirim sebelum terhubung ke jadwal.'
+              : <>BO {t?.bo ?? '-'}{t?.labelAwal ? ` · No. Label ${t.labelAwal} s/d ${t.labelAkhir ?? '-'}` : ''}{t?.isTest ? ' · data uji' : ''} · jadwal dari Push Tera SMK</>}
+          </p>
+        </div>
+        <SeliaTeraLkk jadwalId={activeTeraId === TANPA_JADWAL ? null : activeTeraId} />
+      </div>
+    );
+  }
+
   // If no completed schedules available at all
-  if (completedSchedules.length === 0) {
+  if (completedSchedules.length === 0 && teraLepas.length === 0 && teraTanpaJadwal === 0) {
     return (
       <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl text-center text-slate-400 my-4 shadow-xl">
         <div className="w-16 h-16 mx-auto bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mb-4">
@@ -330,6 +392,9 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
           </div>
         </div>
 
+        {/* LKK Digital Tera SMK untuk RS ini (hasil Push jadwal ke Tera → LKK teknisi masuk ke sini) */}
+        {bolehTera && teraPer.has(activeSchedule.id) && <SeliaTeraLkk jadwalId={activeSchedule.id} />}
+
         {/* Search & Filter Toolbar */}
         <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           {/* Label Search */}
@@ -541,7 +606,7 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
                 Selia Dashboard Per Rumah Sakit
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                {completedSchedules.length} RS Siap Diselia
+                {completedSchedules.length + teraLepas.length} RS Siap Diselia
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5">
@@ -640,6 +705,18 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
                   </span>
                 </div>
 
+                {teraPer.has(schedule.id) && (() => {
+                  const t = teraPer.get(schedule.id)!;
+                  return (
+                    <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-sky-500/40 bg-sky-950/60 text-sky-300 font-bold"><Stamp className="w-3.5 h-3.5" aria-hidden="true" />Tera SMK: {t.lkk.total} LKK</span>
+                      {t.lkk.menunggu > 0 && <span className="px-2 py-0.5 rounded-md border border-blue-400/40 bg-blue-950/60 text-blue-200 font-bold">{t.lkk.menunggu} menunggu diperiksa</span>}
+                      {t.lkk.dikembalikan > 0 && <span className="px-2 py-0.5 rounded-md border border-violet-400/40 bg-violet-950/60 text-violet-200 font-bold">{t.lkk.dikembalikan} dikembalikan</span>}
+                      {t.lkk.acc > 0 && <span className="px-2 py-0.5 rounded-md border border-emerald-400/40 bg-emerald-950/60 text-emerald-200 font-bold">{t.lkk.acc} ACC</span>}
+                    </div>
+                  );
+                })()}
+
                 {/* Progress Bar & Status Counts */}
                 <div className="grid grid-cols-3 gap-2 text-center text-[11px] mb-4">
                   <div className="bg-slate-950/50 p-2 rounded-lg border border-slate-800/60">
@@ -670,6 +747,37 @@ export const SeliaDashboard: React.FC<SeliaDashboardProps> = ({
             </div>
           );
         })}
+
+        {/* Jadwal Tera yang tidak ada di daftar penjadwalan (mis. uji BO 999) & LKK tanpa jadwal */}
+        {bolehTera && ([...teraLepas.map((t) => ({ id: t.jadwalId, nama: t.namaRs, ket: `BO ${t.bo}${t.labelAwal ? ` · No. Label ${t.labelAwal} s/d ${t.labelAkhir ?? '-'}` : ''}${t.isTest ? ' · data uji' : ''}`, lkk: t.lkk })),
+          ...(teraTanpaJadwal > 0 ? [{ id: TANPA_JADWAL, nama: 'LKK Tera tanpa jadwal', ket: 'LKK uji lama yang belum terhubung ke jadwal', lkk: { total: teraTanpaJadwal, menunggu: 0, dikembalikan: 0, acc: 0 } }] : [])
+        ] as { id: string; nama: string; ket: string; lkk: TeraJadwal['lkk'] }[]).map((k) => (
+          <button
+            key={k.id}
+            type="button"
+            onClick={() => setActiveTeraId(k.id)}
+            className="text-left bg-slate-900 border border-slate-800 hover:border-cyan-500/60 p-5 rounded-2xl shadow-xl transition-all hover:bg-slate-800/80 cursor-pointer group flex flex-col justify-between gap-3 min-h-[44px]"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-sky-500/10 border border-sky-500/20 text-sky-300 rounded-xl shrink-0 mt-0.5"><Stamp className="w-5 h-5" aria-hidden="true" /></div>
+              <div className="min-w-0">
+                <h3 className="font-black text-white text-base uppercase tracking-wide break-words">{k.nama}</h3>
+                <p className="text-xs text-slate-400 mt-1">{k.ket}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="px-2 py-0.5 rounded-md border border-sky-500/40 bg-sky-950/60 text-sky-300 font-bold">Tera SMK: {k.lkk.total} LKK</span>
+              {k.lkk.menunggu > 0 && <span className="px-2 py-0.5 rounded-md border border-blue-400/40 bg-blue-950/60 text-blue-200 font-bold">{k.lkk.menunggu} menunggu diperiksa</span>}
+              {k.lkk.acc > 0 && <span className="px-2 py-0.5 rounded-md border border-emerald-400/40 bg-emerald-950/60 text-emerald-200 font-bold">{k.lkk.acc} ACC</span>}
+            </div>
+            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-end text-xs">
+              <span className="font-bold text-cyan-400 group-hover:text-cyan-300 flex items-center gap-1">
+                <span>Kelola Monitoring Selia</span>
+                <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );
