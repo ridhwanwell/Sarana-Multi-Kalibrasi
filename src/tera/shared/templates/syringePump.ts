@@ -50,4 +50,19 @@ export const TEMPLATE_SYRINGE_PUMP_V2: TemplatePompa = {
   aturanKeputusan: 'guardband_w_u',
 };
 
-export const TEMPLATE_SYRINGE_PUMP = TEMPLATE_SYRINGE_PUMP_V2;
+/**
+ * VERSI 3 (26 Okt 2026 05.01, koreksi setelah KMK-MK-003.0 Pedoman Aturan Keputusan dibaca): guard band w = U yang benar —
+ * aliran |koreksi| + U95 ≤ 10 % setting (U95 sebenarnya, bukan toleransi/3; KMK-MK-095.0 "U = 1/3 MPE" = syarat U ≤ ⅓ toleransi,
+ * lihat KMK-MK-003.0 Contoh 2), penyumbatan |rata-rata| + U95 < 20 psi, listrik terukur ± U dibanding ambang.
+ * Tetap dari v2 (KMK-MK-095.0): titik 10/25/50/75/100 mL/h, 5 pengulangan. v2 dinonaktifkan; tidak pernah dipakai LKK.
+ */
+export const TEMPLATE_SYRINGE_PUMP_V3: TemplatePompa = (() => {
+  const { aturanKeputusan: _keliru, ...dasar } = TEMPLATE_SYRINGE_PUMP_V2;
+  return {
+    ...dasar,
+    versi: 3,
+    sumber: 'KMK-MK-095.0 (titik 10/25/50/75/100 mL/h, 5 pengulangan, occlusion < 20 psi) + KMK-MK-003.0 (guard band w = U: |koreksi| + U95 ≤ toleransi) + rumus ketidakpastian Master_Syringe_Pump_terisi.xlsx (26 Okt 2026)',
+  };
+})();
+
+export const TEMPLATE_SYRINGE_PUMP = TEMPLATE_SYRINGE_PUMP_V3;

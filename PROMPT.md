@@ -489,5 +489,14 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Kode dipush dulu (cc0a91b), migrasi dijalankan sesudah produksi READY (supaya tablet & server memakai mesin yang sama).
 - Excel Master Ridhwan perlu disamakan: View Report L18:L22 → `ABS(F18)<=T18`; L32 → `ABS(C32)<$T$30`; L10:L13 tanpa `+N(X..)`/`-N(X..)`; 5 kolom bacaan.
 - Teks sertifikat yang masih beda dengan KMK (BELUM diubah, perlu persetujuan teks): Infusion hlm 3 "Toleransi Occlusion ≤20psi" (KMK: < 20 psi); hlm 2 "Aturan Keputusan: guard band w = U (KMK-MK-003.0)" (KMK menyebut KMK-MK-004.0).
-- BERIKUTNYA: persetujuan 2 teks sertifikat di atas; lalu alat ke-3 (usul: Keselamatan Listrik, atau NIBP bila data Manometer sudah ada).
+- (aturan keputusan 6.7 ternyata keliru — dikoreksi di Hasil 6.8.)
+
+### Hasil 6.8 (26 Okt 2026 05.0x) — Koreksi aturan keputusan menurut KMK-MK-003.0
+- Ridhwan mengirim `KMK-MK-003.0.md` (Pedoman Aturan Keputusan dan Persyaratan Kesesuaian, buku KMK 2024 — rujukan "KMK-MK-004.0 tahun 2023" di 053/095 = pedoman yang sama dengan nomor lama). Teks sertifikat "(KMK-MK-003.0)" BENAR, tidak diubah.
+- KMK-MK-003.0: w = TL − AL (3.3.7), Lulus bila hasil < AL = TL − w (3.6.2.2), w = U (3.7.2, ILAC G8), Contoh 2 w = U dengan U ≤ ⅓ toleransi. → Tafsiran 6.7 (|C| ≤ MPE) KELIRU. Aturan benar: |koreksi| + U95 ≤ toleransi (= Excel Infusion asli).
+- Template baru (migrasi **0026**): `infusion_pump` v4 & `syringe_pump` v3 = v3/v2 tanpa `aturanKeputusan` (perilaku bawaan mesin: aliran |C|+U95 ≤ 10 %, penyumbatan |rata|+U95 < 20 psi, listrik ±U). Tetap: 5 pengulangan, titik KMK. v3/v2 (keliru) dinonaktifkan; tidak pernah dipakai LKK (dicek: 0 LKK pompa di server).
+- Uji `hitung-pompa-kmk` 483 lulus: Infusion v4 vonis = Excel Infusion persis (0 beda); Syringe v3 berbeda dari Excel Syringe (Excel memakai toleransi/3, bukan U95) — dihitung |C|+U95. Cek U95 ≤ ⅓ toleransi pada bacaan normal lulus semua titik. Catatan: pada setting 10 mL/h bila bacaan IDA > 10,31 mL/h, U sertifikat IDA melompat ke 0,5 (titik sertifikat berikutnya 49,82) → U95 ≈ 0,51 > ⅓ toleransi (0,33).
+- Teks sertifikat Infusion hlm 3 "Toleransi Occlusion ≤20psi" → "<20psi" (KMK-MK-053.0 butir 53.9.2; disetujui Ridhwan "selain itu tadi boleh diperbaiki"): isian `tolSumbat` di `buat_templat_pompa.py` (khusus infusion_pump), templat-infusion-pump.pdf & tataLetakPompa.ts dibuat ulang. Lebar Carlito "<20psi" = 26,47 pt (berakhir 153,92; asli 153,89).
+- Excel Master Ridhwan: Infusion sudah benar (cukup 5 kolom bacaan & titik KMK); Syringe L18:L22 sebaiknya `ABS(F18)+N(I18)<=T18` (pakai U95, bukan T/3).
+- BERIKUTNYA: alat ke-3 (usul: Keselamatan Listrik, atau NIBP bila data Manometer sudah ada).
 

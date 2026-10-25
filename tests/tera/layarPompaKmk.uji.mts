@@ -1,4 +1,4 @@
-// Uji LAYAR "Isi LKK" pompa versi KMK (Infusion v3 / Syringe v2: 5 pengulangan, titik contoh KMK) di Chromium sungguhan.
+// Uji LAYAR "Isi LKK" pompa versi KMK (Infusion v4 / Syringe v3: 5 pengulangan, titik contoh KMK) di Chromium sungguhan.
 // Jalankan: ALAT=infusion|syringe npm run test:tera:layar-pompa-kmk
 // Router/ikon/login/apiFetch ditiru (stub); SinkronProvider, LayarLkk, teraDb, masterLokal, isian, lingkungan
 // dan tera-tema.css adalah kode ASLI.
@@ -8,10 +8,10 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { TEMPLATE_SYRINGE_PUMP_V2 } from '../../src/tera/shared/templates/syringePump.ts';
-import { TEMPLATE_INFUSION_PUMP_V3 } from '../../src/tera/shared/templates/infusionPump.ts';
+import { TEMPLATE_SYRINGE_PUMP_V3 } from '../../src/tera/shared/templates/syringePump.ts';
+import { TEMPLATE_INFUSION_PUMP_V4 } from '../../src/tera/shared/templates/infusionPump.ts';
 const INFUS = process.env.ALAT === 'infusion';
-const TPL = INFUS ? TEMPLATE_INFUSION_PUMP_V3 : TEMPLATE_SYRINGE_PUMP_V2;
+const TPL = INFUS ? TEMPLATE_INFUSION_PUMP_V4 : TEMPLATE_SYRINGE_PUMP_V3;
 const NAMA = TPL.nama;
 
 const akar = fileURLToPath(new URL('../../', import.meta.url));

@@ -118,4 +118,20 @@ export const TEMPLATE_INFUSION_PUMP_V3: TemplatePompa = {
   aturanKeputusan: 'guardband_w_u',
 };
 
-export const TEMPLATE_INFUSION_PUMP = TEMPLATE_INFUSION_PUMP_V3;
+/**
+ * VERSI 4 (26 Okt 2026 05.01, koreksi setelah KMK-MK-003.0 Pedoman Aturan Keputusan dibaca): aturan keputusan guard band
+ * w = U yang benar — Lulus bila hasil di bawah AL = TL − U → aliran |koreksi| + U95 ≤ 10 % setting, penyumbatan
+ * |rata-rata| + U95 < 20 psi, listrik terukur ± U dibanding ambang (sama dengan Excel Infusion Ridhwan).
+ * Tetap dari v3 (KMK-MK-053.0): titik 10/25/50/100/150 mL/h, 5 pengulangan, occlusion "<".
+ * v3 (tafsiran |C| ≤ MPE) dinonaktifkan; tidak pernah dipakai LKK.
+ */
+export const TEMPLATE_INFUSION_PUMP_V4: TemplatePompa = (() => {
+  const { aturanKeputusan: _keliru, ...dasar } = TEMPLATE_INFUSION_PUMP_V3;
+  return {
+    ...dasar,
+    versi: 4,
+    sumber: 'KMK-MK-053.0 (titik 10/25/50/100/150 mL/h, 5 pengulangan, occlusion < 20 psi) + KMK-MK-003.0 (guard band w = U: |koreksi| + U95 ≤ toleransi) + rumus ketidakpastian Master_Infusion_Pump.xlsx (26 Okt 2026)',
+  };
+})();
+
+export const TEMPLATE_INFUSION_PUMP = TEMPLATE_INFUSION_PUMP_V4;

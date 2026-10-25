@@ -81,7 +81,8 @@ export const TATA_LETAK_INFUSION_PUMP: TataLetak = {
       {j:"f",x:93.6,y:601.94,f:"r",s:9.96,a:"c",k:"sumbatSetting"},
       {j:"f",x:194.6,y:601.94,f:"r",s:9.96,a:"c",k:"sumbatStd"},
       {j:"f",x:396.7,y:601.94,f:"r",s:9.96,a:"c",k:"sumbatU"},
-      {j:"f",x:145.93,y:661.61,f:"b",s:11.04,a:"l",k:"kesimpulan",u:1}
+      {j:"f",x:145.93,y:661.61,f:"b",s:11.04,a:"l",k:"kesimpulan",u:1},
+      {j:"f",x:127.45,y:618.74,f:"r",s:9.96,a:"l",k:"tolSumbat"}
     ],
   },
 };

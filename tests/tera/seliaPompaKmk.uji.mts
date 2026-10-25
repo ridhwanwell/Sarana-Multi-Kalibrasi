@@ -5,11 +5,11 @@ import { chromium } from 'playwright';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { TEMPLATE_SYRINGE_PUMP_V2 } from '../../src/tera/shared/templates/syringePump.ts';
-import { TEMPLATE_INFUSION_PUMP_V3 } from '../../src/tera/shared/templates/infusionPump.ts';
+import { TEMPLATE_SYRINGE_PUMP_V3 } from '../../src/tera/shared/templates/syringePump.ts';
+import { TEMPLATE_INFUSION_PUMP_V4 } from '../../src/tera/shared/templates/infusionPump.ts';
 // Uji Selia pompa versi KMK. Jalankan: ALAT=infusion|syringe npm run test:tera:selia-pompa-kmk
 const INFUS = process.env.ALAT === 'infusion';
-const TPL = INFUS ? TEMPLATE_INFUSION_PUMP_V3 : TEMPLATE_SYRINGE_PUMP_V2;
+const TPL = INFUS ? TEMPLATE_INFUSION_PUMP_V4 : TEMPLATE_SYRINGE_PUMP_V3;
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
 import { daftarStandar, jepretStandar, susunPilihan } from '../../src/tera/shared/isian.ts';
 

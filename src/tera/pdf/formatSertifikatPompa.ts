@@ -94,6 +94,8 @@ export function isianPompa(
     sumbatStd: koma(sumbat.rataRata, 1),
     sumbatU: koma(sumbat.u95Cetak, 2),
     kesimpulan: String(lkk.jejak?.kesimpulan ?? hasil.kesimpulan ?? ''),
+    // Teks tetap "Toleransi Occlusion <20psi" (KMK butir 9.2; hanya dipakai tata letak Infusion — di Excel tertulis "≤20psi")
+    tolSumbat: '<20psi',
   };
 
   // Fisik & fungsi: tiga butir (badan, kontrol, kabel) — urutan = urutan template

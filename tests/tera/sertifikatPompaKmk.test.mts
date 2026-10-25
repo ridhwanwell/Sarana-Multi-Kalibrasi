@@ -1,12 +1,12 @@
-// Uji sertifikat pompa versi KMK (ALAT=infusion|syringe; Infusion v3 / Syringe v2): isian dari LKK (angka golden Excel), kelengkapan kunci tata letak, aturan teks, tanggal, dan PDF 3 halaman.
+// Uji sertifikat pompa versi KMK (ALAT=infusion|syringe; Infusion v4 / Syringe v3): isian dari LKK (angka golden Excel), kelengkapan kunci tata letak, aturan teks, tanggal, dan PDF 3 halaman.
 // Jalankan: ALAT=infusion|syringe npm run test:tera:sertifikat-pompa-kmk   (opsional KOP_NON_KAN=/jalur/KOP_SERTIF_NON_KAN.pdf, KELUAR=/folder → tulis PDF uji & isian.json)
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { TEMPLATE_SYRINGE_PUMP_V2 } from '../../src/tera/shared/templates/syringePump.ts';
-import { TEMPLATE_INFUSION_PUMP_V3 } from '../../src/tera/shared/templates/infusionPump.ts';
+import { TEMPLATE_SYRINGE_PUMP_V3 } from '../../src/tera/shared/templates/syringePump.ts';
+import { TEMPLATE_INFUSION_PUMP_V4 } from '../../src/tera/shared/templates/infusionPump.ts';
 import { TATA_LETAK_INFUSION_PUMP } from '../../src/tera/pdf/tataLetakPompa.ts';
 const INFUS = process.env.ALAT === 'infusion';
-const T = INFUS ? TEMPLATE_INFUSION_PUMP_V3 : TEMPLATE_SYRINGE_PUMP_V2;
+const T = INFUS ? TEMPLATE_INFUSION_PUMP_V4 : TEMPLATE_SYRINGE_PUMP_V3;
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
 import { daftarStandar, jepretStandar, susunPilihan, type KalibratorMin } from '../../src/tera/shared/isian.ts';
 import { TATA_LETAK_SYRINGE_PUMP } from '../../src/tera/pdf/tataLetakSyringe.ts';

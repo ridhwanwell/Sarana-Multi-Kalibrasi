@@ -41,6 +41,10 @@ for i, y in enumerate([387.3, 406.7, 426.2, 445.6, 465.1]):
     f(3, y, 284, 308, f'a{i}_kor', 'c', 295.7); f(3, y, 385, 408, f'a{i}_u', 'c', 396.7)
 f(3, 577.2, 80, 106, 'sumbatSetting', 'c', 93.6); f(3, 577.2, 185, 203, 'sumbatStd', 'c', 194.6); f(3, 577.2, 385, 408, 'sumbatU', 'c', 396.7)
 f(3, 636.9, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
+# Infusion: "≤20psi" pada "Toleransi Occlusion" diganti "<20psi" sesuai KMK-MK-053.0 butir 53.9.2 (disetujui Ridhwan 26 Okt 2026 05.01).
+# Syringe sudah tertulis "<20psi" di Excel, tidak disentuh.
+if KODE == 'infusion_pump':
+    f(3, 594.04, 127, 152, 'tolSumbat')
 
 pdf = pikepdf.open(SRC)
 laporan, ops = [], {1: [], 2: [], 3: []}

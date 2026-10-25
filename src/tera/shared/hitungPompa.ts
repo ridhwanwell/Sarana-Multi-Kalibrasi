@@ -25,10 +25,11 @@
  *  - Listrik: bacaan + koreksi ESA; U = MAKS dari dua titik yang mengapit nilai terkoreksi
  *  - Skor: fisik&fungsi 10 + listrik (semua lulus) 40 + kinerja 50 (≥ 70 % titik aliran Laik DAN penyumbatan Laik); Laik Pakai bila ≥ 90
  *
- * ATURAN KEPUTUSAN KMK (keputusan Ridhwan 26 Okt 2026, template Infusion v3 / Syringe v2 ke atas):
- *   KMK-MK-053.0 & 095.0 butir 10.1: guard band C + |U| ≤ MPE + w, dengan w = U  →  U saling coret  →  |C| ≤ MPE.
- *   Bila template.aturanKeputusan = 'guardband_w_u': aliran |koreksi| ≤ toleransi; penyumbatan |rata-rata| < 20 psi;
- *   listrik dibanding langsung dengan ambang SNI IEC 62353. U95 tetap dihitung & dicetak di sertifikat.
+ * ATURAN KEPUTUSAN (dikoreksi 26 Okt 2026 05.01 setelah membaca KMK-MK-003.0 Pedoman Aturan Keputusan):
+ *   Guard band w = TL − AL (3.3.7), Lulus bila hasil < AL = TL − w (3.6.2.2), umumnya w = U (3.7.2, ILAC G8)
+ *   →  |koreksi| + U95 ≤ toleransi. Ini perilaku BAWAAN mesin (tanpa `aturanKeputusan`) dan dipakai Infusion v4 / Syringe v3.
+ *   Opsi 'guardband_w_u' = tafsiran KELIRU (U dianggap saling coret → |C| ≤ MPE) yang sempat dipasang di Infusion v3 /
+ *   Syringe v2 selama ±10 menit (tanpa LKK). Dipertahankan HANYA supaya template versi itu tetap bisa dihitung ulang apa adanya.
  */
 import { bandingkan, bulatExcel, faktorKDariVeff, rataRata, stdevS, type Banding, type JenisSkala } from './hitung.js';
 
@@ -93,8 +94,8 @@ export interface TemplatePompa {
   skor: { fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number } };
   sertifikat: { tata_letak: string; halaman: number };
   /**
-   * Aturan keputusan. Kosong = perilaku Excel lama (U95 ditambahkan ke koreksi, versi template lama tetap begitu).
-   * 'guardband_w_u' = KMK-MK-004.0 seperti ditulis KMK-MK-053.0/095.0: C + |U| ≤ MPE + w, w = U → |C| ≤ MPE.
+   * Aturan keputusan. Kosong = guard band w = U sesuai KMK-MK-003.0 (|C| + U ≤ batas) — BENAR, dipakai template baru.
+   * 'guardband_w_u' = tafsiran keliru (|C| ≤ MPE) di Infusion v3 / Syringe v2; jangan dipakai di template baru.
    */
   aturanKeputusan?: 'guardband_w_u';
 }
