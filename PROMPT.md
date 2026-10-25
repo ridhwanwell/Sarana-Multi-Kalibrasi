@@ -391,3 +391,4 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Keputusan: tanggal (paragraf & "Surakarta, …") = tanggal UNDUH; Kota/Kab. = nama kota/kabupaten saja dari alamat RS; kolom Ruangan BASTP diisi dari LKK.
 - Paragraf pembuka kini dibungkus per kata (di contoh Excel kalimat terpotong di tepi kanan).
 - `tools/tera/buat_templat_bap_bastp.py`, `susunBapBastp.ts`, `renderBapBastp.ts` disesuaikan. Kode ada di cabang `tahap5-bap-bastp-pratinjau` (BUKAN `main`) sampai Ridhwan bilang "oke".
+- 25 Okt ±23.20 (Ridhwan): kolom Keterangan BAP hanya DUA kemungkinan: sisa 0 → "Selesai", sisa masih ada → "Batal" (menggantikan "Belum selesai"; dihitung otomatis dari sisa di `susunBapBastp.ts`, bukan diisi pemanggil).

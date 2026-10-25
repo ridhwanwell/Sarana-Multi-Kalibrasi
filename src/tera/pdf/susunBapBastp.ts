@@ -27,7 +27,9 @@ export const tanggalPanjang = (d: Date) => `${d.getDate()} ${namaBulan(d)} ${d.g
 export const tanggalPendek = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
 
 // ───────────────────────── BAP ─────────────────────────
-export interface BarisBap { nama: string; po: number; realisasi: number; sisa: number; keterangan: string }
+/** Keterangan TIDAK diisi pemanggil: dihitung dari sisa (0 → Selesai, masih ada → Batal). Hanya dua kemungkinan itu. */
+export interface BarisBap { nama: string; po: number; realisasi: number; sisa: number }
+export const keteranganBap = (sisa: number) => (sisa > 0 ? 'Batal' : 'Selesai');
 export interface DataBap {
   nomorBap: string; namaPelanggan: string; nomorPo: string; tanggalPo: string; alamat: string; kota: string;
   baris: BarisBap[];
@@ -104,7 +106,7 @@ export function susunBap(d: DataBap, ukur: (s: string, huruf: Huruf, ukuran: num
       T({ x: BAP.tengahNo, y: y0 + BAP.offAngka, teks: String(bg.awal + k + 1), ukuran: BAP.ukuran, huruf: 'r', rata: 'c' });
       T({ x: BAP.xNama, y: y0 + BAP.offNama, teks: b.nama, ukuran: BAP.ukuran, huruf: 'r', rata: 'l', lebarMaks: BAP.kolomX[2] - BAP.xNama - 2 });
       [b.po, b.realisasi, b.sisa].forEach((v, c) => T({ x: BAP.tengahAngka[c], y: y0 + BAP.offAngka, teks: String(v), ukuran: BAP.ukuran, huruf: 'r', rata: 'c' }));
-      if (b.keterangan) T({ x: BAP.tengahKet, y: y0 + BAP.offAngka, teks: b.keterangan, ukuran: BAP.ukuran, huruf: 'r', rata: 'c', lebarMaks: BAP.kolomX[6] - BAP.kolomX[5] - 4 });
+      T({ x: BAP.tengahKet, y: y0 + BAP.offAngka, teks: keteranganBap(b.sisa), ukuran: BAP.ukuran, huruf: 'r', rata: 'c', lebarMaks: BAP.kolomX[6] - BAP.kolomX[5] - 4 });
     }
     if (bg.ekor) {
       const dy = bawah - BAP.bandTopAsal; // pita TOTAL menempel di garis bawah baris terakhir (seperti contoh)
