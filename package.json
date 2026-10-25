@@ -23,6 +23,7 @@
     "test:tera:lkk-pompa": "tsx tests/tera/lkkPompa.test.mts",
     "test:tera:jejak": "tsx tests/tera/jejak.test.mts",
     "test:tera:sertifikat": "tsx tests/tera/sertifikatSphygmo.test.mts",
+    "test:tera:sertifikat-pompa": "tsx tests/tera/sertifikatPompa.test.mts",
     "test:tera:periksa-server": "tsx tests/tera/periksaServer.test.mts",
     "test:tera:master": "tsx tests/tera/masterLokal.uji.mts",
     "test:tera:nomor": "tsx tests/tera/nomorLabel.test.mts",

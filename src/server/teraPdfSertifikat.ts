@@ -15,6 +15,8 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 import { renderSertifikatPdf, type BahanPdf, type Tte } from "../tera/pdf/renderSertifikat.js";
 import { TATA_LETAK_SPHYGMOMANOMETER } from "../tera/pdf/tataLetakSphygmo.js";
 import { isianSphygmomanometer } from "../tera/pdf/formatSertifikat.js";
+import { TATA_LETAK_INFUSION_PUMP } from "../tera/pdf/tataLetakPompa.js";
+import { isianPompa } from "../tera/pdf/formatSertifikatPompa.js";
 
 export const BUCKET_TERA = 'tera-assets';
 const BASE_FONT = 'https://saranamultikalibrasi.com/tera/fonts';
@@ -82,7 +84,10 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
   const { data: r, error } = await supabaseAdmin.from('tera_lkk').select('*').eq('id', id).maybeSingle().abortSignal(signal);
   if (error) throw new Error(`lkk: ${error.message}`);
   if (!r) throw new GalatPdf(404, 'LKK tidak ditemukan.');
-  if (r.template_kode !== 'sphygmomanometer') throw new GalatPdf(422, 'PDF untuk alat ini belum tersedia.');
+  // Alat yang sudah punya kertas cetak Report All. Semua Non-KAN (CLAUDE.md 9.5); alat lain menyusul satu per satu.
+  const SERTIFIKAT_ALAT = ['sphygmomanometer', 'infusion_pump'];
+  if (!SERTIFIKAT_ALAT.includes(String(r.template_kode))) throw new GalatPdf(422, 'PDF untuk alat ini belum tersedia.');
+  const pompa = r.template_kode === 'infusion_pump';
 
   const [push, prof, tpl, ttd] = await Promise.all([
     r.jadwal_id ? supabaseAdmin.from('tera_jadwal_push').select('nama_rs, kota').eq('jadwal_id', r.jadwal_id).maybeSingle().abortSignal(signal) : Promise.resolve({ data: null, error: null }),
@@ -99,14 +104,14 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
 
   let kopBytes: Uint8Array | null = null;
   if (opsi.denganKop) {
-    const kop = await supabaseAdmin.storage.from(BUCKET_TERA).download('kop/KOP_SERTIF_NON_KAN.pdf'); // Sphygmomanometer = Non-KAN (CLAUDE.md 9.5)
+    const kop = await supabaseAdmin.storage.from(BUCKET_TERA).download('kop/KOP_SERTIF_NON_KAN.pdf'); // Sphygmomanometer & Infusion Pump = Non-KAN (CLAUDE.md 9.5)
     if (kop.error || !kop.data) {
       console.error('[Tera/PDF] kop:', kop.error?.message);
       throw new GalatPdf(503, 'File kop sertifikat belum ada di penyimpanan (tera-assets/kop). Hubungi Developer.');
     }
     kopBytes = new Uint8Array(await kop.data.arrayBuffer());
   }
-  const [font, templat] = await Promise.all([ambilFont(signal), ambilTemplat('templat-sphygmomanometer.pdf', signal)]);
+  const [font, templat] = await Promise.all([ambilFont(signal), ambilTemplat(pompa ? 'templat-infusion-pump.pdf' : 'templat-sphygmomanometer.pdf', signal)]);
   const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: kopBytes, templat };
 
   // Penandatangan: sesudah ACC memakai nama & jabatan yang dibekukan; sebelum ACC dari data master.
@@ -119,21 +124,26 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
   };
 
   const def = (tpl.data as any)?.definition ?? {};
-  const kin = (def.kinerja ?? []).find((k: any) => k.id === 'tekanan') ?? {};
-  const uji = (def.ujiAmbang ?? []) as any[];
-  const isian = isianSphygmomanometer(
-    { data: r.data, jejak: r.results, snapshot: r.calibrator_snapshot },
-    {
-      bo: r.bo, noLabel: r.no_label, namaAlat: (tpl.data as any)?.nama ?? 'Sphygmomanometer', namaRs, alamatRs: alamat,
-      teknisi: (prof.data as any)?.full_name ?? '', tanggalKalibrasi: r.tanggal_kalibrasi,
-      tanggalTerbit: tanggalJakarta(s ? s.ditandatangani_at : new Date()), penandatangan,
-    },
-    { toleransiTekanan: Number(kin.toleransi) || 0, ambangBocor: Number(uji.find((u) => u.id === 'bocor')?.batas) || 0, ambangLaju: Number(uji.find((u) => u.id === 'lajuBuang')?.batas) || 0 },
-  );
+  const konteks = {
+    bo: r.bo, noLabel: r.no_label, namaAlat: (tpl.data as any)?.nama ?? (pompa ? 'Infusion Pump' : 'Sphygmomanometer'), namaRs, alamatRs: alamat,
+    teknisi: (prof.data as any)?.full_name ?? '', tanggalKalibrasi: r.tanggal_kalibrasi,
+    tanggalTerbit: tanggalJakarta(s ? s.ditandatangani_at : new Date()), penandatangan,
+  };
+  const lkk = { data: r.data, jejak: r.results, snapshot: r.calibrator_snapshot };
+  let isian;
+  if (pompa) {
+    isian = isianPompa(lkk, konteks);
+  } else {
+    const kin = (def.kinerja ?? []).find((k: any) => k.id === 'tekanan') ?? {};
+    const uji = (def.ujiAmbang ?? []) as any[];
+    isian = isianSphygmomanometer(lkk, konteks, {
+      toleransiTekanan: Number(kin.toleransi) || 0, ambangBocor: Number(uji.find((u) => u.id === 'bocor')?.batas) || 0, ambangLaju: Number(uji.find((u) => u.id === 'lajuBuang')?.batas) || 0,
+    });
+  }
   const tte: Tte = s
     ? { kotak: matriksQr(`${URL_VERIFIKASI}/${s.kode_verifikasi}`), contoh: false }
     : { kotak: matriksQr(`${URL_VERIFIKASI}/CONTOH`), contoh: true };
-  const pdf = await renderSertifikatPdf(TATA_LETAK_SPHYGMOMANOMETER, isian, bahan, tte);
+  const pdf = await renderSertifikatPdf(pompa ? TATA_LETAK_INFUSION_PUMP : TATA_LETAK_SPHYGMOMANOMETER, isian, bahan, tte);
   const noLabel = String(r.no_label);
   const nama = `Sertifikat-${noLabel.replace(/[^0-9.]/g, '')}${s && s.revisi > 0 ? `-rev${s.revisi}` : ''}${opsi.denganKop ? '' : '-tanpa-kop'}`;
   return { pdf, nama, noLabel };

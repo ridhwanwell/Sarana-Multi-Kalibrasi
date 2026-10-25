@@ -1,0 +1,120 @@
+/**
+ * FORMAT SERTIFIKAT POMPA (Infusion Pump; Syringe Pump kelak memakai juru tulis yang sama) — mengubah isi LKK
+ * (data, jejak hitung, fotokopi kalibrator) menjadi tulisan di "kertas cetak" Report All (tataLetakPompa.ts).
+ * Murni, tidak pernah melempar galat: data yang belum ada menjadi kosong (dicetak "-").
+ *
+ * Aturan teks (CLAUDE.md 9.1): tanpa "NILAI SEMENTARA", penanda Penyelia, atau nama "Tera SMK".
+ * Tanggal (mengikuti Excel, keputusan Ridhwan 26 Okt 2026): Diterbitkan = tanggal penerimaan + 1 hari
+ * (bila penerimaan kosong: tanggal terbit dari ACC); Kalibrasi Ulang = tanggal pelaksanaan + 1 tahun.
+ */
+import type { Isian } from './susunSertifikat.js';
+import { hitungLingkungan } from '../shared/lingkungan.js';
+import { titikDariSnapshot } from '../shared/jejak.js';
+import { koma, komaBebas, tambahSetahun, tanggalPanjang, type KonteksSertifikat } from './formatSertifikat.js';
+
+type Peta = Record<string, any>;
+
+/** "2026-10-26" → "2026-10-27" (lintas bulan/tahun aman). Tanggal rusak → "". */
+export function tambahHari(iso: unknown, hari: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
+  if (!m) return '';
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + hari));
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+const SEBELUM_KURUNG = (s: unknown) => String(s ?? '').replace(/\s*\(.*$/, '').trim();
+
+/** Satu baris "Standar yang digunakan": nama  Tipe: …  s/n: …  Cert. Number: …  Traceability: … (sama dengan Report All Excel). */
+function barisStandar(snap: Peta | null | undefined, nama: string): string {
+  if (!snap || typeof snap !== 'object') return '';
+  return [
+    String(snap.nama ?? nama),
+    snap.model ? `Tipe: ${snap.model}` : '',
+    snap.nomorSeri ? `s/n: ${snap.nomorSeri}` : '',
+    snap.nomorSertifikat ? `Cert. Number: ${snap.nomorSertifikat}` : '',
+    snap.tertelusur ? `Traceability: ${SEBELUM_KURUNG(snap.tertelusur)}` : '',
+  ].filter(Boolean).join('  ');
+}
+
+/** Rentang ukur ditulis teknisi lengkap dengan satuan ("1 - 999 mL/h"); satuan dipisah ke kolomnya sendiri seperti di Excel. */
+function pisahSatuan(teks: unknown, satuan: string): { nilai: string; satuan: string } {
+  const t = String(teks ?? '').trim();
+  const nilai = t.replace(new RegExp(`\\s*${satuan.replace('/', '\\/')}\\s*$`, 'i'), '').trim();
+  return { nilai, satuan: nilai ? satuan : '' };
+}
+
+export function isianPompa(
+  lkk: { data: Peta | null; jejak: Peta | null; snapshot: Peta | null },
+  k: KonteksSertifikat,
+): Isian {
+  const d = (lkk.data ?? {}) as Peta;
+  const iden = (d.identitas ?? {}) as Peta;
+  const snap = (lkk.snapshot ?? {}) as Peta;
+  const hasil = (lkk.jejak?.hasil ?? {}) as Peta;
+  const aturan = (lkk.jejak?.aturan ?? {}) as Peta;
+  const listrikDef = (aturan.listrik ?? []) as Peta[];
+  const aliran = (hasil.aliran?.titik ?? []) as Peta[];
+  const sumbat = (hasil.sumbat ?? {}) as Peta;
+  const ling = (d.lingkungan ?? {}) as Peta;
+  const suhu = hitungLingkungan(titikDariSnapshot(snap.termohigrometer?.suhu), ling.suhuAwal, ling.suhuAkhir, 1);
+  const rh = hitungLingkungan(titikDariSnapshot(snap.termohigrometer?.kelembaban), ling.rhAwal, ling.rhAkhir, 0);
+  const rentang = pisahSatuan(iden.rentangUkur, 'mL/h');
+  const penerimaan = String(iden.tanggalPenerimaan ?? '');
+
+  const s: Isian = {
+    nomorOrder: k.bo,
+    nomorSertifikat: k.noLabel,
+    tanggalTerbit: tanggalPanjang(penerimaan ? tambahHari(penerimaan, 1) : k.tanggalTerbit),
+    kalibrasiUlang: tanggalPanjang(tambahSetahun(k.tanggalKalibrasi)),
+    namaPelanggan: k.namaRs,
+    alamatPelanggan: k.alamatRs,
+    namaAlat: k.namaAlat,
+    noSeri: String(iden.noSeri ?? ''),
+    merek: String(iden.merek ?? ''),
+    rentangUkur: rentang.nilai,
+    satuanRentang: rentang.satuan,
+    tipe: String(iden.tipe ?? ''),
+    resolusi: komaBebas(iden.resolusi),
+    satuanResolusi: komaBebas(iden.resolusi) ? 'mL/h' : '',
+    tanggalPenerimaan: tanggalPanjang(penerimaan),
+    penandatanganNama: k.penandatangan.nama,
+    penandatanganJabatan: k.penandatangan.jabatan,
+    penandatanganJabatanEn: k.penandatangan.jabatanEn,
+    kalibrator1: barisStandar(snap.ida, 'Infusion Device Analyzer'),
+    kalibrator2: barisStandar(snap.esa, 'Electrical Safety Analyzer'),
+    kalibrator3: barisStandar(snap.termohigrometer, 'Digital Thermohygrometer'),
+    tempat: k.namaRs,
+    tanggalPelaksanaan: tanggalPanjang(k.tanggalKalibrasi),
+    ruang: String(iden.ruang ?? ''),
+    teknisi: k.teknisi,
+    suhuRuang: suhu ? `( ${komaBebas(suhu.terkoreksi, 1)}±${komaBebas(suhu.u95, 2)} )` : '',
+    rhRuang: rh ? `( ${komaBebas(rh.terkoreksi, 0)}±${komaBebas(rh.u95, 2)} )` : '',
+    // Penyumbatan: setting & bacaan standar
+    sumbatSetting: koma(sumbat.setting, 1),
+    sumbatStd: koma(sumbat.rataRata, 1),
+    sumbatU: koma(sumbat.u95Cetak, 2),
+    kesimpulan: String(lkk.jejak?.kesimpulan ?? hasil.kesimpulan ?? ''),
+  };
+
+  // Fisik & fungsi: tiga butir (badan, kontrol, kabel) — urutan = urutan template
+  ['badan', 'kontrol', 'kabel'].forEach((id, i) => {
+    s[`fisik${i + 1}`] = String(d.fisik?.[id]?.fisik ?? '');
+    s[`fungsi${i + 1}`] = String(d.fisik?.[id]?.fungsi ?? '');
+  });
+
+  // Keselamatan listrik: nilai TERUKUR (sudah terkoreksi) per uji, urutan template
+  for (let i = 0; i < 4; i++) {
+    const id = String(listrikDef[i]?.id ?? ['tegangan', 'resistansi_pembumian', 'resistansi_isolasi', 'arus_bocor'][i]);
+    s[`listrik${i}`] = komaBebas(hasil.listrik?.[id]?.terukur, 3);
+  }
+
+  // Aliran: pembacaan alat (setting), pembacaan standar (rata-rata terkoreksi), koreksi, ketidakpastian
+  for (let i = 0; i < 5; i++) {
+    const t = aliran[i];
+    s[`a${i}_alat`] = komaBebas(t?.setting);
+    s[`a${i}_std`] = koma(t?.rataRata, 2);
+    s[`a${i}_kor`] = koma(t?.koreksi, 2);
+    s[`a${i}_u`] = koma(t?.u95Cetak, 2);
+  }
+  return s;
+}

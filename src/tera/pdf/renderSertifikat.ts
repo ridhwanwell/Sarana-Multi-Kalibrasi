@@ -81,11 +81,19 @@ function gambarHalaman(page: PDFPage, h: HalamanSusun, huruf: HurufTerpasang, ti
     let ukuran = t.ukuran;
     let lebar = font.widthOfTextAtSize(t.teks, ukuran);
     let x = t.rata === 'r' ? t.x - lebar : t.rata === 'c' ? t.x - lebar / 2 : t.x;
-    if (t.isian && t.rata === 'l' && x + lebar > BATAS_KANAN) {
-      ukuran = Math.max(t.ukuran * UKURAN_MIN_PERSEN, t.ukuran * ((BATAS_KANAN - x) / lebar));
-      lebar = font.widthOfTextAtSize(t.teks, ukuran);
+    const batas = t.batas ?? BATAS_KANAN;
+    let teks = t.teks;
+    if (t.isian && t.rata === 'l' && x + lebar > batas) {
+      ukuran = Math.max(t.ukuran * UKURAN_MIN_PERSEN, t.ukuran * ((batas - x) / lebar));
+      lebar = font.widthOfTextAtSize(teks, ukuran);
+      // Batas khusus (kolom kiri): masih kepanjangan setelah diperkecil → dipotong "…" supaya tidak menimpa label di kanannya.
+      if (t.batas !== undefined && x + lebar > batas) {
+        while (teks.length > 1 && x + font.widthOfTextAtSize(teks + '…', ukuran) > batas) teks = teks.slice(0, -1).trimEnd();
+        teks += '…';
+        lebar = font.widthOfTextAtSize(teks, ukuran);
+      }
     }
-    page.drawText(t.teks, { x, y: tinggi - t.y, size: ukuran, font, color: rgb(0, 0, 0) });
+    page.drawText(teks, { x, y: tinggi - t.y, size: ukuran, font, color: rgb(0, 0, 0) });
     if (t.garisBawah) page.drawRectangle({ x, y: tinggi - t.y - 1.3, width: lebar, height: 0.72, color: rgb(0, 0, 0) });
   }
 }

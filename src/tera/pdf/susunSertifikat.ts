@@ -25,6 +25,8 @@ export interface OpTeks {
   k?: string;
   /** 1 = garis bawah mengikuti lebar teks (mis. "Laik Pakai") */
   u?: number;
+  /** Batas kanan isian rata-kiri (poin) bila lebih sempit dari tepi kanan tabel — mis. kolom kiri sebelum label kolom kanan. */
+  m?: number;
 }
 
 export interface TataLetak {
@@ -44,6 +46,8 @@ export interface TeksGambar {
   x: number; y: number; huruf: GayaHuruf; ukuran: number; rata: Rata; teks: string; garisBawah: boolean;
   /** true = isian dari data (boleh diperkecil bila kepanjangan); false = teks tetap, tidak pernah diubah */
   isian: boolean;
+  /** Batas kanan khusus (lihat OpTeks.m); undefined = tepi kanan tabel. */
+  batas?: number;
 }
 export interface HalamanSusun { nomor: number; biru: Kotak[]; kotak: Kotak[]; teks: TeksGambar[] }
 
@@ -61,7 +65,7 @@ export function susun(tl: TataLetak, isian: Isian): HalamanSusun[] {
       const isiTeks = o.j === 't'
         ? String(o.t ?? '').split('{p}').join(String(p)).split('{n}').join(String(tl.halaman))
         : rapikan(isian[o.k ?? '']);
-      teks.push({ x: o.x, y: o.y, huruf: o.f, ukuran: o.s, rata: o.a ?? 'l', teks: isiTeks, garisBawah: !!o.u, isian: o.j === 'f' });
+      teks.push({ x: o.x, y: o.y, huruf: o.f, ukuran: o.s, rata: o.a ?? 'l', teks: isiTeks, garisBawah: !!o.u, isian: o.j === 'f', batas: o.m });
     }
     hasil.push({ nomor: p, biru: p === 1 ? tl.biru : [], kotak: tl.kotak[p] ?? [], teks });
   }
