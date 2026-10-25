@@ -6,20 +6,21 @@
  */
 import { apiFetch } from '../../lib/apiClient';
 
-export type JenisDokumen = 'bap' | 'bastp';
+export type JenisDokumen = 'bap' | 'bastp' | 'rekap';  // rekap = Excel, hanya Penyelia (dicek server)
 
 export async function unduhBapBastp(jadwalId: string, jenis: JenisDokumen): Promise<{ ok: true } | { ok: false; pesan: string }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { ok: false, pesan: 'Tidak ada internet. BAP/BASTP dibuat di server dari LKK yang sudah terkirim — coba lagi saat ada sinyal.' };
   }
   try {
-    const r = await apiFetch(`/api/tera/bap/${encodeURIComponent(jadwalId)}/pdf?jenis=${jenis}`, { retries: 0, timeoutMs: 45000 });
+    const alamat = jenis === 'rekap' ? `/api/tera/bap/${encodeURIComponent(jadwalId)}/rekap` : `/api/tera/bap/${encodeURIComponent(jadwalId)}/pdf?jenis=${jenis}`;
+    const r = await apiFetch(alamat, { retries: 0, timeoutMs: 45000 });
     if (!r.ok) {
       const j = await r.json().catch(() => null);
       return { ok: false, pesan: j?.error || 'Dokumen belum bisa dibuat. Coba lagi.' };
     }
     const cd = r.headers.get('Content-Disposition') || '';
-    const nama = /filename="([^"]+)"/.exec(cd)?.[1] || `${jenis.toUpperCase()}.pdf`;
+    const nama = /filename="([^"]+)"/.exec(cd)?.[1] || `${jenis.toUpperCase()}.${jenis === 'rekap' ? 'xlsx' : 'pdf'}`;
     const url = URL.createObjectURL(await r.blob());
     const a = document.createElement('a');
     a.href = url; a.download = nama; a.rel = 'noopener';

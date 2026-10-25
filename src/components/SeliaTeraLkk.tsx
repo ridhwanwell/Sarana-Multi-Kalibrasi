@@ -299,14 +299,14 @@ export const SeliaTeraLkk: React.FC<{
 
       {!modeDetail && tertanam && jadwalId && (
         <div className="rounded-xl border border-[#DCDFE3] bg-slate-50 p-4 space-y-2">
-          <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileDown className="w-4 h-4" aria-hidden="true" />BAP &amp; BASTP rumah sakit ini</p>
-          <p className="text-xs text-slate-600">Dibuat dari LKK yang sudah diterima server (termasuk TIDAK LAIK), 2 rangkap, tanggal = hari ini.</p>
+          <p className="text-sm font-bold text-slate-800 flex items-center gap-2"><FileDown className="w-4 h-4" aria-hidden="true" />BAP, BASTP &amp; Rekap rumah sakit ini</p>
+          <p className="text-xs text-slate-600">Dibuat dari LKK yang sudah diterima server (termasuk TIDAK LAIK). BAP/BASTP: PDF 2 rangkap, tanggal = hari ini. Rekap: Excel, hanya Penyelia.</p>
           <div className="flex flex-wrap gap-2">
-            {(['bap', 'bastp'] as JenisDokumen[]).map((jenis) => (
+            {(['bap', 'bastp', 'rekap'] as JenisDokumen[]).map((jenis) => (
               <button key={jenis} type="button" onClick={() => { void unduhDok(jenis); }} disabled={dokMemuat !== null} aria-busy={dokMemuat === jenis}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-[#1C658C] text-[#1C658C] bg-white hover:bg-[#1C658C]/5 disabled:opacity-60 cursor-pointer min-h-[44px]">
                 {dokMemuat === jenis ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <FileDown className="w-4 h-4" aria-hidden="true" />}
-                {dokMemuat === jenis ? 'Membuat PDF…' : jenis === 'bap' ? 'Unduh BAP' : 'Unduh BASTP'}
+                {dokMemuat === jenis ? (jenis === 'rekap' ? 'Membuat Excel…' : 'Membuat PDF…') : jenis === 'bap' ? 'Unduh BAP' : jenis === 'bastp' ? 'Unduh BASTP' : 'Unduh Rekap (Excel)'}
               </button>
             ))}
           </div>

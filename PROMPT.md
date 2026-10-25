@@ -407,3 +407,8 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Selia Dashboard, detail RS (`SeliaTeraLkk.tsx` mode tertanam per jadwal): kotak "BAP & BASTP rumah sakit ini" dengan dua tombol.
 - Fungsi bersama `src/tera/data/unduhBapBastp.ts` (apiFetch + unduh file, nama file dari server).
 - Catatan uji 23.34 (layar Ridhwan): tablet menunjukkan "dikerjakan 5" (dihitung dari LKK di perangkat termasuk draft), server baru menerima 2 LKK BO 999 → BAP akan menulis realisasi 2. Selesaikan & kirim LKK draft agar ikut.
+
+### Hasil 5.3b (26 Okt 2026 ±00.05) — Rekap Excel (FORM REKAP PEKERJAAN), hanya Penyelia
+- Permintaan Ridhwan 25 Okt 23.45 + jawaban: rekap PER RS/BO; isi = semua LKK yang diterima server (seperti BASTP, termasuk TIDAK LAIK & belum ACC); nama alat HURUF BESAR; yang bisa mengunduh hanya Penyelia (admin_teknik) & Developer (admin_utama) — dicek server, tidak ada tombol di PWA Tera.
+- Kertas cetak Excel: `public/tera/rekap/templat-rekap.xlsx` = FORM_REKAP.xlsx Ridhwan yang isinya dikosongkan (judul, header, lebar kolom, garis, format tanggal dd/mm/yy tetap). `src/tera/shared/rekapExcel.ts` (JSZip, sudah ada di dependensi) menulis baris data dengan gaya sel baris 3 templat. Kolom: No, Nama Alat, Merk, Tipe, No. Seri, Petugas (+gelar), Tanggal Kalibrasi (tanggal Excel), Ruangan, Keterangan (Laik/Tidak Laik Pakai), No. Sertifikat (= nomor label).
+- Rute `GET /api/tera/bap/:jadwalId/rekap` (teraBapRoutes.ts). Tombol "Unduh Rekap (Excel)" di Selia, kotak "BAP, BASTP & Rekap rumah sakit ini". Uji `test:tera:bap` 33/33 (termasuk isi xlsx, karakter khusus, dibuka ulang openpyxl/LibreOffice).

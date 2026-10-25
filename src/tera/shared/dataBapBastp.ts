@@ -127,3 +127,22 @@ export function susunDataBastp(b: BahanDataBap): DataBastp {
     ketuaTim: ketuaTim(j), baris, laikPakai: laik, tidakLaik: tidak,
   };
 }
+
+// ───────────────────────── REKAP (Excel, hanya Penyelia) ─────────────────────────
+/** Satu baris FORM REKAP PEKERJAAN (contoh Ridhwan 25 Okt 2026): kolom sama dengan BASTP + No. Sertifikat (= nomor label). */
+export interface BarisRekap {
+  nama: string; merk: string; tipe: string; noSeri: string; petugas: string;
+  tanggal: string | null; // 'YYYY-MM-DD' → ditulis sebagai tanggal Excel (dd/mm/yy)
+  ruangan: string; keterangan: string; noSertifikat: string;
+}
+
+/** Isi rekap = LKK yang sama dengan BASTP (diterima server, urut nomor label); nama alat HURUF BESAR seperti contoh. */
+export function susunDataRekap(b: BahanDataBap): BarisRekap[] {
+  const lkk = lkkSah(b.push, b.lkk).sort(urutLabel);
+  const t = susunDataBastp(b).baris; // urutan sama (lkkSah + urutLabel)
+  return lkk.map((l, i) => ({
+    nama: t[i].nama.toUpperCase(), merk: t[i].merk, tipe: t[i].tipe, noSeri: t[i].noSeri, petugas: t[i].petugas,
+    tanggal: keTanggal(l.tanggal_kalibrasi) ? String(l.tanggal_kalibrasi).slice(0, 10) : null,
+    ruangan: t[i].ruangan, keterangan: t[i].keterangan, noSertifikat: l.no_label,
+  }));
+}

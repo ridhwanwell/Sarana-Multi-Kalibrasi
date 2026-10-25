@@ -3,6 +3,8 @@
  *
  *  GET /api/tera/bap/:jadwalId/pdf?jenis=bap|bastp[&rangkap=1|2]
  *    -> PDF BAP (di atas KOP SURAT) atau BASTP, dari jadwal yang sudah di-Push + LKK yang sudah diterima server.
+ *  GET /api/tera/bap/:jadwalId/rekap
+ *    -> Excel FORM REKAP PEKERJAAN (templat dari form Ridhwan). HANYA Penyelia (admin_teknik) & Developer (admin_utama).
  *       Tanggal dokumen = tanggal unduh (waktu Jakarta). Rangkap bawaan 2 (instansi & kantor), dicetak berurutan.
  *
  * Hak akses: admin_teknik & admin_utama → semua jadwal; teknisi → hanya jadwal yang ditugaskan kepadanya dan belum dicabut.
@@ -17,12 +19,14 @@ import type { AuthRequest } from "../middleware/auth.js";
 import { ambilFont, BUCKET_TERA } from "./teraPdfSertifikat.js";
 import { renderBapPdf, renderBastpPdf, type BahanBapBastp } from "../tera/pdf/renderBapBastp.js";
 import type { NamaTempel } from "../tera/pdf/susunBapBastp.js";
-import { susunDataBap, susunDataBastp, type BahanDataBap } from "../tera/shared/dataBapBastp.js";
+import { susunDataBap, susunDataBastp, susunDataRekap, type BahanDataBap } from "../tera/shared/dataBapBastp.js";
+import { isiRekapXlsx } from "../tera/shared/rekapExcel.js";
 
 const BATAS_WAKTU_MS = 20_000;
 const PESAN_SIBUK = "Server tidak merespons. Coba lagi sebentar.";
 const POLA_JADWAL = /^[A-Za-z0-9._:\-]{1,120}$/;
 const BASE_TEMPLAT = 'https://saranamultikalibrasi.com/tera/bap';
+const URL_TEMPLAT_REKAP = 'https://saranamultikalibrasi.com/tera/rekap/templat-rekap.xlsx';
 const FILE_TEMPLAT: Record<NamaTempel, string> = {
   kepala: 'templat-bap-kepala.pdf', ekor: 'templat-bap-ekor.pdf',
   bastp: 'templat-bastp.pdf', bastpTanpaRingkasan: 'templat-bastp-tanpa-ringkasan.pdf',
@@ -39,10 +43,12 @@ const templatCache = new Map<string, Uint8Array>();
 async function ambilTemplat(nama: string, sinyal: AbortSignal): Promise<Uint8Array> {
   const ada = templatCache.get(nama);
   if (ada) return ada;
-  const r = await fetch(`${BASE_TEMPLAT}/${nama}`, { signal: sinyal });
+  const excel = nama === URL_TEMPLAT_REKAP;
+  const r = await fetch(excel ? nama : `${BASE_TEMPLAT}/${nama}`, { signal: sinyal });
   if (!r.ok) throw new Error(`templat ${nama} HTTP ${r.status}`);
   const b = new Uint8Array(await r.arrayBuffer());
-  if (b.byteLength < 10_000 || String.fromCharCode(...b.slice(0, 5)) !== '%PDF-') throw new Error(`templat ${nama} rusak`);
+  const kepala = String.fromCharCode(...b.slice(0, 5));
+  if (excel ? (b.byteLength < 2_000 || kepala.slice(0, 2) !== 'PK') : (b.byteLength < 10_000 || kepala !== '%PDF-')) throw new Error(`templat ${nama} rusak`);
   templatCache.set(nama, b);
   return b;
 }
@@ -132,6 +138,31 @@ export function registerTeraBapRoutes(app: Express, deps: { rateLimitKey: (req: 
       if (err instanceof Galat) return res.status(err.status).json({ error: err.message });
       console.error('[Tera/BAP] unduh:', err?.message);
       return res.status(503).json({ error: ctrl.signal.aborted ? PESAN_SIBUK : 'Dokumen gagal dibuat. Coba lagi; bila berulang hubungi Developer.' });
+    } finally {
+      clearTimeout(t);
+    }
+  });
+
+  // --- Rekap Excel: HANYA Penyelia & Developer (permintaan Ridhwan 25 Okt 2026) ---
+  const penyelia = [requireAuthTera, wajibSudahGantiSandi, requireRole(['admin_teknik', 'admin_utama'])];
+  app.get("/api/tera/bap/:jadwalId/rekap", limiter, ...penyelia, async (req: AuthRequest, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const jadwalId = String(req.params.jadwalId ?? '');
+    if (!POLA_JADWAL.test(jadwalId)) return res.status(400).json({ error: 'ID jadwal tidak sah.' });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), BATAS_WAKTU_MS);
+    try {
+      const bahanData = await kumpulkanBahan(jadwalId, req, ctrl.signal);
+      const templat = await ambilTemplat(URL_TEMPLAT_REKAP, ctrl.signal);
+      const xlsx = await isiRekapXlsx(templat, susunDataRekap(bahanData));
+      const rs = amanNamaFile(String(bahanData.jadwal.data?.hospitalName || bahanData.jadwal.nama_rs || 'RS'));
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="REKAP_${bahanData.push.bo}_${rs}.xlsx"`);
+      return res.send(Buffer.from(xlsx));
+    } catch (err: any) {
+      if (err instanceof Galat) return res.status(err.status).json({ error: err.message });
+      console.error('[Tera/Rekap] unduh:', err?.message);
+      return res.status(503).json({ error: ctrl.signal.aborted ? PESAN_SIBUK : 'Rekap gagal dibuat. Coba lagi; bila berulang hubungi Developer.' });
     } finally {
       clearTimeout(t);
     }

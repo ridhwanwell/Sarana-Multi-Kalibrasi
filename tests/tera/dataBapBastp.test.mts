@@ -2,6 +2,10 @@
 // Jalankan: npx tsx tests/tera/dataBapBastp.test.mts
 import { susunDataBap, susunDataBastp, nomorDokumen, tanggalPo, type BahanDataBap, type LkkBap } from '../../src/tera/shared/dataBapBastp.ts';
 import { keteranganBap } from '../../src/tera/pdf/susunBapBastp.ts';
+import { susunDataRekap } from '../../src/tera/shared/dataBapBastp.ts';
+import { isiRekapXlsx, serialExcel } from '../../src/tera/shared/rekapExcel.ts';
+import { readFileSync as baca, writeFileSync as tulis } from 'node:fs';
+import JSZip from 'jszip';
 
 let lulus = 0, gagal = 0;
 const cek = (n: string, ok: boolean, d: unknown = '') => { ok ? lulus++ : gagal++; if (!ok || process.env.RINCI) console.log((ok ? '✅ ' : '❌ ') + n + (ok ? '' : '  — ' + JSON.stringify(d))); };
@@ -59,6 +63,21 @@ cek('telepon kosong = "-"', t.telepon === '-', t.telepon);
 cek('alamat + kota', t.alamat === 'Jl. Searah, Kabupaten Boyolali', t.alamat);
 cek('nomorDokumen Januari', nomorDokumen('005', '2027-01-03').nomorBap === '005/SMK/BAP/I/2027');
 cek('tanggalPo teks bebas dibiarkan', tanggalPo('Senin, 5 Oktober 2026') === 'Senin, 5 Oktober 2026');
+
+// --- REKAP Excel ---
+const rk = susunDataRekap(bahan('201', daftar));
+cek('rekap: baris = LKK sah', rk.length === 3, rk.length);
+cek('rekap: nama alat huruf besar', rk[0].nama === 'SPHYGMOMANOMETER' && rk[2].nama === 'SUCTION PUMP', rk.map((x) => x.nama));
+cek('rekap: no. sertifikat = nomor label', rk[0].noSertifikat === '201.0001', rk[0].noSertifikat);
+cek('rekap: tanggal ISO', rk[0].tanggal === '2026-10-22', rk[0].tanggal);
+cek('serial Excel 11 Agu 2026', serialExcel('2026-08-11') === 46245, serialExcel('2026-08-11'));
+const tpl = baca(new URL('../../public/tera/rekap/templat-rekap.xlsx', import.meta.url));
+const xl = await isiRekapXlsx(new Uint8Array(tpl), [...rk, { ...rk[0], nama: 'A & B <uji>', noSertifikat: '201.0099' }]);
+const sh = await (await JSZip.loadAsync(xl)).file('xl/worksheets/sheet1.xml')!.async('string');
+cek('rekap xlsx: baris 3..6 ada, dimensi', sh.includes('<row r="6">') && sh.includes('<dimension ref="A1:J6"/>'));
+cek('rekap xlsx: karakter khusus aman', sh.includes('A &amp; B &lt;uji&gt;'));
+cek('rekap xlsx: judul & header tetap', sh.includes('FORM REKAP PEKERJAAN') && sh.includes('No. Sertifikat'));
+if (process.env.SIMPAN_REKAP) tulis(process.env.SIMPAN_REKAP, xl);
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 if (gagal) process.exit(1);
