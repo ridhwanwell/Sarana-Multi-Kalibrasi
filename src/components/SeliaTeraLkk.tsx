@@ -19,7 +19,9 @@ interface Ringkas {
   pemeriksaan: { jejakCocok: boolean; bolehAcc: boolean; kesimpulanServer: string | null; jumlahPenanda: number } | null;
 }
 interface Penanda { kode: string; teks: string; blokirAcc: boolean }
+interface SertTerbit { kode: string; revisi: number; status: 'berlaku' | 'digantikan' | string; ditandatanganiAt: string; pdfTersimpan: boolean }
 interface Detail {
+  sertifikat?: SertTerbit[];
   lkk: Peta; data: Peta | null; jejakHitung: Peta | null; calibratorSnapshot: Peta | null; template: Peta | null;
   pemeriksaan: { jejakCocok: boolean; bolehAcc: boolean; kesimpulanServer: string | null; penanda: Penanda[]; diperiksaAt?: string } | null;
 }
@@ -161,7 +163,7 @@ export const SeliaTeraLkk: React.FC = () => {
     const d = daftar || [];
     const f = d.filter((x) => {
       if (saringan === 'merah') return !x.pemeriksaan || !x.pemeriksaan.bolehAcc || !x.pemeriksaan.jejakCocok;
-      if (saringan === 'menunggu') return x.status === 'submitted' || x.status === 'under_review';
+      if (saringan === 'menunggu') return x.status === 'submitted' || x.status === 'under_review' || x.status === 'correction_open';
       if (saringan === 'acc') return x.status === 'approved';
       return true;
     });
@@ -177,24 +179,33 @@ export const SeliaTeraLkk: React.FC = () => {
       let f = peta.get(kunciF);
       if (!f) { f = { kunci: kunciF, nama: x.namaRs ?? `BO ${x.bo}`, bo: x.bo, isTest: x.isTest, isi: [], menunggu: 0, merah: 0 }; peta.set(kunciF, f); }
       f.isi.push(x);
-      if (x.status === 'submitted' || x.status === 'under_review') f.menunggu += 1;
+      if (x.status === 'submitted' || x.status === 'under_review' || x.status === 'correction_open') f.menunggu += 1;
       if (adaMerah(x)) f.merah += 1;
     }
     return [...peta.values()].sort((a, b) => (Number(b.menunggu > 0) - Number(a.menunggu > 0)) || a.nama.localeCompare(b.nama, 'id'));
   }, [tampil]);
   const [bukaF, setBukaF] = useState<Record<string, boolean>>({});
+  // Buka koreksi (HANYA Developer / admin_utama; server juga memeriksa)
+  const [alasanKoreksi, setAlasanKoreksi] = useState('');
+  const [yakinKoreksi, setYakinKoreksi] = useState(false);
 
   if (!boleh) return null;
 
-  const aksi = async (jenis: 'kembalikan' | 'acc') => {
+  const aksi = async (jenis: 'kembalikan' | 'acc' | 'buka-koreksi') => {
     if (!pilihId) return;
     setBekerja(true); setHasilAksi(null);
     try {
-      const r = await apiFetch(`/api/tera/selia/lkk/${pilihId}/${jenis}`, { method: 'POST', body: JSON.stringify(jenis === 'kembalikan' ? { alasan } : {}), retries: 0, timeoutMs: 20000 });
+      const body = jenis === 'kembalikan' ? { alasan } : jenis === 'buka-koreksi' ? { alasan: alasanKoreksi } : {};
+      // ACC juga mencetak & menyimpan PDF asli → beri waktu lebih panjang
+      const r = await apiFetch(`/api/tera/selia/lkk/${pilihId}/${jenis}`, { method: 'POST', body: JSON.stringify(body), retries: 0, timeoutMs: jenis === 'acc' ? 45000 : 20000 });
       const j = await r.json().catch(() => null);
-      const ok = r.ok && j && ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan'].includes(j.hasil);
-      setHasilAksi({ ok: !!ok, teks: ok ? (jenis === 'acc' ? 'LKK sudah di-ACC dan tercatat di riwayat.' : 'LKK dikembalikan ke teknisi dan tercatat di riwayat.') : (j?.alasan || j?.error || 'Belum berhasil. Tidak ada yang berubah — coba lagi.') });
-      if (ok) { setYakinAcc(false); setAlasan(''); await Promise.all([muatDaftar(), muatDetail(pilihId)]); }
+      const ok = r.ok && j && ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan', 'dibuka', 'sudah_dibuka'].includes(j.hasil);
+      const teksOk = jenis === 'acc'
+        ? `LKK sudah di-ACC dan tercatat di riwayat.${j?.pdfTersimpan === true ? ' Sertifikat (PDF) sudah terbit; scan QR stiker langsung membukanya.' : j?.pdfTersimpan === false ? ` ${j?.pdfPesan || 'PDF belum tersimpan; dibuat otomatis saat QR dibuka.'}` : ''}`
+        : jenis === 'buka-koreksi' ? `Koreksi dibuka (revisi ${j?.revisi ?? '-'}). Kembalikan ke teknisi untuk dibetulkan, lalu ACC ulang.`
+        : 'LKK dikembalikan ke teknisi dan tercatat di riwayat.';
+      setHasilAksi({ ok: !!ok, teks: ok ? teksOk : (j?.alasan || j?.error || 'Belum berhasil. Tidak ada yang berubah — coba lagi.') });
+      if (ok) { setYakinAcc(false); setAlasan(''); setYakinKoreksi(false); setAlasanKoreksi(''); await Promise.all([muatDaftar(), muatDetail(pilihId)]); }
     } catch { setHasilAksi({ ok: false, teks: 'Server tidak merespons. Belum ada yang berubah — coba lagi.' }); }
     setBekerja(false);
   };
@@ -203,7 +214,9 @@ export const SeliaTeraLkk: React.FC = () => {
   const data: Peta = detail?.data ?? {};
   const tpl: Peta = detail?.template ?? {};
   const aturanKinerja: Peta = detail?.jejakHitung?.aturan?.kinerja ?? {};
-  const bisaAksi = detail && (detail.lkk.status === 'submitted' || detail.lkk.status === 'under_review');
+  const bisaAksi = detail && ['submitted', 'under_review', 'correction_open'].includes(detail.lkk.status);
+  const bolehKoreksi = role === 'admin_utama' && detail?.lkk.status === 'approved';
+  const sertBerlaku = (detail?.sertifikat ?? []).find((x) => x.status === 'berlaku') ?? null;
   const pem = detail?.pemeriksaan;
 
   const kunci = (...p: string[]) => p.join(':');
@@ -461,7 +474,22 @@ export const SeliaTeraLkk: React.FC = () => {
                   <p className="text-sm text-slate-600">Pratinjau sertifikat untuk alat ini belum tersedia.</p>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-xs text-slate-600">Versi <strong>dengan kop</strong> hanya untuk dilihat di sini dan tertaut ke QR. Salinan untuk Google Drive dan komputer adalah versi <strong>tanpa kop</strong>. {detail.lkk.status === 'approved' ? '' : 'Sebelum ACC, QR yang tampil hanya contoh (TTE CONTOH).'}</p>
+                    <p className="text-xs text-slate-600">Versi <strong>dengan kop</strong> hanya untuk dilihat di sini dan tertaut ke QR. Salinan untuk Google Drive dan komputer adalah versi <strong>tanpa kop</strong>. {detail.lkk.status === 'approved' ? 'Sudah ACC: isi pratinjau sama dengan sertifikat terbit (tanggal ACC, QR tanda tangan asli).' : 'Sebelum ACC, QR yang tampil hanya contoh (TTE CONTOH).'}</p>
+                    {sertBerlaku && (
+                      <div className="rounded-xl border border-[#0B6FB3] bg-[#E6F3FC] p-3 text-xs text-[#095C95] space-y-2">
+                        <p className="font-bold flex items-center gap-1.5"><Stamp className="w-4 h-4" aria-hidden="true" />Sertifikat terbit · revisi {sertBerlaku.revisi} · ACC {tgl(sertBerlaku.ditandatanganiAt)}</p>
+                        <p>{sertBerlaku.pdfTersimpan ? 'Lembar asli (dengan kop) sudah tersimpan. Scan QR stiker membuka file ini.' : 'Lembar asli belum tersimpan (mis. kop belum diunggah). Dibuat otomatis saat QR dibuka.'}</p>
+                        <div className="flex flex-wrap gap-3">
+                          <a href={`/api/tera/publik/sertifikat/${sertBerlaku.kode}`} target="_blank" rel="noopener noreferrer" className="font-bold underline min-h-[40px] inline-flex items-center">Buka sertifikat terbit (PDF)</a>
+                          <a href={`/verifikasi/${sertBerlaku.kode}`} target="_blank" rel="noopener noreferrer" className="font-bold underline min-h-[40px] inline-flex items-center">Halaman verifikasi TTE</a>
+                        </div>
+                        {(detail.sertifikat ?? []).some((x) => x.status !== 'berlaku') && (
+                          <p className="text-[11px]">Revisi lama (digantikan, tetap disimpan): {(detail.sertifikat ?? []).filter((x) => x.status !== 'berlaku').map((x) => (
+                            <a key={x.kode} href={`/api/tera/publik/sertifikat/${x.kode}`} target="_blank" rel="noopener noreferrer" className="underline mr-2">revisi {x.revisi}</a>
+                          ))}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => { void ambilPdf(detail.lkk.id, true); }} disabled={pdfMemuat !== null}
                         className="inline-flex items-center gap-1.5 min-h-[44px] px-4 rounded-xl border border-[#0B6FB3] text-[#0B6FB3] text-xs font-bold cursor-pointer active:scale-[0.97] disabled:opacity-60">
@@ -493,7 +521,31 @@ export const SeliaTeraLkk: React.FC = () => {
 
               {/* 10. Aksi */}
               <Bagian id="b-aksi" judul="10. Keputusan Penyelia">
-                {!bisaAksi && <p className="text-sm text-slate-600">LKK berstatus <strong>{STATUS[detail.lkk.status]?.teks ?? detail.lkk.status}</strong>; tidak ada aksi yang tersedia di sini.</p>}
+                {!bisaAksi && !bolehKoreksi && <p className="text-sm text-slate-600">LKK berstatus <strong>{STATUS[detail.lkk.status]?.teks ?? detail.lkk.status}</strong>; tidak ada aksi yang tersedia di sini.{detail.lkk.status === 'approved' ? ' Bila ada kesalahan, hanya Developer yang bisa membuka koreksi.' : ''}</p>}
+                {detail.lkk.status === 'correction_open' && (
+                  <Tanda tingkat="kuning" judul={`Koreksi dibuka · revisi ${detail.lkk.revisi ?? '-'}`}>Sertifikat lama tetap berlaku sampai ACC ulang. Kembalikan ke teknisi untuk dibetulkan (lalu ACC ulang), atau ACC ulang langsung bila tidak ada isian yang perlu diubah. Sesudah ACC ulang: PDF versi baru dengan nomor sama, QR stiker ikut versi baru, PDF lama tetap disimpan.</Tanda>
+                )}
+                {bolehKoreksi && (
+                  <div className="rounded-xl border border-[#DCDFE3] p-4 space-y-2">
+                    <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><RotateCcw className="w-4 h-4" aria-hidden="true" />Buka koreksi (khusus Developer)</p>
+                    <p className="text-xs text-slate-600">Dipakai bila ada kesalahan pada sertifikat yang sudah ACC. Tercatat di riwayat dan tidak bisa dihapus.</p>
+                    <label htmlFor="alasan-koreksi" className="block text-xs font-bold text-slate-700">Alasan koreksi (wajib)</label>
+                    <textarea id="alasan-koreksi" value={alasanKoreksi} onChange={(e) => setAlasanKoreksi(e.target.value)} rows={3} maxLength={1000}
+                      className="w-full px-3 py-2 rounded-lg border border-[#7D8DA1] bg-white text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#398AB9]" placeholder="Contoh: nomor seri alat salah ketik" />
+                    {!yakinKoreksi
+                      ? <button type="button" disabled={bekerja || alasanKoreksi.trim().length < 5} onClick={() => setYakinKoreksi(true)} className="px-4 py-2.5 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]"><RotateCcw className="w-4 h-4" aria-hidden="true" />Buka koreksi</button>
+                      : (
+                        <div className="flex flex-wrap items-center gap-2" role="alertdialog" aria-label="Konfirmasi buka koreksi">
+                          <span className="text-xs font-semibold text-slate-800">Yakin membuka koreksi {detail.lkk.noLabel}? Revisi akan naik menjadi {(Number(detail.lkk.revisi) || 0) + 1}.</span>
+                          <button type="button" disabled={bekerja} onClick={() => { void aksi('buka-koreksi'); }} className="px-4 py-2.5 rounded-lg text-xs font-bold bg-amber-600 text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]">
+                            {bekerja ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <RotateCcw className="w-4 h-4" aria-hidden="true" />}Ya, buka koreksi
+                          </button>
+                          <button type="button" disabled={bekerja} onClick={() => setYakinKoreksi(false)} className="px-4 py-2.5 rounded-lg text-xs font-semibold border border-[#DCDFE3] text-slate-700 cursor-pointer min-h-[44px]">Batal</button>
+                        </div>
+                      )}
+                    {alasanKoreksi.trim().length < 5 && <p className="text-[11px] text-slate-500">Isi alasan (min. 5 huruf) lalu tekan tombol.</p>}
+                  </div>
+                )}
                 {bisaAksi && (
                   <div className="space-y-4">
                     {!pem?.bolehAcc && <Tanda tingkat="merah" judul="ACC belum bisa">Ada penanda yang memblokir ACC (lihat bagian 1). Kembalikan ke teknisi untuk diperbaiki.</Tanda>}
@@ -512,7 +564,7 @@ export const SeliaTeraLkk: React.FC = () => {
                         <p className="text-xs font-bold text-slate-700">ACC</p>
                         <p className="text-xs text-slate-600">ACC tercatat di riwayat (nama Anda dan waktunya) dan tidak bisa dibatalkan di layar ini.</p>
                         {!yakinAcc
-                          ? <button type="button" disabled={bekerja} onClick={() => setYakinAcc(true)} className="px-4 py-2.5 rounded-lg text-xs font-bold bg-[#0B6FB3] hover:bg-[#095C95] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]"><Stamp className="w-4 h-4" aria-hidden="true" />ACC LKK ini</button>
+                          ? <button type="button" disabled={bekerja} onClick={() => setYakinAcc(true)} className="px-4 py-2.5 rounded-lg text-xs font-bold bg-[#0B6FB3] hover:bg-[#095C95] text-white flex items-center gap-1.5 cursor-pointer disabled:opacity-60 min-h-[44px]"><Stamp className="w-4 h-4" aria-hidden="true" />{detail.lkk.status === 'correction_open' ? 'ACC ulang' : 'ACC LKK ini'}</button>
                           : (
                             <div className="flex flex-wrap items-center gap-2" role="alertdialog" aria-label="Konfirmasi ACC">
                               <span className="text-xs font-semibold text-slate-800">Yakin ACC {detail.lkk.noLabel}?</span>

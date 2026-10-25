@@ -4,7 +4,9 @@
  *  GET /api/tera/selia/lkk        -> daftar LKK yang masuk (+ jumlah penanda merah dari pemeriksaan server)
  *  GET /api/tera/selia/lkk/:id    -> satu LKK lengkap: isian, jejak hitung, snapshot kalibrator, hasil pemeriksaan server
  *  POST /api/tera/selia/lkk/:id/kembalikan  -> kembalikan ke teknisi (alasan wajib) — fungsi database tera_kembalikan_lkk
- *  POST /api/tera/selia/lkk/:id/acc         -> ACC (ditolak bila ada penanda merah / belum diperiksa server) — tera_acc_lkk
+ *  POST /api/tera/selia/lkk/:id/acc         -> ACC (ditolak bila ada penanda merah / belum diperiksa server) — tera_acc_lkk;
+ *                                              sesudahnya lembar ASLI PDF (dengan kop) dicetak & disimpan (scan QR membuka ini)
+ *  POST /api/tera/selia/lkk/:id/buka-koreksi -> HANYA Developer (admin_utama), alasan wajib — tera_buka_koreksi (revisi naik)
  *
  * Perumpamaan: meja Penyelia di kantor. Penyelia melihat tumpukan LKK yang sudah diterima loket, tiap lembar
  * diberi stiker penanda hasil periksa ulang petugas loket (4.4a). Penyelia bisa mengembalikan atau meng-ACC.
@@ -18,6 +20,7 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 import { requireAuthTera, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { POLA_UUID } from "../tera/shared/segel.js";
+import { GalatPdf, pdfAsliSertifikat, sertifikatDariKode } from "./teraPdfSertifikat.js";
 
 const BATAS_WAKTU_DB_MS = 15_000;
 const PESAN_SIBUK = "Server tidak merespons. Coba lagi sebentar.";
@@ -134,13 +137,14 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
       if (error) { console.error('[Tera/Selia] detail:', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
       if (!r) return res.status(404).json({ error: 'LKK tidak ditemukan.' });
 
-      const [pem, push, prof, tpl] = await Promise.all([
+      const [pem, push, prof, tpl, sert] = await Promise.all([
         berbatas((s) => supabaseAdmin.from('tera_lkk_pemeriksaan').select('client_version, jejak_cocok, boleh_acc, kesimpulan_server, penanda, diperiksa_at').eq('lkk_id', id).eq('client_version', r.client_version).maybeSingle().abortSignal(s)),
         r.jadwal_id ? berbatas((s) => supabaseAdmin.from('tera_jadwal_push').select('nama_rs, kota').eq('jadwal_id', r.jadwal_id).maybeSingle().abortSignal(s)) : Promise.resolve({ data: null, error: null }),
         berbatas((s) => supabaseAdmin.from('profiles').select('full_name').eq('id', r.teknisi_user_id).maybeSingle().abortSignal(s)),
         berbatas((s) => supabaseAdmin.from('tera_device_templates').select('nama, definition').eq('kode_alat', r.template_kode).eq('versi', r.template_versi).maybeSingle().abortSignal(s)),
+        berbatas((s) => supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi, revisi, status, ditandatangani_at, pdf_path').eq('lkk_id', id).order('revisi', { ascending: false }).limit(20).abortSignal(s)),
       ]);
-      if (pem.error || push.error || prof.error || tpl.error) {
+      if (pem.error || push.error || prof.error || tpl.error || sert.error) {
         console.error('[Tera/Selia] pelengkap detail:', pem.error?.message, push.error?.message, prof.error?.message, tpl.error?.message);
         return res.status(503).json({ error: PESAN_SIBUK });
       }
@@ -149,7 +153,8 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
           id: r.id, bo: r.bo, noLabel: r.no_label, status: r.status, jadwalId: r.jadwal_id, tanggalKalibrasi: r.tanggal_kalibrasi,
           alatTambahan: r.alat_tambahan, jumlahTitik: r.jumlah_titik, clientVersion: r.client_version, isTest: r.is_test,
           checksum: r.checksum, diterimaAt: r.server_received_at,
-          templateKode: r.template_kode, templateVersi: r.template_versi, namaAlat: tpl.data?.nama ?? r.template_kode,
+          templateKode: r.template_kode, templateVersi: r.template_versi, namaAlat: tpl.data?.nama ?? r.template_kode, revisi: r.revisi ?? 0,
+          accOlehNama: r.acc_oleh_nama ?? null, accAt: r.acc_at ?? null,
           namaRs: push.data?.nama_rs ?? null, kota: push.data?.kota ?? null, teknisi: prof.data?.full_name ?? null,
         },
         data: r.data,
@@ -157,6 +162,10 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
         calibratorSnapshot: r.calibrator_snapshot,
         template: tpl.data?.definition ?? null,
         pemeriksaan: pem.data ? { ...keRingkas(pem.data), diperiksaAt: (pem.data as any).diperiksa_at } : null,
+        // Sertifikat terbit (tiap revisi). Kode = kunci tautan publik PDF & halaman verifikasi TTE.
+        sertifikat: ((sert.data as any[]) ?? []).map((x) => ({
+          kode: x.kode_verifikasi, revisi: x.revisi, status: x.status, ditandatanganiAt: x.ditandatangani_at, pdfTersimpan: !!x.pdf_path,
+        })),
       });
     } catch (e: any) {
       console.error('[Tera/Selia] detail:', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
@@ -171,11 +180,19 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
     return typeof n === 'string' && n.trim() ? n.trim().slice(0, 120) : String(req.user?.email || 'Penyelia').slice(0, 120);
   };
 
-  const jalankanAksi = async (req: AuthRequest, res: Response, fungsi: 'tera_kembalikan_lkk' | 'tera_acc_lkk') => {
+  const jalankanAksi = async (req: AuthRequest, res: Response, fungsi: 'tera_kembalikan_lkk' | 'tera_acc_lkk' | 'tera_buka_koreksi') => {
     res.setHeader('Cache-Control', 'no-store');
     const id = String(req.params.id || '').toLowerCase();
     if (!POLA_UUID.test(id)) return res.status(400).json({ error: 'ID LKK tidak sah.' });
     const args: Record<string, unknown> = { p_id: id, p_user: req.user.id };
+    if (fungsi === 'tera_buka_koreksi') {
+      // "Buka koreksi" HANYA Developer (CLAUDE.md 6) — diperiksa di server, bukan hanya disembunyikan di layar.
+      if (req.userRole !== 'admin_utama') return res.status(403).json({ hasil: 'ditolak', alasan: 'Hanya Developer yang boleh membuka koreksi.' });
+      const alasan = req.body?.alasan;
+      if (typeof alasan !== 'string' || alasan.trim().length < 5) return res.status(400).json({ hasil: 'ditolak', alasan: 'Alasan koreksi wajib diisi (min. 5 huruf).' });
+      if (alasan.length > 1000) return res.status(400).json({ hasil: 'ditolak', alasan: 'Alasan terlalu panjang (maks 1000 huruf).' });
+      args.p_alasan = alasan;
+    }
     if (fungsi === 'tera_kembalikan_lkk') {
       const alasan = req.body?.alasan;
       if (typeof alasan !== 'string' || alasan.trim().length < 3) return res.status(400).json({ hasil: 'ditolak', alasan: 'Alasan pengembalian wajib diisi (min. 3 huruf).' });
@@ -187,7 +204,21 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
       const { data, error } = await berbatas((sg) => supabaseAdmin.rpc(fungsi, args).abortSignal(sg));
       if (error || !data) { console.error(`[Tera/Selia] ${fungsi}:`, error?.message); return res.status(503).json({ error: PESAN_SIBUK }); }
       const h = data as any;
-      const ok = ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan'].includes(h.hasil);
+      const ok = ['acc', 'sudah_acc', 'dikembalikan', 'sudah_dikembalikan', 'dibuka', 'sudah_dibuka'].includes(h.hasil);
+      // Sesudah ACC: cetak lembar ASLI (dengan kop) lalu simpan, supaya scan QR langsung membuka PDF.
+      // Gagal mencetak TIDAK membatalkan ACC (dicoba lagi otomatis saat QR dibuka).
+      if (h.hasil === 'acc' && typeof h.kodeVerifikasi === 'string') {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 25_000);
+        try {
+          const sert = await sertifikatDariKode(h.kodeVerifikasi, ctrl.signal);
+          if (sert) { await pdfAsliSertifikat(sert, ctrl.signal); h.pdfTersimpan = true; }
+        } catch (e: any) {
+          h.pdfTersimpan = false;
+          h.pdfPesan = e instanceof GalatPdf ? e.message : 'PDF sertifikat belum tersimpan; akan dibuat otomatis saat QR dibuka.';
+          console.error('[Tera/Selia] simpan PDF sesudah ACC:', e?.message);
+        } finally { clearTimeout(t); }
+      }
       return res.status(ok ? 200 : 409).json(h);
     } catch (e: any) {
       console.error(`[Tera/Selia] ${fungsi}:`, e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
@@ -197,4 +228,5 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
 
   app.post("/api/tera/selia/lkk/:id/kembalikan", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_kembalikan_lkk'));
   app.post("/api/tera/selia/lkk/:id/acc", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_acc_lkk'));
+  app.post("/api/tera/selia/lkk/:id/buka-koreksi", limiter, ...kantor, (req: AuthRequest, res: Response) => jalankanAksi(req, res, 'tera_buka_koreksi'));
 }

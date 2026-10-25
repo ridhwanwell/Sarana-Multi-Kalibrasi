@@ -11,6 +11,7 @@ import { registerTeraMasterRoutes } from "./teraMasterRoutes.js";
 import { registerTeraSeliaRoutes } from "./teraSeliaRoutes.js";
 import { registerTeraSertifikatRoutes } from "./teraSertifikatRoutes.js";
 import { registerTeraNilaiKalibratorRoutes } from "./teraNilaiKalibratorRoutes.js";
+import { tambahSetahun } from "../tera/pdf/formatSertifikat.js";
 
 export interface IdempotencyRecord {
   statusCode: number;
@@ -389,8 +390,32 @@ export function createApp() {
 
       const isVoid = data.status === 'Void / Rusak';
       // Label void: sertifikat tidak ditampilkan
-      const safePdfUrl = !isVoid && !isInternalDoc(data.pdf_url) ? safeCertUrlOrNull(data.pdf_url) : null;
-      const safePdfDriveUrl = !isVoid && !isInternalDoc(data.pdf_drive_url) ? safeCertUrlOrNull(data.pdf_drive_url) : null;
+      let safePdfUrl = !isVoid && !isInternalDoc(data.pdf_url) ? safeCertUrlOrNull(data.pdf_url) : null;
+      let safePdfDriveUrl = !isVoid && !isInternalDoc(data.pdf_drive_url) ? safeCertUrlOrNull(data.pdf_drive_url) : null;
+
+      // Tera SMK (CLAUDE.md 7): urutan tampil = PDF Tera SMK versi terbaru → link Google Drive → "belum terbit".
+      // Bila label ini sudah punya sertifikat Tera yang BERLAKU, PDF itulah yang ditampilkan (Drive tidak dipakai).
+      // Gagal membaca data Tera tidak mengganggu scan QR lama (tetap jatuh ke Drive / belum terbit).
+      let sertifikatTera = false;
+      let teraKalibrasi: string | null = null;
+      if (!isVoid) {
+        try {
+          const { data: st } = await supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi, ringkasan')
+            .eq('no_label', data.no_label).eq('status', 'berlaku').order('revisi', { ascending: false }).limit(1);
+          const kode = (st as any[])?.[0]?.kode_verifikasi;
+          if (typeof kode === 'string' && /^[0-9a-f]{24}$/.test(kode)) {
+            const host = String(req.get('host') || '');
+            const asal = /^([a-z0-9-]+\.)*(saranamultikalibrasi\.com|vercel\.app)$/i.test(host) ? `https://${host}` : 'https://saranamultikalibrasi.com';
+            safePdfUrl = `${asal}/api/tera/publik/sertifikat/${kode}`;
+            safePdfDriveUrl = null;
+            sertifikatTera = true;
+            const tgl = (st as any[])[0]?.ringkasan?.tanggalKalibrasi;
+            if (typeof tgl === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(tgl)) teraKalibrasi = tgl;
+          }
+        } catch (e: any) {
+          console.warn('[Scan QR] cek sertifikat Tera dilewati:', e?.message);
+        }
+      }
 
       // Kembalikan HANYA field aman (jangan kirim pdfOriginalUrl atau metadata sensitif)
       res.json({
@@ -398,9 +423,10 @@ export function createApp() {
         namaRs: data.nama_rs || null,
         namaAlat: data.nama_alat || data.namaAlat || data.pdf_name || null,
         ruangan: normalizeRuangan(data.ruangan),
-        status: data.status || 'Menunggu Sertifikat',
-        calibratedAt: data.calibrated_at || null,
-        validUntil: data.valid_until || null,
+        status: sertifikatTera ? 'Sertifikat Tertaut' : (data.status || 'Menunggu Sertifikat'),
+        calibratedAt: data.calibrated_at || teraKalibrasi || null,
+        // Sertifikat Tera: kalibrasi ulang = tanggal pelaksanaan + 1 tahun (sama dengan yang tercetak di sertifikat)
+        validUntil: data.valid_until || (teraKalibrasi ? tambahSetahun(teraKalibrasi) || null : null),
         pdfUrl: safePdfUrl,
         pdfDriveUrl: safePdfDriveUrl,
         isVoid,

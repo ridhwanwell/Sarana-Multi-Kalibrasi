@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { extractLabelFromLocation } from './lib/labelParser';
 import { ThemeProvider, ThemeRouteSync } from './lib/theme';
@@ -15,6 +15,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminLayout from './components/AdminLayout';
 import AsetPortalApp from './pages/AsetPortalApp';
 import TeraApp from './tera/TeraApp';
+import VerifikasiTtePage from './pages/VerifikasiTtePage';
 
 /**
  * Admin Panel lama (/admin/dashboard, /labels, /generate, /templates) sudah tidak dipakai:
@@ -88,6 +89,15 @@ const ScanOrRedirect = () => {
   return <KantorOnly><AsetPortalApp /></KantorOnly>;
 };
 
+/**
+ * /verifikasi/<x>: kode 24 karakter (QR tanda tangan elektronik sertifikat Tera SMK) atau "CONTOH" → halaman
+ * verifikasi TTE. Selain itu (nomor label di stiker lama, mis. /verifikasi/087.0031) → halaman scan QR lama, tidak berubah.
+ */
+const VerifikasiAtauScan = () => {
+  const { noLabel: x = '' } = useParams();
+  return /^[0-9a-f]{24}$/i.test(x) || /^contoh$/i.test(x) ? <VerifikasiTtePage /> : <PublicScanPage />;
+};
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -98,7 +108,7 @@ export default function App() {
           {/* Scanned QR code routes with specific label parameter */}
           <Route path="/sertifikat/:noLabel" element={<PublicScanPage />} />
           <Route path="/scan/:noLabel" element={<PublicScanPage />} />
-          <Route path="/verifikasi/:noLabel" element={<PublicScanPage />} />
+          <Route path="/verifikasi/:noLabel" element={<VerifikasiAtauScan />} />
           <Route path="/cert/:noLabel" element={<PublicScanPage />} />
           <Route path="/label/:noLabel" element={<PublicScanPage />} />
 

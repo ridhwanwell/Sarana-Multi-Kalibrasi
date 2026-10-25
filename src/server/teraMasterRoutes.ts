@@ -50,7 +50,7 @@ export function registerTeraMasterRoutes(app: Express, deps: { rateLimitKey: (re
         berbatas((s) => supabaseAdmin.from('tera_device_templates')
           .select('kode_alat, versi, definition').eq('aktif', true).limit(500).abortSignal(s)),
         berbatas((s) => supabaseAdmin.from('tera_calibrator_points')
-          .select('id, aset_kalibrator_id, parameter, satuan, nomor_sertifikat, tertelusur, tanggal_kalibrasi, berlaku_sampai, points, budget, sumber, diubah_pada')
+          .select('id, aset_kalibrator_id, parameter, satuan, nomor_sertifikat, tertelusur, tanggal_kalibrasi, berlaku_sampai, points, budget, sumber, diubah_pada, nama_tampil')
           .eq('aktif', true).limit(2000).abortSignal(s)),
       ]);
       if (rT.error || rK.error) {
@@ -79,7 +79,8 @@ export function registerTeraMasterRoutes(app: Express, deps: { rateLimitKey: (re
               pointsId: r.id,
               asetId: r.aset_kalibrator_id,
               kode: a.kode,
-              nama: a.nama_alat,
+              // nama_tampil (migrasi 0017): nama yang dicetak di sertifikat bila berbeda dengan nama di Manajemen Aset
+              nama: (typeof r.nama_tampil === 'string' && r.nama_tampil.trim()) ? r.nama_tampil.trim() : a.nama_alat,
               merk: a.merk,
               model: a.model,
               nomorSeri: a.nomor_seri,

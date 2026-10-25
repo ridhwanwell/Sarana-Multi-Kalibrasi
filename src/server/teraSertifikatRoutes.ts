@@ -1,11 +1,13 @@
 /**
  * Tera SMK — PDF SERTIFIKAT (Tahap 4.5b).
  *
- *  GET /api/tera/selia/lkk/:id/pdf  -> PDF Sphygmomanometer dari LKK (pratinjau untuk Penyelia; tanggal terbit = hari ini)
+ *  GET /api/tera/selia/lkk/:id/pdf          -> PDF dari LKK (Selia; ?kop=0 = tanpa kop untuk Drive & komputer)
+ *  GET /api/tera/publik/verifikasi/:kode     -> data halaman verifikasi tanda tangan elektronik (publik, ringkas)
+ *  GET /api/tera/publik/sertifikat/:kode     -> PDF sertifikat terbit (publik; dibuka dari scan QR stiker & QR TTE)
  *
  * Perumpamaan: mesin cetak di kantor. Kertas dasar = kop resmi (PDF di bucket privat `tera-assets`, DITEMPEL apa adanya,
- * tidak digambar ulang); isi dicetak di atasnya dengan font Carlito (publik, public/tera/fonts). Hanya admin_teknik & admin_utama.
- * Tidak mengubah data apa pun (baca saja).
+ * tidak digambar ulang); isi dicetak di atasnya dengan font Carlito (publik, public/tera/fonts). Rute Selia: admin_teknik & admin_utama.
+ * Rute publik hanya MEMBACA data ringkas; satu-satunya tulisan = menyimpan lembar asli PDF ke arsip bila belum tersimpan.
  */
 import type { Express, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
@@ -13,52 +15,24 @@ import { supabaseAdmin } from "./supabaseAdmin.js";
 import { requireAuthTera, requireRole } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { POLA_UUID } from "../tera/shared/segel.js";
-import QRCode from 'qrcode';
-import { renderSertifikatPdf, type BahanPdf, type Tte } from "../tera/pdf/renderSertifikat.js";
-import { TATA_LETAK_SPHYGMOMANOMETER } from "../tera/pdf/tataLetakSphygmo.js";
-import { isianSphygmomanometer } from "../tera/pdf/formatSertifikat.js";
+import { buatPdfLkk, GalatPdf, pdfAsliSertifikat, sertifikatBerlakuLkk, sertifikatDariKode } from "./teraPdfSertifikat.js";
 
 const BATAS_WAKTU_MS = 15_000;
+const BATAS_WAKTU_PUBLIK_MS = 25_000;
 const PESAN_SIBUK = "Server tidak merespons. Coba lagi sebentar.";
-const BUCKET = 'tera-assets';
-const BASE_FONT = 'https://saranamultikalibrasi.com/tera/fonts';
-// Sementara (belum ada master tera_signatories): sesuai CLAUDE.md 9.6.
-const PENANDATANGAN = { nama: 'Hafizh Pasifianto Utomo, S.Tr.T.', jabatan: 'Manajer Teknik', jabatanEn: 'Technical Manager' };
-
-/** Matriks QR (true = gelap) dari alamat. Dibuat di server (tanpa gambar), digambar sebagai kotak vektor di PDF. */
-function matriksQr(url: string): boolean[][] {
-  const q: any = (QRCode as any).create(url, { errorCorrectionLevel: 'M' });
-  const n: number = q.modules.size;
-  const ambil = (r: number, c: number) => (typeof q.modules.get === 'function' ? !!q.modules.get(r, c) : !!q.modules.data[r * n + c]);
-  return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => ambil(r, c)));
-}
-const URL_VERIFIKASI = 'https://saranamultikalibrasi.com/verifikasi';
-
-let fontCache: { r: Uint8Array; b: Uint8Array; i: Uint8Array } | null = null;
-
-async function ambilFont(sinyal: AbortSignal) {
-  if (fontCache) return fontCache;
-  const muat = async (nama: string) => {
-    const r = await fetch(`${BASE_FONT}/${nama}`, { signal: sinyal });
-    if (!r.ok) throw new Error(`font ${nama} HTTP ${r.status}`);
-    const b = new Uint8Array(await r.arrayBuffer());
-    if (b.byteLength < 10_000) throw new Error(`font ${nama} terlalu kecil`);
-    return b;
-  };
-  const [r, b, i] = await Promise.all([muat('Carlito-Regular.ttf'), muat('Carlito-Bold.ttf'), muat('Carlito-Italic.ttf')]);
-  fontCache = { r, b, i };
-  return fontCache;
-}
-
-const hariIniJakarta = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+const POLA_KODE = /^[0-9a-f]{24}$/;
 
 export function registerTeraSertifikatRoutes(app: Express, deps: { rateLimitKey: (req: any) => string }) {
   const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, keyGenerator: deps.rateLimitKey, standardHeaders: true, legacyHeaders: false,
     message: { error: "Terlalu banyak permintaan. Coba lagi beberapa menit lagi." } });
+  // Halaman publik (scan QR stiker & QR tanda tangan): batas per IP, sama longgarnya dengan scan QR lama.
+  const limiterPublik = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false,
+    message: { error: "Terlalu banyak permintaan, silakan coba lagi dalam satu menit." } });
   const kantor = [requireAuthTera,
     (req: AuthRequest, res: Response, next: NextFunction) => (req.user?.app_metadata?.must_change_password === true ? res.status(403).json({ error: "Ganti kata sandi dulu." }) : next()),
     requireRole(['admin_teknik', 'admin_utama'])];
 
+  // --- Selia: pratinjau (dengan kop) & unduh tanpa kop -----------------------------------------
   app.get("/api/tera/selia/lkk/:id/pdf", limiter, ...kantor, async (req: AuthRequest, res: Response) => {
     res.setHeader('Cache-Control', 'no-store');
     const id = String(req.params.id || '').toLowerCase();
@@ -66,65 +40,60 @@ export function registerTeraSertifikatRoutes(app: Express, deps: { rateLimitKey:
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), BATAS_WAKTU_MS);
     try {
-      const { data: r, error } = await supabaseAdmin.from('tera_lkk').select('*').eq('id', id).maybeSingle().abortSignal(ctrl.signal);
-      if (error) { console.error('[Tera/PDF] lkk:', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
-      if (!r) return res.status(404).json({ error: 'LKK tidak ditemukan.' });
-      if (r.template_kode !== 'sphygmomanometer') return res.status(422).json({ error: 'PDF untuk alat ini belum tersedia.' });
-
-      const [push, prof, tpl] = await Promise.all([
-        r.jadwal_id ? supabaseAdmin.from('tera_jadwal_push').select('nama_rs, kota').eq('jadwal_id', r.jadwal_id).maybeSingle().abortSignal(ctrl.signal) : Promise.resolve({ data: null, error: null }),
-        supabaseAdmin.from('profiles').select('full_name').eq('id', r.teknisi_user_id).maybeSingle().abortSignal(ctrl.signal),
-        supabaseAdmin.from('tera_device_templates').select('nama, definition').eq('kode_alat', r.template_kode).eq('versi', r.template_versi).maybeSingle().abortSignal(ctrl.signal),
-      ]);
-      if (push.error || prof.error || tpl.error) { console.error('[Tera/PDF] pelengkap:', push.error?.message, prof.error?.message, tpl.error?.message); return res.status(503).json({ error: PESAN_SIBUK }); }
-      const namaRs = (push.data as any)?.nama_rs ?? '';
-      const rs = namaRs
-        ? await supabaseAdmin.from('rumah_sakit').select('alamat, kota').eq('nama_rs', namaRs).is('deleted_at', null).limit(1).abortSignal(ctrl.signal)
-        : { data: [], error: null };
-      const alamat = [(rs.data as any)?.[0]?.alamat, (rs.data as any)?.[0]?.kota ?? (push.data as any)?.kota].filter(Boolean).join(', ');
-
-      // ?kop=0 → versi TANPA kop (salinan Google Drive & komputer). Dengan kop hanya untuk pratinjau Selia & tautan QR.
+      const { data: st, error } = await supabaseAdmin.from('tera_lkk').select('status').eq('id', id).maybeSingle().abortSignal(ctrl.signal);
+      if (error) { console.error('[Tera/PDF] status:', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      if (!st) return res.status(404).json({ error: 'LKK tidak ditemukan.' });
+      // Sesudah ACC: isi sama dengan sertifikat terbit (tanggal ACC, TTE asli). Sebelum ACC / saat koreksi: TTE CONTOH.
+      const sert = (st as any).status === 'approved' ? await sertifikatBerlakuLkk(id, ctrl.signal) : null;
       const denganKop = req.query.kop !== '0';
-      let kopBytes: Uint8Array | null = null;
-      if (denganKop) {
-        const kopPath = 'kop/KOP_SERTIF_NON_KAN.pdf'; // Sphygmomanometer = Non-KAN (CLAUDE.md 9.5)
-        const kop = await supabaseAdmin.storage.from(BUCKET).download(kopPath);
-        if (kop.error || !kop.data) {
-          console.error('[Tera/PDF] kop:', kop.error?.message);
-          return res.status(503).json({ error: 'File kop sertifikat belum ada di penyimpanan (tera-assets/kop). Hubungi Developer.' });
-        }
-        kopBytes = new Uint8Array(await kop.data.arrayBuffer());
-      }
-      const font = await ambilFont(ctrl.signal);
-      const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: kopBytes };
-
-      const def = (tpl.data as any)?.definition ?? {};
-      const kin = (def.kinerja ?? []).find((k: any) => k.id === 'tekanan') ?? {};
-      const uji = (def.ujiAmbang ?? []) as any[];
-      const isian = isianSphygmomanometer(
-        { data: r.data, jejak: r.results, snapshot: r.calibrator_snapshot },
-        {
-          bo: r.bo, noLabel: r.no_label, namaAlat: (tpl.data as any)?.nama ?? 'Sphygmomanometer', namaRs, alamatRs: alamat,
-          teknisi: (prof.data as any)?.full_name ?? '', tanggalKalibrasi: r.tanggal_kalibrasi, tanggalTerbit: hariIniJakarta(), penandatangan: PENANDATANGAN,
-        },
-        { toleransiTekanan: Number(kin.toleransi) || 0, ambangBocor: Number(uji.find((u) => u.id === 'bocor')?.batas) || 0, ambangLaju: Number(uji.find((u) => u.id === 'lajuBuang')?.batas) || 0 },
-      );
-      // TTE: sebelum ACC = QR CONTOH (tidak menunjuk ke sertifikat sah); sesudah ACC = QR kode verifikasi sertifikat berlaku.
-      let tte: Tte;
-      if (r.status === 'approved') {
-        const sert = await supabaseAdmin.from('tera_sertifikat').select('kode_verifikasi').eq('lkk_id', id).eq('status', 'berlaku').maybeSingle().abortSignal(ctrl.signal);
-        if (sert.error) { console.error('[Tera/PDF] sertifikat:', sert.error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
-        const kode = (sert.data as any)?.kode_verifikasi;
-        tte = kode ? { kotak: matriksQr(`${URL_VERIFIKASI}/${kode}`), contoh: false } : { kotak: matriksQr(`${URL_VERIFIKASI}/CONTOH`), contoh: true };
-      } else tte = { kotak: matriksQr(`${URL_VERIFIKASI}/CONTOH`), contoh: true };
-      const pdf = await renderSertifikatPdf(TATA_LETAK_SPHYGMOMANOMETER, isian, bahan, tte);
+      const { pdf, nama } = await buatPdfLkk(id, { denganKop, sert, signal: ctrl.signal });
       res.setHeader('Content-Type', 'application/pdf');
-      const nama = `Sertifikat-${String(r.no_label).replace(/[^0-9.]/g, '')}${denganKop ? '' : '-tanpa-kop'}`;
       res.setHeader('Content-Disposition', `${denganKop ? 'inline' : 'attachment'}; filename="${nama}.pdf"`);
       return res.status(200).send(Buffer.from(pdf));
     } catch (e: any) {
+      if (e instanceof GalatPdf) return res.status(e.status).json({ error: e.message });
       console.error('[Tera/PDF]', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
       return res.status(503).json({ error: e?.name === 'AbortError' ? PESAN_SIBUK : 'PDF belum bisa dibuat. Coba lagi; bila berulang hubungi Developer.' });
+    } finally { clearTimeout(timer); }
+  });
+
+  // --- Publik: data verifikasi tanda tangan elektronik (/verifikasi/<kode>) ---------------------
+  app.get("/api/tera/publik/verifikasi/:kode", limiterPublik, async (req, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const kode = String(req.params.kode || '').toLowerCase();
+    if (kode === 'contoh') return res.json({ contoh: true });
+    if (!POLA_KODE.test(kode)) return res.status(404).json({ ditemukan: false });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), BATAS_WAKTU_MS);
+    try {
+      const { data, error } = await supabaseAdmin.rpc('tera_verifikasi_sertifikat', { p_kode: kode }).abortSignal(ctrl.signal);
+      if (error) { console.error('[Tera/Verifikasi]', error.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      const d = (data ?? {}) as any;
+      if (!d.ditemukan) return res.status(404).json({ ditemukan: false });
+      return res.json({ ...d, pdfUrl: `/api/tera/publik/sertifikat/${kode}` });
+    } catch (e: any) {
+      console.error('[Tera/Verifikasi]', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    } finally { clearTimeout(timer); }
+  });
+
+  // --- Publik: PDF sertifikat terbit (dengan kop). Kode 24 karakter acak → tidak bisa ditebak dari nomor label. ---
+  app.get("/api/tera/publik/sertifikat/:kode", limiterPublik, async (req, res: Response) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const kode = String(req.params.kode || '').toLowerCase().replace(/\.pdf$/, '');
+    if (!POLA_KODE.test(kode)) return res.status(404).type('text/plain').send('Sertifikat tidak ditemukan.');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), BATAS_WAKTU_PUBLIK_MS);
+    try {
+      const sert = await sertifikatDariKode(kode, ctrl.signal);
+      if (!sert) return res.status(404).type('text/plain').send('Sertifikat tidak ditemukan.');
+      const { pdf, nama } = await pdfAsliSertifikat(sert, ctrl.signal);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${nama}.pdf"`);
+      return res.status(200).send(Buffer.from(pdf));
+    } catch (e: any) {
+      console.error('[Tera/Publik PDF]', e?.name === 'AbortError' ? 'batas waktu habis' : e?.message);
+      return res.status(503).type('text/plain').send('Sertifikat sedang disiapkan. Silakan coba lagi beberapa saat lagi.');
     } finally { clearTimeout(timer); }
   });
 }
