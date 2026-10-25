@@ -500,3 +500,7 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 - Excel Master Ridhwan: Infusion sudah benar (cukup 5 kolom bacaan & titik KMK); Syringe L18:L22 sebaiknya `ABS(F18)+N(I18)<=T18` (pakai U95, bukan T/3).
 - BERIKUTNYA: alat ke-3 (usul: Keselamatan Listrik, atau NIBP bila data Manometer sudah ada).
 
+### Hasil 6.9 (26 Okt 2026 05.15) — revisi kecil sertifikat pompa
+- Permintaan Ridhwan: baris "Standar yang digunakan" (3 kalibrator) hurufnya dikecilkan dan ujung kanan dibiarkan tidak rata. `tataLetakPompa.ts` & `tataLetakSyringe.ts`: kalibrator1–3 9,96 → **9 pt** (generator `buat_templat_pompa.py` ikut). Commit `e63887e`, deployment READY, /api/health OK.
+- BERIKUTNYA: Keselamatan Listrik (Master `Master_Keselamatan_Listrik_terisi.xlsx`: klasifikasi Kelas I/II, tipe B/BF/CF, cara ukur PE, metode arus bocor, guard band ×U95 isian; kesimpulan = semua uji Laik/Tidak berlaku, tanpa skor).
+
