@@ -28,6 +28,7 @@ import { driveTersambung, kirimKeDrive, waktunyaCobaDrive } from "./teraDrive.js
 import { buatJejakHitung } from "../tera/shared/jejak.js";
 import { periksaPaketServer } from "../tera/shared/periksaServer.js";
 import type { TemplateAlat } from "../tera/shared/hitung.js";
+import type { TemplatePompa } from "../tera/shared/hitungPompa.js";
 
 /** Ratakan isian jadi peta "jalur → nilai" (mis. "identitas.merek", "kinerja.tekanan.50.naik.0"). */
 function ratakan(x: unknown, awal = '', keluar: Record<string, unknown> = {}): Record<string, unknown> {
@@ -346,7 +347,7 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
       const { data: t, error: et } = await berbatas((s) => supabaseAdmin.from('tera_device_templates').select('definition')
         .eq('kode_alat', r.template_kode).eq('versi', r.template_versi).maybeSingle().abortSignal(s));
       if (et) { console.error('[Tera/Selia] ubah template:', et.message); return res.status(503).json({ error: PESAN_SIBUK }); }
-      const tpl = (t?.definition ?? null) as TemplateAlat | null;
+      const tpl = (t?.definition ?? null) as TemplateAlat | TemplatePompa | null;
       if (!tpl) return res.status(422).json({ hasil: 'ditolak', alasan: 'Template alat tidak ditemukan di server.' });
 
       const tanggal = tglMasuk === undefined ? r.tanggal_kalibrasi : (tglMasuk || null);

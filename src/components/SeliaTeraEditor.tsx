@@ -12,7 +12,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Loader2, Save, X } from 'lucide-react';
 import { apiFetch } from '../lib/apiClient';
-import { bidangIdentitas } from '../tera/shared/isian';
+import { bidangIdentitas, opsiFisik } from '../tera/shared/isian';
 
 type Peta = Record<string, any>;
 const salin = <T,>(x: T): T => JSON.parse(JSON.stringify(x ?? {}));
@@ -130,7 +130,9 @@ export const SeliaTeraEditor: React.FC<{
     } finally { setMenyimpan(false); }
   };
 
+  const pompa = tpl.tipe === 'pompa';
   const kinerja: Peta[] = Array.isArray(tpl.kinerja) ? tpl.kinerja : [];
+  const pilihFisik = pompa ? opsiFisik(tpl as any) : { fisik: PILIHAN_BAIK, fungsi: PILIHAN_BAIK };
 
   return (
     <section aria-labelledby="ubah-judul" className="rounded-2xl border-2 border-[#0B6FB3] bg-white p-4 sm:p-5 space-y-6">
@@ -184,8 +186,8 @@ export const SeliaTeraEditor: React.FC<{
           {(tpl.fisik || []).map((b: Peta) => (
             <div key={b.id} className="grid grid-cols-1 sm:grid-cols-[1fr_160px_160px] gap-2 sm:items-end">
               <p className="text-sm text-slate-800 sm:pb-3">{b.judul}</p>
-              {pilih({ id: `ubah-fisik-${b.id}`, label: 'Fisik', jalur: ['fisik', b.id, 'fisik'], opsi: PILIHAN_BAIK })}
-              {pilih({ id: `ubah-fungsi-${b.id}`, label: 'Fungsi', jalur: ['fisik', b.id, 'fungsi'], opsi: PILIHAN_BAIK })}
+              {pilih({ id: `ubah-fisik-${b.id}`, label: 'Fisik', jalur: ['fisik', b.id, 'fisik'], opsi: pilihFisik.fisik })}
+              {pilih({ id: `ubah-fungsi-${b.id}`, label: 'Fungsi', jalur: ['fisik', b.id, 'fungsi'], opsi: pilihFisik.fungsi })}
             </div>
           ))}
           {(tpl.fisikTambahan || []).map((b: Peta) => (
@@ -211,8 +213,42 @@ export const SeliaTeraEditor: React.FC<{
         </fieldset>
       )}
 
+      {/* Pompa: keselamatan listrik, aliran, penyumbatan */}
+      {pompa && (
+        <>
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-black text-[#1C658C]">Keselamatan listrik — bacaan ESA</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(tpl.listrik as Peta[]).map((u) => kotakAngka({ id: `ubah-listrik-${u.id}`, label: u.judul, satuan: u.satuan, jalur: ['listrik', u.id] }))}
+            </div>
+          </fieldset>
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-black text-[#1C658C]">Aliran / Flow Rate — bacaan IDA (mL/h)</legend>
+            <div className="space-y-3">
+              {(tpl.kinerja.titikAliran as number[]).map((s) => (
+                <div key={s} className="rounded-xl border border-[#DCDFE3] p-3">
+                  <p className="text-sm font-bold text-slate-800 tabular-nums mb-2">Setting {s} mL/h</p>
+                  <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                    {Array.from({ length: Number(tpl.kinerja.pengulangan) || 6 }, (_, i) => kotakAngka({ id: `ubah-aliran-${s}-${i}`, label: `Bacaan ${i + 1}`, jalur: ['aliran', String(s), i] }))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-black text-[#1C658C]">Penyumbatan / Occlusion — bacaan IDA (psi)</legend>
+            <div className="rounded-xl border border-[#DCDFE3] p-3 space-y-3">
+              <div className="max-w-xs">{kotakAngka({ id: 'ubah-sumbat-setting', label: 'Setting alat', satuan: 'mL/h', jalur: ['sumbat', 'setting'] })}</div>
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                {Array.from({ length: Number(tpl.kinerja.pengulangan) || 6 }, (_, i) => kotakAngka({ id: `ubah-sumbat-${i}`, label: `Bacaan ${i + 1}`, jalur: ['sumbat', 'bacaan', i] }))}
+              </div>
+            </div>
+          </fieldset>
+        </>
+      )}
+
       {/* Kinerja */}
-      {kinerja.map((k) => {
+      {!pompa && kinerja.map((k) => {
         const n = Math.max(1, Number(k.pengulangan) || 3);
         return (
           <fieldset key={k.id} className="space-y-3">

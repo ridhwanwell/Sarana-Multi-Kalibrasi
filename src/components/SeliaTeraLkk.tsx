@@ -14,6 +14,7 @@ import { AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, FileDown,
 import { useAuth } from '../lib/AuthContext';
 import { apiFetch } from '../lib/apiClient';
 import { SeliaTeraEditor } from './SeliaTeraEditor';
+import { SeliaTeraPompa } from './SeliaTeraPompa';
 import { unduhBapBastp, type JenisDokumen } from '../tera/data/unduhBapBastp';
 
 type Peta = Record<string, any>;
@@ -267,6 +268,9 @@ export const SeliaTeraLkk: React.FC<{
   const h: Peta | null = detail?.jejakHitung?.hasil ?? null;
   const data: Peta = detail?.data ?? {};
   const tpl: Peta = detail?.template ?? {};
+  const pompa = tpl.tipe === 'pompa';
+  // Label kolom identitas mengikuti template (mis. pompa: "Merk Pabrik", satuan mL/h), cadangan: nama bawaan.
+  const labelIden = (k: string) => (Array.isArray(tpl.identitasBidang) ? tpl.identitasBidang.find((b: Peta) => b.id === k)?.label : undefined) ?? NAMA_IDENTITAS[k] ?? k;
   const aturanKinerja: Peta = detail?.jejakHitung?.aturan?.kinerja ?? {};
   const bisaAksi = detail && ['submitted', 'under_review', 'correction_open'].includes(detail.lkk.status);
   const bolehKoreksi = role === 'admin_utama' && detail?.lkk.status === 'approved';
@@ -400,7 +404,7 @@ export const SeliaTeraLkk: React.FC<{
               {/* 2. Identitas */}
               <Bagian id="b-identitas" judul="1. Identitas alat">
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {Object.entries(data.identitas ?? {}).map(([k, v]) => <Isian key={k} nama={NAMA_IDENTITAS[k] ?? k} nilai={v === null || v === '' ? '-' : (k === 'tanggalPenerimaan' ? tglPendek(String(v)) : String(v))} />)}
+                  {Object.entries(data.identitas ?? {}).map(([k, v]) => <Isian key={k} nama={labelIden(k)} nilai={v === null || v === '' ? '-' : (k === 'tanggalPenerimaan' ? tglPendek(String(v)) : String(v))} />)}
                   <Isian nama="Template" nilai={`${detail.lkk.templateKode} v${detail.lkk.templateVersi}`} />
                 </dl>
               </Bagian>
@@ -436,7 +440,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 5. Uji ambang */}
-              {(tpl.ujiAmbang || []).length > 0 && (
+              {!pompa && (tpl.ujiAmbang || []).length > 0 && (
                 <Bagian id="b-uji" judul="4. Uji lain">
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
@@ -459,8 +463,11 @@ export const SeliaTeraLkk: React.FC<{
                 </Bagian>
               )}
 
+              {/* Pompa: listrik + aliran + penyumbatan */}
+              {pompa && <SeliaTeraPompa tpl={tpl} data={data} h={h} />}
+
               {/* 6. Kinerja + jejak hitung */}
-              {Object.keys(h?.kinerja ?? {}).map((kid) => {
+              {!pompa && Object.keys(h?.kinerja ?? {}).map((kid) => {
                 const kin = h!.kinerja[kid];
                 const def = (tpl.kinerja || []).find((x: Peta) => x.id === kid) ?? {};
                 const tol: number | null = typeof aturanKinerja[kid]?.toleransi === 'number' ? aturanKinerja[kid].toleransi : null;
@@ -497,7 +504,7 @@ export const SeliaTeraLkk: React.FC<{
               })}
 
               {/* 7. Alat standar */}
-              <Bagian id="b-kal" judul="6. Alat standar yang dipakai (fotokopi sertifikat di LKK)">
+              <Bagian id="b-kal" judul={`${pompa ? 7 : 6}. Alat standar yang dipakai (fotokopi sertifikat di LKK)`}>
                 {detail.calibratorSnapshot && Object.keys(detail.calibratorSnapshot).length > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
@@ -515,7 +522,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 8. Kesimpulan */}
-              <Bagian id="b-kesimpulan" judul="7. Kesimpulan">
+              <Bagian id="b-kesimpulan" judul={`${pompa ? 8 : 7}. Kesimpulan`}>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`px-4 py-2 rounded-full text-sm font-black border ${h?.kesimpulan === 'Tidak Laik Pakai' ? 'bg-[#FEE2E2] text-[#991B1B] border-[#DC2626]' : 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'}`}>{h?.kesimpulan ?? '-'}</span>
                   {h?.skor && <span className="text-xs text-slate-600">Skor total {fmt(h.skor.total, 1)} (rincian: {(h.skor.rincian || []).map((r: Peta) => `${r.dari} ${fmt(r.nilai, 1)}`).join(', ')})</span>}
@@ -523,7 +530,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 9. Pratinjau sertifikat (di paling bawah lembar, sebelum keputusan) */}
-              <Bagian id="b-pratinjau" judul="8. Pratinjau sertifikat">
+              <Bagian id="b-pratinjau" judul={`${pompa ? 9 : 8}. Pratinjau sertifikat`}>
                 {detail.lkk.templateKode !== 'sphygmomanometer' ? (
                   <p className="text-sm text-slate-600">Pratinjau sertifikat untuk alat ini belum tersedia.</p>
                 ) : (
