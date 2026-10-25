@@ -146,3 +146,34 @@ export function susunDataRekap(b: BahanDataBap): BarisRekap[] {
     ruangan: t[i].ruangan, keterangan: t[i].keterangan, noSertifikat: l.no_label,
   }));
 }
+
+// ───────────────────────── PENAGIHAN RS (Tahap 5.4) ─────────────────────────
+/** Bentuk baris sama dengan hasil baca PDF BAP (utils/bapPdfImport ParsedBapRow) agar Penagihan RS memakai layar yang sama. */
+export interface BarisRealisasi { no: number; namaAlat: string; poQty: number | null; realisasi: number | null; sisa: number | null; keterangan: string; isNonPo: boolean }
+
+/**
+ * Realisasi untuk penagihan dari satu/lebih jadwal Tera milik satu SPH. Aturan sama dengan BAP:
+ * realisasi = LKK diterima server (termasuk TIDAK LAIK); sisa → "Batal" (tidak ditagih karena tagihan = realisasi);
+ * alat tambahan = baris Non PO (harga diisi admin penagihan). Data uji tidak pernah sampai sini (ditolak di rute).
+ */
+export function realisasiPenagihan(daftar: BahanDataBap[]): { rows: BarisRealisasi[] } {
+  const po = new Map<string, { po: number; re: number }>();
+  const tambahan = new Map<string, number>();
+  for (const b of daftar) {
+    const d = susunDataBap(b);
+    const nPo = b.push.alat_po.length;
+    d.baris.forEach((x, i) => {
+      if (i < nPo) { const a = po.get(x.nama) ?? { po: 0, re: 0 }; po.set(x.nama, { po: a.po + x.po, re: a.re + x.realisasi }); }
+      else tambahan.set(x.nama, (tambahan.get(x.nama) ?? 0) + x.realisasi);
+    });
+  }
+  const rows: BarisRealisasi[] = [];
+  let no = 1;
+  for (const [namaAlat, a] of po) {
+    const sisa = Math.max(0, a.po - a.re);
+    rows.push({ no: no++, namaAlat, poQty: a.po, realisasi: a.re, sisa, keterangan: sisa > 0 ? 'Batal' : 'Selesai', isNonPo: false });
+  }
+  let nt = 1;
+  for (const [namaAlat, n] of tambahan) rows.push({ no: nt++, namaAlat, poQty: null, realisasi: n, sisa: 0, keterangan: 'Selesai', isNonPo: true });
+  return { rows };
+}

@@ -22,6 +22,8 @@ interface BapPdfImportModalProps {
   fileName: string;
   onClose: () => void;
   onApply: (updatedBap: BapDocument, isNew: boolean) => void;
+  /** Realisasi dari Tera SMK: harga Non PO TIDAK disarankan dari katalog (dikosongkan untuk diisi admin penagihan). */
+  hargaNonPoKosong?: boolean;
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -34,7 +36,7 @@ const SOURCE_LABEL: Record<string, string> = {
  * Pratinjau hasil baca PDF BAP (PO atau Non PO) sebelum diterapkan:
  * realisasi per alat, harga satuan, dan perubahan total tagihan BO/FP/KWP.
  */
-export const BapPdfImportModal: React.FC<BapPdfImportModalProps> = ({ kind, sph, bap, parsed, fileName, onClose, onApply }) => {
+export const BapPdfImportModal: React.FC<BapPdfImportModalProps> = ({ kind, sph, bap, parsed, fileName, onClose, onApply, hargaNonPoKosong = false }) => {
   const isNonPo = kind === 'non_po';
   const [confirmMismatch, setConfirmMismatch] = useState(false);
 
@@ -50,8 +52,13 @@ export const BapPdfImportModal: React.FC<BapPdfImportModalProps> = ({ kind, sph,
 
   // Harga Non PO: saran dari katalog, bisa diedit admin
   const suggestions = useMemo(
-    () => nonPoRows.map(r => suggestNonPoPrice(sph, r.namaAlat, baseBap.nonPoItems?.find(it => it.namaAlat === r.namaAlat))),
-    [nonPoRows, sph, baseBap]
+    () => nonPoRows.map(r => {
+      const ada = baseBap.nonPoItems?.find(it => it.namaAlat === r.namaAlat);
+      // Tera SMK: harga yang sudah pernah diisi admin tetap dipakai; selain itu kosong (wajib diisi admin)
+      if (hargaNonPoKosong) return Number(ada?.unitPrice) > 0 ? { price: Number(ada!.unitPrice), source: 'manual' as const } : { price: 0, source: 'manual' as const };
+      return suggestNonPoPrice(sph, r.namaAlat, ada);
+    }),
+    [nonPoRows, sph, baseBap, hargaNonPoKosong]
   );
   const [prices, setPrices] = useState<number[]>(() => suggestions.map(s => s.price));
 

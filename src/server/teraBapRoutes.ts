@@ -3,6 +3,9 @@
  *
  *  GET /api/tera/bap/:jadwalId/pdf?jenis=bap|bastp[&rangkap=1|2]
  *    -> PDF BAP (di atas KOP SURAT) atau BASTP, dari jadwal yang sudah di-Push + LKK yang sudah diterima server.
+ *  GET /api/tera/bap/realisasi-sph/:sphId[?nomor=<nomor SPH>]
+ *    -> realisasi untuk Penagihan RS (bentuk sama dengan hasil baca PDF BAP: baris PO + baris Non PO/alat tambahan).
+ *       Jadwal data uji (BO 999 / is_test) DITOLAK — tidak pernah masuk penagihan. Kantor saja (keuangan/teknik/utama).
  *  GET /api/tera/bap/:jadwalId/rekap
  *    -> Excel FORM REKAP PEKERJAAN (templat dari form Ridhwan). HANYA Penyelia (admin_teknik) & Developer (admin_utama).
  *       Tanggal dokumen = tanggal unduh (waktu Jakarta). Rangkap bawaan 2 (instansi & kantor), dicetak berurutan.
@@ -19,7 +22,7 @@ import type { AuthRequest } from "../middleware/auth.js";
 import { ambilFont, BUCKET_TERA } from "./teraPdfSertifikat.js";
 import { renderBapPdf, renderBastpPdf, type BahanBapBastp } from "../tera/pdf/renderBapBastp.js";
 import type { NamaTempel } from "../tera/pdf/susunBapBastp.js";
-import { susunDataBap, susunDataBastp, susunDataRekap, type BahanDataBap } from "../tera/shared/dataBapBastp.js";
+import { susunDataBap, susunDataBastp, susunDataRekap, realisasiPenagihan, type BahanDataBap } from "../tera/shared/dataBapBastp.js";
 import { isiRekapXlsx } from "../tera/shared/rekapExcel.js";
 
 const BATAS_WAKTU_MS = 20_000;
@@ -163,6 +166,40 @@ export function registerTeraBapRoutes(app: Express, deps: { rateLimitKey: (req: 
       if (err instanceof Galat) return res.status(err.status).json({ error: err.message });
       console.error('[Tera/Rekap] unduh:', err?.message);
       return res.status(503).json({ error: ctrl.signal.aborted ? PESAN_SIBUK : 'Rekap gagal dibuat. Coba lagi; bila berulang hubungi Developer.' });
+    } finally {
+      clearTimeout(t);
+    }
+  });
+
+  // --- Penagihan RS (Tahap 5.4): realisasi dari Tera SMK untuk satu SPH ---
+  const penagihan = [requireAuthTera, wajibSudahGantiSandi, requireRole(['admin_keuangan', 'admin_teknik', 'admin_utama'])];
+  app.get("/api/tera/bap/realisasi-sph/:sphId", limiter, ...penagihan, async (req: AuthRequest, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const sphId = String(req.params.sphId ?? '');
+    const nomor = typeof req.query.nomor === 'string' ? req.query.nomor.trim() : '';
+    if (!POLA_JADWAL.test(sphId) || nomor.length > 120) return res.status(400).json({ error: 'SPH tidak sah.' });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), BATAS_WAKTU_MS);
+    try {
+      // Dua pencarian terpisah (tanpa merangkai filter dari teks kiriman): menurut ID SPH, lalu menurut nomor SPH.
+      const cari = (kolom: 'id_sph' | 'nomor_sph', nilai: string) => supabaseAdmin.from('jadwal_kalibrasi').select('id')
+        .is('deleted_at', null).eq(kolom, nilai).limit(20).abortSignal(ctrl.signal);
+      const [a, b] = await Promise.all([cari('id_sph', sphId), nomor ? cari('nomor_sph', nomor) : Promise.resolve({ data: [], error: null })]);
+      if (a.error || b.error) throw new Error(`jadwal: ${a.error?.message ?? b.error?.message}`);
+      const ids = [...new Set([...(a.data ?? []), ...(b.data ?? [])].map((j: any) => j.id as string))];
+      if (ids.length === 0) throw new Galat(404, 'SPH ini belum punya jadwal di Penjadwalan.');
+      const { data: push, error: ep } = await supabaseAdmin.from('tera_jadwal_push').select('jadwal_id, bo, is_test').in('jadwal_id', ids).abortSignal(ctrl.signal);
+      if (ep) throw new Error(`push: ${ep.message}`);
+      const tera = ((push ?? []) as any[]);
+      if (tera.length === 0) throw new Galat(404, 'Jadwal SPH ini belum di-Push ke Tera SMK (mode Manual), jadi realisasinya tidak ada di Tera.');
+      if (tera.some((p) => p.is_test || String(p.bo) === '999')) throw new Galat(422, 'Jadwal ini data uji (BO 999). Data uji tidak boleh masuk penagihan.');
+      const bahan: BahanDataBap[] = [];
+      for (const p of tera) bahan.push(await kumpulkanBahan(String(p.jadwal_id), req, ctrl.signal));
+      return res.json({ ...realisasiPenagihan(bahan), bo: [...new Set(tera.map((p) => String(p.bo)))] });
+    } catch (err: any) {
+      if (err instanceof Galat) return res.status(err.status).json({ error: err.message });
+      console.error('[Tera/Penagihan] realisasi:', err?.message);
+      return res.status(503).json({ error: ctrl.signal.aborted ? PESAN_SIBUK : 'Realisasi belum bisa diambil. Coba lagi.' });
     } finally {
       clearTimeout(t);
     }

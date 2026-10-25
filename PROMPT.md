@@ -416,3 +416,11 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 ### Hasil 5.3c (25 Okt 2026 ±23.55) — BASTP memakai CONTOH_BASTP.pdf terbaru, kolom TTD polos
 - Ridhwan 23.52: format BASTP pakai PDF baru; stempel SMK di kolom tanda tangan DIHILANGKAN (polos). PDF baru memang tanpa tanda tangan & stempel (hanya logo SMK & KAN di kop). Posisi bergeser ±0,5 pt → `susunBapBastp.ts` BASTP diukur ulang (baris, kolom, isian kepala, nama ketua tim, ringkasan 7,56 pt, judul 15 pt). Alat pembuat templat juga membuang '/Im4' (stempel lama) bila ada.
 - `public/tera/bap/templat-bastp*.pdf` diganti (dicek: tidak ada isian tersisa, hanya gambar logo).
+
+### Hasil 5.4 (26 Okt 2026 ±00.10) — sambungan ke Penagihan RS (Manajemen Aset), tanpa ubah database
+- Ridhwan 23.54: penagihan tersambung ke menu Penagihan RS yang sudah ada; tampilan mengikuti yang ada; BO/FP/KWP tetap dari modul lama. Disetujui "boleh, lanjutkan" 23.56.
+- Tombol baru "Ambil realisasi dari Tera SMK" di kartu SPH (`HospitalBillingManager.tsx`, di sebelah Upload BAP PO/Non PO). Server `GET /api/tera/bap/realisasi-sph/:sphId?nomor=` (admin_keuangan/admin_teknik/admin_utama; hanya SELECT; mencari jadwal lewat id_sph lalu nomor_sph — dua kueri terpisah, tanpa merangkai filter dari teks kiriman) → baris berbentuk sama dengan hasil baca PDF BAP. Jadwal BO 999/is_test DITOLAK (tidak pernah masuk penagihan).
+- Hasil dibuka di layar pratinjau yang sama (`BapPdfImportModal.tsx`, prop baru `hargaNonPoKosong`): langkah 1 realisasi PO → Terapkan → langkah 2 otomatis alat tambahan (Non PO) di atas BAP yang baru diterapkan (tidak saling menimpa). Harga Non PO dari Tera dikosongkan (harga yang pernah diisi admin tetap dipakai); Terapkan aktif setelah semua harga terisi (aturan lama).
+- Realisasi = LKK diterima server termasuk TIDAK LAIK; sisa = Batal → tidak ditagih (tagihan = realisasi × harga SPH DEAL). PPN tetap dari data SPH (`sph.ppnPercent`, bawaan 11 %) — migrasi `settings.ppn_persen` TIDAK diperlukan.
+- `realisasiPenagihan()` di `dataBapBastp.ts` (beberapa jadwal satu SPH dijumlah). Uji `test:tera:bap` 38/38. Belum bisa diuji nyata: jadwal BO 999 tidak terhubung SPH → uji pertama dengan jadwal sungguhan.
+- Tahap 5 selesai dari sisi kode. Sisa: uji Ridhwan (unduh BAP/BASTP/Rekap di HP & Selia; Ambil realisasi di Penagihan RS saat ada jadwal sungguhan).

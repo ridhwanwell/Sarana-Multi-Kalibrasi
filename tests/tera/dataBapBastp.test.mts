@@ -2,7 +2,7 @@
 // Jalankan: npx tsx tests/tera/dataBapBastp.test.mts
 import { susunDataBap, susunDataBastp, nomorDokumen, tanggalPo, type BahanDataBap, type LkkBap } from '../../src/tera/shared/dataBapBastp.ts';
 import { keteranganBap } from '../../src/tera/pdf/susunBapBastp.ts';
-import { susunDataRekap } from '../../src/tera/shared/dataBapBastp.ts';
+import { susunDataRekap, realisasiPenagihan } from '../../src/tera/shared/dataBapBastp.ts';
 import { isiRekapXlsx, serialExcel } from '../../src/tera/shared/rekapExcel.ts';
 import { readFileSync as baca, writeFileSync as tulis } from 'node:fs';
 import JSZip from 'jszip';
@@ -63,6 +63,17 @@ cek('telepon kosong = "-"', t.telepon === '-', t.telepon);
 cek('alamat + kota', t.alamat === 'Jl. Searah, Kabupaten Boyolali', t.alamat);
 cek('nomorDokumen Januari', nomorDokumen('005', '2027-01-03').nomorBap === '005/SMK/BAP/I/2027');
 cek('tanggalPo teks bebas dibiarkan', tanggalPo('Senin, 5 Oktober 2026') === 'Senin, 5 Oktober 2026');
+
+// --- PENAGIHAN (5.4) ---
+const tg = realisasiPenagihan([bahan('201', daftar), bahan('201', [lkk('201.0020', { po_item_ref: 'timb', template_kode: 'timb' })])]);
+const tensi = tg.rows.find((x) => x.namaAlat === 'Sphygmomanometer')!;
+const timb = tg.rows.find((x) => x.namaAlat === 'Timbangan Bayi Digital')!;
+const tamb = tg.rows.find((x) => x.isNonPo)!;
+cek('penagihan: PO dijumlah antar jadwal', tensi.poQty === 6 && tensi.realisasi === 2 && tensi.sisa === 4 && tensi.keterangan === 'Batal', tensi);
+cek('penagihan: realisasi termasuk TIDAK LAIK', tensi.realisasi === 2);
+cek('penagihan: jadwal ke-2 menambah realisasi', timb.realisasi === 1 && timb.poQty === 4, timb);
+cek('penagihan: alat tambahan = Non PO tanpa PO', tamb.namaAlat === 'Suction Pump' && tamb.poQty === null && tamb.realisasi === 1, tamb);
+cek('penagihan: data uji di BO sungguhan tidak dihitung', tensi.realisasi === 2);
 
 // --- REKAP Excel ---
 const rk = susunDataRekap(bahan('201', daftar));

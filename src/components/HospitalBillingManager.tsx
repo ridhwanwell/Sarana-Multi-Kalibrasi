@@ -15,7 +15,8 @@ import {
   ExternalLink,
   DollarSign,
   FileUp,
-  Loader2
+  Loader2,
+  Stamp
 } from 'lucide-react';
 import { SphQuotation, SphDealData, BapDocument } from '../types';
 import { formatRupiah, formatIndonesianDate } from '../utils/helpers';
@@ -29,6 +30,7 @@ import {
 import { SphDealModal } from './SphDealModal';
 import { BapPdfImportModal } from './BapPdfImportModal';
 import { readBapPdf, ParsedBapPdf, BapPdfKind } from '../utils/bapPdfImport';
+import { apiFetch } from '../lib/apiClient';
 
 interface HospitalBillingManagerProps {
   sphList: SphQuotation[];
@@ -52,7 +54,32 @@ export const HospitalBillingManager: React.FC<HospitalBillingManagerProps> = ({
 
   // Upload PDF BAP -> sesuaikan harga BO dengan realisasi pengerjaan
   const [readingPdf, setReadingPdf] = useState<{ sphId: string; kind: BapPdfKind } | null>(null);
-  const [pdfImport, setPdfImport] = useState<{ sph: SphQuotation; kind: BapPdfKind; parsed: ParsedBapPdf; fileName: string } | null>(null);
+  // dariTera: realisasi diambil dari Tera SMK (Tahap 5.4) — harga Non PO dikosongkan untuk diisi admin;
+  // lanjutNonPo: sesudah realisasi PO diterapkan, lembar Non PO (alat tambahan) langsung dibuka;
+  // bapOverride: BAP hasil langkah sebelumnya (supaya langkah Non PO tidak menimpa realisasi PO yang baru diterapkan).
+  const [pdfImport, setPdfImport] = useState<{ sph: SphQuotation; kind: BapPdfKind; parsed: ParsedBapPdf; fileName: string; dariTera?: boolean; lanjutNonPo?: boolean; bapOverride?: BapDocument } | null>(null);
+  const [teraMemuat, setTeraMemuat] = useState<string | null>(null);
+
+  // Tahap 5.4 — ambil realisasi dari Tera SMK (LKK yang sudah diterima server), tampil di layar pratinjau yang sama.
+  const ambilDariTera = async (sph: SphQuotation) => {
+    if (teraMemuat) return;
+    setTeraMemuat(sph.id);
+    try {
+      const r = await apiFetch(`/api/tera/bap/realisasi-sph/${encodeURIComponent(sph.id)}?nomor=${encodeURIComponent(sph.sphNumber || '')}`, { retries: 0, timeoutMs: 45000 });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j) { alert(j?.error || 'Realisasi dari Tera SMK belum bisa diambil. Coba lagi.'); return; }
+      const rows = Array.isArray(j.rows) ? j.rows : [];
+      if (rows.length === 0) { alert('Belum ada data alat dari Tera SMK untuk SPH ini.'); return; }
+      const parsed: ParsedBapPdf = { sphNumber: '', bapNumber: '', customerName: sph.hospitalName, rows, totalUnitRow: null, warnings: [] };
+      const adaPo = rows.some((x: any) => !x.isNonPo), adaNonPo = rows.some((x: any) => x.isNonPo);
+      const fileName = `Tera SMK (BO ${(j.bo || []).join(', ')})`;
+      setPdfImport({ sph, kind: adaPo ? 'po' : 'non_po', parsed, fileName, dariTera: true, lanjutNonPo: adaPo && adaNonPo });
+    } catch {
+      alert('Server tidak merespons. Coba lagi sebentar.');
+    } finally {
+      setTeraMemuat(null);
+    }
+  };
 
   const handleBapPdfSelected = async (sph: SphQuotation, kind: BapPdfKind, file?: File | null) => {
     if (!file) return;
@@ -403,6 +430,18 @@ export const HospitalBillingManager: React.FC<HospitalBillingManagerProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {onApplyBapPdf && (
+                      <button
+                        type="button"
+                        onClick={() => { void ambilDariTera(sph); }}
+                        disabled={teraMemuat !== null}
+                        className={`px-3 py-1.5 bg-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-xs border hover:bg-sky-50 text-sky-900 border-sky-300 ${teraMemuat ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+                        title="Ambil realisasi dari LKK Tera SMK yang sudah diterima server (termasuk TIDAK LAIK). Alat tambahan masuk Non PO, harganya diisi admin."
+                      >
+                        {teraMemuat === sph.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Stamp className="w-3.5 h-3.5" />}
+                        <span>{teraMemuat === sph.id ? 'Mengambil...' : 'Ambil realisasi dari Tera SMK'}</span>
+                      </button>
+                    )}
                     {onApplyBapPdf && (['po', 'non_po'] as BapPdfKind[]).map(kind => {
                       const isReading = readingPdf?.sphId === sph.id && readingPdf.kind === kind;
                       const isPo = kind === 'po';
@@ -456,13 +495,20 @@ export const HospitalBillingManager: React.FC<HospitalBillingManagerProps> = ({
         <BapPdfImportModal
           kind={pdfImport.kind}
           sph={pdfImport.sph}
-          bap={bapDocuments.find(b => b.sphId === pdfImport.sph.id || b.sphNumber === pdfImport.sph.sphNumber) || null}
+          key={`${pdfImport.sph.id}-${pdfImport.kind}`}
+          bap={pdfImport.bapOverride || bapDocuments.find(b => b.sphId === pdfImport.sph.id || b.sphNumber === pdfImport.sph.sphNumber) || null}
           parsed={pdfImport.parsed}
           fileName={pdfImport.fileName}
+          hargaNonPoKosong={pdfImport.dariTera}
           onClose={() => setPdfImport(null)}
           onApply={(updatedBap, isNew) => {
             onApplyBapPdf(updatedBap, isNew);
-            setPdfImport(null);
+            if (pdfImport.lanjutNonPo && pdfImport.kind === 'po') {
+              // langkah 2: alat tambahan (Non PO), di atas BAP yang baru saja diperbarui
+              setPdfImport({ ...pdfImport, kind: 'non_po', lanjutNonPo: false, bapOverride: updatedBap });
+            } else {
+              setPdfImport(null);
+            }
           }}
         />
       )}
