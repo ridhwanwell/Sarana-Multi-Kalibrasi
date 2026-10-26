@@ -5,8 +5,8 @@
 import sys, json, pikepdf, pdfplumber
 
 SRC, DST, TS = sys.argv[1], sys.argv[2], sys.argv[3]
-KODE = sys.argv[4] if len(sys.argv) > 4 else 'infusion_pump'   # 'infusion_pump' atau 'syringe_pump'
-NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump'}[KODE]
+KODE = sys.argv[4] if len(sys.argv) > 4 else 'infusion_pump'   # 'infusion_pump', 'syringe_pump' atau 'keselamatan_listrik'
+NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump', 'keselamatan_listrik': 'Keselamatan Listrik'}[KODE]
 BERKAS = 'templat-' + KODE.replace('_', '-') + '.pdf'
 # (halaman, garis dasar y dari atas, x awal-min, x awal-maks, kunci, rata, x-jangkar|None=awal, huruf, ukuran, garis bawah)
 F = []
@@ -14,38 +14,64 @@ F = []
 # (permintaan Ridhwan 26 Okt 2026). Teks kaki ("Halaman n dari 3" & catatan hak cipta, y > 760) tetap di tempatnya.
 GESER = {2: 24.7, 3: 24.7}
 KIRI = 292  # batas kanan isian kolom kiri (label kolom kanan mulai x≈297)
-def f(p, y, lo, hi, k, a='l', ax=None, h='r', s=9.96, u=0, m=None): F.append(dict(p=p, y=y, lo=lo, hi=hi, k=k, a=a, ax=ax, h=h, s=s, u=u, m=m))
+def f(p, y, lo, hi, k, a='l', ax=None, h='r', s=9.96, u=0, m=None, ty=0.6): F.append(dict(p=p, y=y, lo=lo, hi=hi, k=k, a=a, ax=ax, h=h, s=s, u=u, m=m, ty=ty))
 
-# ── halaman 1
-f(1, 176.4, 145, 199.2, 'nomorOrder', m=KIRI); f(1, 176.4, 398, 480, 'nomorSertifikat')
-f(1, 213.6, 145, 215, 'tanggalTerbit', m=KIRI); f(1, 213.6, 398, 468, 'kalibrasiUlang')
-f(1, 294.9, 145, 313, 'namaPelanggan'); f(1, 321.0, 145, 300, 'alamatPelanggan')
-f(1, 401.9, 145, 206, 'namaAlat', m=KIRI); f(1, 401.9, 398, 458, 'noSeri')
-f(1, 438.2, 145, 178, 'merek', m=KIRI); f(1, 438.2, 417, 446, 'rentangUkur', 'r', 445.45); f(1, 438.2, 448, 471, 'satuanRentang', 'l', 449.0)
-f(1, 474.4, 145, 228, 'tipe', m=KIRI); f(1, 474.4, 432, 446, 'resolusi', 'r', 445.45); f(1, 474.4, 448, 471, 'satuanResolusi', 'l', 449.0)
-f(1, 523.0, 196, 266, 'tanggalPenerimaan')
-f(1, 680.0, 44, 188, 'penandatanganNama', s=11.04); f(1, 695.1, 44, 117, 'penandatanganJabatan', h='b', s=11.04); f(1, 706.9, 44, 107, 'penandatanganJabatanEn', h='i', s=8.04)
-# ── halaman 2
-f(2, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(2, 104.9, 398, 480, 'nomorSertifikat')
-# Baris standar 9 pt (Ridhwan 26 Okt 2026: lebih kecil, ujung kanan dibiarkan tidak rata)
-f(2, 157.8, 44, 600, 'kalibrator1', s=9); f(2, 170.2, 44, 600, 'kalibrator2', s=9); f(2, 182.5, 44, 600, 'kalibrator3', s=9)
-f(2, 229.8, 145, 296, 'tempat', m=KIRI); f(2, 229.8, 398, 468, 'tanggalPelaksanaan')
-f(2, 245.1, 145, 247, 'ruang', m=KIRI); f(2, 245.1, 398, 530, 'teknisi')
-f(2, 294.4, 141, 194, 'suhuRuang', 'r', 192.89); f(2, 294.4, 414, 446.5, 'rhRuang', 'r', 445.46)
-for i, y in enumerate([383.8, 398.3, 412.8], 1):
-    f(2, y, 388, 406, f'fisik{i}', 'c', 397.09); f(2, y, 479, 518, f'fungsi{i}', 'c', 498.17)
-# ── halaman 3
-f(3, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(3, 104.9, 398, 480, 'nomorSertifikat')
-for i, y in enumerate([221.4, 240.9, 260.3, 279.8]): f(3, y, 405, 440, f'listrik{i}', 'c', 422.4)
-for i, y in enumerate([387.3, 406.7, 426.2, 445.6, 465.1]):
-    f(3, y, 80, 106, f'a{i}_alat', 'c', 93.65); f(3, y, 178, 210, f'a{i}_std', 'c', 194.6)
-    f(3, y, 284, 308, f'a{i}_kor', 'c', 295.7); f(3, y, 385, 408, f'a{i}_u', 'c', 396.7)
-f(3, 577.2, 80, 106, 'sumbatSetting', 'c', 93.6); f(3, 577.2, 185, 203, 'sumbatStd', 'c', 194.6); f(3, 577.2, 385, 408, 'sumbatU', 'c', 396.7)
-f(3, 636.9, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
-# Infusion: "≤20psi" pada "Toleransi Occlusion" diganti "<20psi" sesuai KMK-MK-053.0 butir 53.9.2 (disetujui Ridhwan 26 Okt 2026 05.01).
-# Syringe sudah tertulis "<20psi" di Excel, tidak disentuh.
-if KODE == 'infusion_pump':
-    f(3, 594.04, 127, 152, 'tolSumbat')
+if KODE == 'keselamatan_listrik':
+    # Report All Keselamatan Listrik ("SERTIFIKAT PENGUJIAN"): hlm 1 tanpa Rentang/Resolusi, hlm 2 dua baris standar,
+    # hlm 3 tabel listrik 5 baris (Terukur + Toleransi menurut klasifikasi) + kesimpulan.
+    f(1, 176.4, 145, 199.2, 'nomorOrder', m=KIRI); f(1, 176.4, 398, 480, 'nomorSertifikat')
+    f(1, 213.6, 145, 215, 'tanggalTerbit', m=KIRI); f(1, 213.6, 398, 468, 'kalibrasiUlang')
+    f(1, 294.9, 145, 313, 'namaPelanggan'); f(1, 321.0, 145, 300, 'alamatPelanggan')
+    f(1, 401.9, 145, 280, 'namaAlat', m=KIRI); f(1, 401.9, 398, 465, 'noSeri')
+    f(1, 438.15, 145, 160, 'merek', m=KIRI)
+    f(1, 474.4, 145, 240, 'tipe', m=KIRI)
+    f(1, 523.0, 196, 266, 'tanggalPenerimaan')
+    f(1, 680.0, 44, 188, 'penandatanganNama', s=11.04); f(1, 695.1, 44, 117, 'penandatanganJabatan', h='b', s=11.04); f(1, 706.9, 44, 107, 'penandatanganJabatanEn', h='i', s=8.04)
+    f(2, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(2, 104.9, 398, 480, 'nomorSertifikat')
+    f(2, 165.14, 44, 600, 'kalibrator1', s=9); f(2, 177.5, 44, 600, 'kalibrator2', s=9)
+    # Isian Tempat di acuan meluber sampai x≈309, sebaris dengan label "Tanggal" (y 225,14): toleransi y dipersempit agar label tidak ikut terhapus
+    f(2, 224.78, 145, 310, 'tempat', m=KIRI, ty=0.2); f(2, 224.78, 398, 468, 'tanggalPelaksanaan')
+    f(2, 240.02, 145, 247, 'ruang', m=KIRI); f(2, 240.02, 398, 530, 'teknisi')
+    f(2, 289.36, 141, 194, 'suhuRuang', 'r', 192.89); f(2, 289.36, 404, 446.5, 'rhRuang', 'r', 445.46)
+    for i, y in enumerate([378.76, 393.28, 407.8], 1):
+        f(2, y, 388, 406, f'fisik{i}', 'c', 397.09); f(2, y, 479, 518, f'fungsi{i}', 'c', 498.17)
+    f(3, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(3, 104.9, 398, 480, 'nomorSertifikat')
+    for i, y in enumerate([238.34, 257.78, 277.25, 296.68, 316.12]):
+        f(3, y, 405, 440, f'listrik{i}', 'c', 422.4); f(3, y, 450, 495, f'tol{i}', 'c', 472.55)
+    f(3, 372.4, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
+    Y_TEMPAT, Y_RUANG = 224.78, 240.02
+else:
+    # ── halaman 1
+    f(1, 176.4, 145, 199.2, 'nomorOrder', m=KIRI); f(1, 176.4, 398, 480, 'nomorSertifikat')
+    f(1, 213.6, 145, 215, 'tanggalTerbit', m=KIRI); f(1, 213.6, 398, 468, 'kalibrasiUlang')
+    f(1, 294.9, 145, 313, 'namaPelanggan'); f(1, 321.0, 145, 300, 'alamatPelanggan')
+    f(1, 401.9, 145, 206, 'namaAlat', m=KIRI); f(1, 401.9, 398, 458, 'noSeri')
+    f(1, 438.2, 145, 178, 'merek', m=KIRI); f(1, 438.2, 417, 446, 'rentangUkur', 'r', 445.45); f(1, 438.2, 448, 471, 'satuanRentang', 'l', 449.0)
+    f(1, 474.4, 145, 228, 'tipe', m=KIRI); f(1, 474.4, 432, 446, 'resolusi', 'r', 445.45); f(1, 474.4, 448, 471, 'satuanResolusi', 'l', 449.0)
+    f(1, 523.0, 196, 266, 'tanggalPenerimaan')
+    f(1, 680.0, 44, 188, 'penandatanganNama', s=11.04); f(1, 695.1, 44, 117, 'penandatanganJabatan', h='b', s=11.04); f(1, 706.9, 44, 107, 'penandatanganJabatanEn', h='i', s=8.04)
+    # ── halaman 2
+    f(2, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(2, 104.9, 398, 480, 'nomorSertifikat')
+    # Baris standar 9 pt (Ridhwan 26 Okt 2026: lebih kecil, ujung kanan dibiarkan tidak rata)
+    f(2, 157.8, 44, 600, 'kalibrator1', s=9); f(2, 170.2, 44, 600, 'kalibrator2', s=9); f(2, 182.5, 44, 600, 'kalibrator3', s=9)
+    f(2, 229.8, 145, 296, 'tempat', m=KIRI); f(2, 229.8, 398, 468, 'tanggalPelaksanaan')
+    f(2, 245.1, 145, 247, 'ruang', m=KIRI); f(2, 245.1, 398, 530, 'teknisi')
+    f(2, 294.4, 141, 194, 'suhuRuang', 'r', 192.89); f(2, 294.4, 414, 446.5, 'rhRuang', 'r', 445.46)
+    for i, y in enumerate([383.8, 398.3, 412.8], 1):
+        f(2, y, 388, 406, f'fisik{i}', 'c', 397.09); f(2, y, 479, 518, f'fungsi{i}', 'c', 498.17)
+    # ── halaman 3
+    f(3, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(3, 104.9, 398, 480, 'nomorSertifikat')
+    for i, y in enumerate([221.4, 240.9, 260.3, 279.8]): f(3, y, 405, 440, f'listrik{i}', 'c', 422.4)
+    for i, y in enumerate([387.3, 406.7, 426.2, 445.6, 465.1]):
+        f(3, y, 80, 106, f'a{i}_alat', 'c', 93.65); f(3, y, 178, 210, f'a{i}_std', 'c', 194.6)
+        f(3, y, 284, 308, f'a{i}_kor', 'c', 295.7); f(3, y, 385, 408, f'a{i}_u', 'c', 396.7)
+    f(3, 577.2, 80, 106, 'sumbatSetting', 'c', 93.6); f(3, 577.2, 185, 203, 'sumbatStd', 'c', 194.6); f(3, 577.2, 385, 408, 'sumbatU', 'c', 396.7)
+    f(3, 636.9, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
+    # Infusion: "≤20psi" pada "Toleransi Occlusion" diganti "<20psi" sesuai KMK-MK-053.0 butir 53.9.2 (disetujui Ridhwan 26 Okt 2026 05.01).
+    # Syringe sudah tertulis "<20psi" di Excel, tidak disentuh.
+    if KODE == 'infusion_pump':
+        f(3, 594.04, 127, 152, 'tolSumbat')
+    Y_TEMPAT, Y_RUANG = 229.8, 245.1
 
 pdf = pikepdf.open(SRC)
 laporan, ops = [], {1: [], 2: [], 3: []}
@@ -81,7 +107,7 @@ for pi, pg in enumerate(pdf.pages):
             a, b_, c, d, e, f_ = [float(x) for x in tm.operands]
             ca, cb, cc, cd, ce, cf = gs[-1]['cm']
             x = ca * e + ce; ytop = H - (cd * f_ + cf)
-            m = next((m for m in medan if abs(m['y'] - ytop) < 0.6 and m['lo'] <= x <= m['hi']), None)
+            m = next((m for m in medan if abs(m['y'] - ytop) < m['ty'] and m['lo'] <= x <= m['hi']), None)
             if not m and P in GESER and ytop > 760:  # teks kaki: batalkan geseran
                 baru.append(pikepdf.ContentStreamInstruction([], pikepdf.Operator('q')))
                 baru.append(pikepdf.ContentStreamInstruction([1, 0, 0, 1, 0, GESER[P] / cd], pikepdf.Operator('cm')))
@@ -123,7 +149,7 @@ sat = ["/**", " * TATA LETAK SERTIFIKAT — " + NAMA + " (Report All), 3 halaman
        "import type { TataLetak } from './susunSertifikat.js';", "", "export const TATA_LETAK_" + KODE.upper() + ": TataLetak = {",
        "  kode: 'report_all_" + KODE + "',", "  halaman: 3,", "  ukuran: { lebar: 595.2756, tinggi: 841.8898 },", "  biru: [],", "  kotak: {},",
        "  // Tempat/Tanggal/Ruangan/Teknisi kepanjangan → 2 baris (ukuran huruf sama), isi di bawahnya turun (Ridhwan 26 Okt 2026)",
-       "  duaBaris: { 2: { baris: [{ k: ['tempat', 'tanggalPelaksanaan'], dari: 259.5 }, { k: ['ruang', 'teknisi'], dari: 274.5 }], sampai: 750, jarak: 12.2 } },", "  teks: {"]
+       "  duaBaris: { 2: { baris: [{ k: ['tempat', 'tanggalPelaksanaan'], dari: %s }, { k: ['ruang', 'teknisi'], dari: %s }], sampai: 750, jarak: 12.2 } }," % (num(Y_TEMPAT + GESER[2] + 5.0), num(Y_RUANG + GESER[2] + 4.7)), "  teks: {"]
 for p in (1, 2, 3):
     sat.append('    %d: [' % p); sat.append(',\n'.join(baris[p])); sat.append('    ],')
 sat += ["  },", "};", ""]

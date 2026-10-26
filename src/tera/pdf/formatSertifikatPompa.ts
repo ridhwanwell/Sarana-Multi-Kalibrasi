@@ -120,3 +120,38 @@ export function isianPompa(
   }
   return s;
 }
+
+/**
+ * KESELAMATAN LISTRIK (Report All "SERTIFIKAT PENGUJIAN", tataLetakListrik.ts): identitas & lingkungan sama dengan pompa,
+ * Nama Alat dari isian teknisi, dua baris standar (ESA, termohigrometer), tabel listrik 5 baris: nilai TERUKUR (terkoreksi)
+ * + toleransi menurut klasifikasi alat. Uji yang tidak berlaku (Kelas II: resistansi PE; AP Tidak ada/Tipe B) dicetak "-".
+ */
+export function isianListrik(
+  lkk: { data: Peta | null; jejak: Peta | null; snapshot: Peta | null },
+  k: KonteksSertifikat,
+): Isian {
+  const dasar = isianPompa(lkk, k);
+  const d = (lkk.data ?? {}) as Peta;
+  const iden = (d.identitas ?? {}) as Peta;
+  const snap = (lkk.snapshot ?? {}) as Peta;
+  const hasil = (lkk.jejak?.hasil ?? {}) as Peta;
+  const listrikDef = ((lkk.jejak?.aturan ?? {}) as Peta).listrik as Peta[] | undefined;
+  const ID = ['tegangan', 'resistansi_pembumian', 'resistansi_isolasi', 'arus_bocor_peralatan', 'arus_bocor_ap'];
+  const namaAlat = typeof iden.namaAlat === 'string' && iden.namaAlat.trim() ? iden.namaAlat.trim() : k.namaAlat;
+  const s: Isian = {
+    ...dasar,
+    namaAlat,
+    kalibrator1: barisStandar(snap.esa, 'Electrical Safety Analyzer'),
+    kalibrator2: barisStandar(snap.termohigrometer, 'Digital Thermohygrometer'),
+  };
+  for (const kunci of ['rentangUkur', 'satuanRentang', 'resolusi', 'satuanResolusi', 'kalibrator3', 'sumbatSetting', 'sumbatStd', 'sumbatU', 'tolSumbat']) delete s[kunci];
+  for (const kunci of Object.keys(s)) if (/^a\d_/.test(kunci)) delete s[kunci];
+  for (let i = 0; i < 5; i++) {
+    const id = String(listrikDef?.[i]?.id ?? ID[i]);
+    const h = hasil.listrik?.[id] as Peta | undefined;
+    const berlaku = h?.berlaku !== false;
+    s[`listrik${i}`] = berlaku ? komaBebas(h?.terukur, 3) : '-';
+    s[`tol${i}`] = berlaku ? String(h?.toleransiTeks ?? listrikDef?.[i]?.toleransiTeks ?? '') : '-';
+  }
+  return s;
+}
