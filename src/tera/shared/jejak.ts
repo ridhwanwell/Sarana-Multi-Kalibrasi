@@ -71,7 +71,7 @@ export interface JejakPompa {
   template: { kode: string; versi: number; metode: string };
   kalibrator: Record<string, { asetId: string | null; nama: string | null; nomorSertifikat: string | null; berlakuSampai: string | null; jumlahTabel: number } | null>;
   masukan: { resolusi: number | null; jenisSkala: string | null; klasifikasi?: Record<string, string> };
-  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor']; aturanKeputusan?: TemplatePompa['aturanKeputusan']; ketidakpastianListrik?: TemplatePompa['ketidakpastianListrik'] };
+  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor']; aturanKeputusan?: TemplatePompa['aturanKeputusan']; ketidakpastianListrik?: TemplatePompa['ketidakpastianListrik']; fisikWajib?: TemplatePompa['fisikWajib'] };
   hasil: HasilPompa;
   lengkap: boolean;
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai' | null;
@@ -103,6 +103,7 @@ function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null
       aturan: {
         kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor, ...(tpl.aturanKeputusan ? { aturanKeputusan: tpl.aturanKeputusan } : {}),
         ...(tpl.ketidakpastianListrik ? { ketidakpastianListrik: tpl.ketidakpastianListrik } : {}),
+        ...(tpl.fisikWajib ? { fisikWajib: tpl.fisikWajib } : {}),
       },
       hasil, lengkap, kesimpulan: lengkap ? hasil.kesimpulan : null,
     });

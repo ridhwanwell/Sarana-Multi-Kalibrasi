@@ -11,7 +11,8 @@
  *    arus bocor bagian yang diaplikasikan (Tipe BF 5000 / Tipe CF 50 µA; Tidak ada / Tipe B tidak berlaku), isolasi > 2 MΩ;
  *  - U95 = k(veff = 60) × U sertifikat ESA / 2 (Ketidakpastian!Y17:Y21);
  *  - tegangan catu daya hanya "Dalam/Di luar rentang" 220 ±10 %, tidak ikut kesimpulan;
- *  - kesimpulan Laik Pakai bila semua uji yang berlaku Laik (View Report!C18) — fisik & fungsi tidak ikut (seperti Excel).
+ *  - kesimpulan Laik Pakai bila semua uji yang berlaku Laik (View Report!C18) — v1: fisik & fungsi tidak ikut (seperti Excel);
+ *    v2: fisik & fungsi ≥ 70 % ikut menentukan (keputusan Ridhwan).
  * Beda dengan Excel: guard band w = U (KMK-MK-003.0; keputusan Ridhwan "ikuti KMK semuanya") = Input 2!M17 diisi 1.
  */
 import type { TemplatePompa } from '../hitungPompa.js';
@@ -88,4 +89,15 @@ export const TEMPLATE_KESELAMATAN_LISTRIK_V1: TemplatePompa = {
   sertifikat: { tata_letak: 'report_all_keselamatan_listrik', halaman: 3 },
 };
 
-export const TEMPLATE_KESELAMATAN_LISTRIK = TEMPLATE_KESELAMATAN_LISTRIK_V1;
+/**
+ * VERSI 2 (26 Okt 2026 18.13, keputusan Ridhwan "fisik fungsi ikut menentukan juga"): Laik Pakai hanya bila kotak fisik
+ * & fungsi Baik/Berfungsi ≥ 70 % (sama dengan aturan pompa) DAN semua uji listrik yang berlaku Laik. Selain itu sama dengan v1.
+ */
+export const TEMPLATE_KESELAMATAN_LISTRIK_V2: TemplatePompa = {
+  ...TEMPLATE_KESELAMATAN_LISTRIK_V1,
+  versi: 2,
+  sumber: 'Master_Keselamatan_Listrik_terisi.xlsx (26 Okt 2026) + KMK-MK-002.0 (klasifikasi & batas SNI IEC 62353) + KMK-MK-003.0 (guard band w = U); fisik & fungsi ≥ 70 % ikut kesimpulan',
+  fisikWajib: { minimalPersen: 0.7 },
+};
+
+export const TEMPLATE_KESELAMATAN_LISTRIK = TEMPLATE_KESELAMATAN_LISTRIK_V2;

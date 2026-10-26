@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { TEMPLATE_KESELAMATAN_LISTRIK_V1 as TPL } from '../../src/tera/shared/templates/keselamatanListrik.ts';
+import { TEMPLATE_KESELAMATAN_LISTRIK_V2 as TPL } from '../../src/tera/shared/templates/keselamatanListrik.ts';
 const NAMA = 'ESWT';
 
 const akar = fileURLToPath(new URL('../../', import.meta.url));
@@ -184,6 +184,19 @@ cek('listrik: dropdown klasifikasi ≥ 48 px & 16 px', await p.evaluate(() => { 
 await ke(p, 5);
 t = await teks(p);
 cek('kesimpulan: LAIK PAKAI tanpa skor', /LAIK PAKAI/.test(t) && !/TIDAK LAIK PAKAI/.test(t) && !/Skor/.test(t), t.slice(0, 700));
+// v2: fisik & fungsi ikut menentukan (≥ 70 % kotak baik) — 2 kotak buruk (4/6 = 67 %) → TIDAK LAIK PAKAI
+await ke(p, 3);
+await p.selectOption('#fisik-badan-fisik', 'Tidak Baik');
+await p.selectOption('#fisik-badan-fungsi', 'Tidak Berfungsi');
+await ke(p, 5);
+cek('v2: fisik 4/6 baik → TIDAK LAIK PAKAI + alasan fisik', await tunggu(p, () => /TIDAK LAIK PAKAI/.test(document.body.innerText) && /Fisik & fungsi: 4 dari 6/.test(document.body.innerText)), (await teks(p)).slice(0, 800));
+await ke(p, 3);
+await p.selectOption('#fisik-badan-fungsi', 'Berfungsi');
+await ke(p, 5);
+cek('v2: fisik 5/6 baik (83 %) → kembali LAIK PAKAI', await tunggu(p, () => /LAIK PAKAI/.test(document.body.innerText) && !/TIDAK LAIK PAKAI/.test(document.body.innerText)), (await teks(p)).slice(0, 800));
+await ke(p, 3);
+await p.selectOption('#fisik-badan-fisik', 'Baik');
+await ke(p, 5);
 await ke(p, 6);
 t = await teks(p);
 cek('ringkasan: alat ESWT, klasifikasi, tidak ada kekurangan', /ESWT/.test(t) && /Kelas I · Tipe BF/.test(t) && /Selesai/.test(t) && (!/Belum lengkap/.test(t) || /Semua bagian lengkap/.test(t)), t.slice(0, 1200));

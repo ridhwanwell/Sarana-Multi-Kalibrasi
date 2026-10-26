@@ -120,6 +120,11 @@ export interface TemplatePompa {
    * 'gum' (Keselamatan Listrik, Excel sheet Ketidakpastian baris 17–21) = k(veff) × U/2 dengan veff = derajat bebas sertifikat (60).
    */
   ketidakpastianListrik?: 'sertifikat' | 'gum';
+  /**
+   * Tanpa kinerja (Keselamatan Listrik v2, keputusan Ridhwan 26 Okt 2026 18.13): fisik & fungsi ikut menentukan —
+   * Laik Pakai hanya bila kotak Baik/Berfungsi ≥ minimalPersen DAN semua uji listrik yang berlaku Laik.
+   */
+  fisikWajib?: { minimalPersen: number };
   /** Nama alat di PO yang memakai template ini selain `nama` (template Keselamatan Listrik dipakai banyak jenis alat). */
   alatTercakup?: string[];
   sertifikat: { tata_letak: string; halaman: number };
@@ -194,7 +199,7 @@ export interface HasilUjiListrik {
 }
 
 export interface HasilPompa {
-  fisik: { jumlahBaik: number; jumlahItem: number; nilai: number };
+  fisik: { jumlahBaik: number; jumlahItem: number; nilai: number; /** Keselamatan Listrik v2: fisik & fungsi memenuhi minimal persen */ lolos?: boolean };
   listrik: Record<string, HasilUjiListrik>;
   aliran: { titik: HasilAliran[]; jumlahLaik: number; jumlahDinilai: number };
   sumbat: HasilBudget & { setting: number | null; batas: number; hasil: Vonis };
@@ -388,9 +393,10 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
   // ── Tanpa kinerja (Keselamatan Listrik saja): kesimpulan = semua uji yang berlaku & masuk kesimpulan Laik (Excel View Report C18)
   if (!kn) {
     const dinilai = tpl.listrik.filter((u) => u.masukKesimpulan !== false && listrik[u.id].berlaku !== false);
-    const laik = dinilai.length > 0 && dinilai.every((u) => listrik[u.id].hasil === 'Laik');
+    const fisikOk = !tpl.fisikWajib || jumlahBaik / jumlahItem >= tpl.fisikWajib.minimalPersen;
+    const laik = dinilai.length > 0 && dinilai.every((u) => listrik[u.id].hasil === 'Laik') && fisikOk;
     return {
-      fisik: { jumlahBaik, jumlahItem, nilai: tpl.skor ? fisikNilai(tpl.skor) : 0 }, listrik,
+      fisik: { jumlahBaik, jumlahItem, nilai: tpl.skor ? fisikNilai(tpl.skor) : 0, ...(tpl.fisikWajib ? { lolos: fisikOk } : {}) }, listrik,
       aliran: { titik: [], jumlahLaik: 0, jumlahDinilai: 0 },
       sumbat: { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: null, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null, setting: null, batas: 0, hasil: '-' },
       skor: { rincian: [], total: 0 },

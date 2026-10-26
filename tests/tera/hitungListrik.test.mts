@@ -3,7 +3,7 @@
 // Jalankan: npm run test:tera:hitung-listrik
 import { readFileSync } from 'node:fs';
 import { hitungPompa, type KalibratorPompa, type TemplatePompa } from '../../src/tera/shared/hitungPompa.ts';
-import { TEMPLATE_KESELAMATAN_LISTRIK_V1 as T } from '../../src/tera/shared/templates/keselamatanListrik.ts';
+import { TEMPLATE_KESELAMATAN_LISTRIK_V1 as T, TEMPLATE_KESELAMATAN_LISTRIK_V2 as T2, TEMPLATE_KESELAMATAN_LISTRIK } from '../../src/tera/shared/templates/keselamatanListrik.ts';
 
 let lulus = 0, gagal = 0;
 const cek = (n: string, ok: boolean, d = '') => { ok ? lulus++ : gagal++; if (!ok || process.env.RINCI) console.log((ok ? '✅ ' : '❌ ') + n + (ok ? '' : '  — ' + d)); };
@@ -44,7 +44,28 @@ cek('Kelas II: cara ukur PE & bacaan PE / AP tidak diminta', !kelas2.kurang.some
 // Fisik tidak ikut kesimpulan (seperti Excel)
 const k0 = fx.kasus[0];
 const rusak = hitungPompa(T, { ...k0.data, fisik: { ...FISIK, badan: { fisik: 'Tidak Baik', fungsi: 'Tidak Berfungsi' } } }, { aliran: [], tekanan: [], listrik: k0.kalibrator.listrik } as KalibratorPompa);
-cek('fisik Tidak Baik tidak mengubah kesimpulan (Excel C18)', rusak.kesimpulan === 'Laik Pakai');
+cek('fisik Tidak Baik tidak mengubah kesimpulan — v1 (Excel C18)', rusak.kesimpulan === 'Laik Pakai');
+
+// v2 (Ridhwan 26 Okt 2026 18.13): fisik & fungsi ikut menentukan, minimal 70 % kotak Baik/Berfungsi
+cek('template aktif = v2, hanya beda versi & fisikWajib 70 %', TEMPLATE_KESELAMATAN_LISTRIK === T2 && T2.versi === 2 && T2.fisikWajib?.minimalPersen === 0.7
+  && JSON.stringify({ ...T2, versi: 1, sumber: '', fisikWajib: undefined }) === JSON.stringify({ ...T, sumber: '' }));
+const kal0 = { aliran: [], tekanan: [], listrik: k0.kalibrator.listrik } as KalibratorPompa;
+const fisikDengan = (n: number) => { // n kotak (dari 6) dibuat Tidak Baik / Tidak Berfungsi
+  const f: any = JSON.parse(JSON.stringify(FISIK)); const kotak: [string, string][] = [['badan', 'fisik'], ['badan', 'fungsi'], ['kontrol', 'fisik'], ['kontrol', 'fungsi'], ['kabel', 'fisik'], ['kabel', 'fungsi']];
+  kotak.slice(0, n).forEach(([i, kol]) => { f[i][kol] = kol === 'fisik' ? 'Tidak Baik' : 'Tidak Berfungsi'; });
+  return f;
+};
+for (const k of fx.kasus) {
+  const h1 = hitungPompa({ ...T, listrik: T.listrik.map((u) => (u.id === 'tegangan' ? u : { ...u, kaliU: k.guardBand })) }, { ...k.data, fisik: FISIK }, { aliran: [], tekanan: [], listrik: k.kalibrator.listrik } as KalibratorPompa);
+  const h2 = hitungPompa({ ...T2, listrik: T2.listrik.map((u) => (u.id === 'tegangan' ? u : { ...u, kaliU: k.guardBand })) }, { ...k.data, fisik: FISIK }, { aliran: [], tekanan: [], listrik: k.kalibrator.listrik } as KalibratorPompa);
+  cek(`v2 ${k.nama}: fisik baik semua → kesimpulan sama dengan Excel`, h2.kesimpulan === h1.kesimpulan && h2.kesimpulan === k.harapan.kesimpulan && h2.fisik.lolos === true);
+}
+for (const [n, harap] of [[0, 'Laik Pakai'], [1, 'Laik Pakai'], [2, 'Tidak Laik Pakai'], [6, 'Tidak Laik Pakai']] as [number, string][]) {
+  const h = hitungPompa(T2, { ...k0.data, fisik: fisikDengan(n) }, kal0);
+  cek(`v2: ${6 - n}/6 kotak baik (${Math.round(((6 - n) / 6) * 100)} %) → ${harap}`, h.kesimpulan === harap && h.fisik.lolos === (harap === 'Laik Pakai'), `${h.kesimpulan}`);
+}
+const gagalListrik = fx.kasus.find((x: any) => x.nama === 'isolasi-gagal');
+cek('v2: fisik baik tetapi uji listrik gagal → Tidak Laik Pakai', hitungPompa(T2, { ...gagalListrik.data, fisik: FISIK }, { aliran: [], tekanan: [], listrik: gagalListrik.kalibrator.listrik } as KalibratorPompa).kesimpulan === 'Tidak Laik Pakai');
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

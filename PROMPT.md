@@ -515,3 +515,7 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
   - Sertifikat: `templat-keselamatan-listrik.pdf` + `tataLetakListrik.ts` (dibuat `buat_templat_pompa.py … keselamatan_listrik`), `isianListrik()`; judul "SERTIFIKAT PENGUJIAN", 2 baris standar (ESA, termohigrometer) 9 pt, tabel 5 baris Terukur + Toleransi menurut klasifikasi, uji tidak berlaku "-". Pratinjau Selia aktif.
   - Commit `506fc74` (mesin + layar + Selia), `24bc4d9` (sertifikat + migrasi).
 - BERIKUTNYA: Ridhwan mencoba LKK Keselamatan Listrik (BO 999) sampai Selia & sertifikat. Alat berikut: NIBP (perlu data kalibrator Manometer) atau sesuai pilihan Ridhwan.
+
+### Hasil 6.11 (26 Okt 2026 18.20) — Keselamatan Listrik v2: fisik & fungsi ikut menentukan
+- Permintaan Ridhwan "fisik fungsi ikut menentukan juga lah": template `keselamatan_listrik` **v2** (migrasi **0028**, 4 cek true, backup `backup.b20261026_tera_device_templates_0028`; v1 nonaktif, 0 LKK) = v1 + `fisikWajib: { minimalPersen: 0.7 }` → Laik Pakai hanya bila kotak fisik & fungsi Baik/Berfungsi ≥ 70 % (aturan sama dengan pompa) DAN semua uji listrik yang berlaku Laik. Contoh: 1 kotak buruk (5/6 = 83 %) masih Laik; 2 kotak buruk (4/6 = 67 %) Tidak Laik Pakai.
+- Mesin `hitungPompa` (cabang tanpa kinerja) + `hasil.fisik.lolos`; layar Kesimpulan menulis alasan "Fisik & fungsi: x dari 6". Uji `hitung-listrik` 272, `layar-listrik` 26 (v2), lain tetap lulus.

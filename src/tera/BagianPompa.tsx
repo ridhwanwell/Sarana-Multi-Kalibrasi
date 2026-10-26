@@ -186,12 +186,15 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
   const alasan: string[] = [];
   const sk = tpl.skor;
   if (!sk || !tpl.kinerja) {
-    // Keselamatan Listrik saja: Laik Pakai bila semua uji yang berlaku Laik (tanpa skor)
+    // Keselamatan Listrik saja: Laik Pakai bila semua uji yang berlaku Laik (tanpa skor); v2: fisik & fungsi ikut menentukan
+    if (tpl.fisikWajib && hasil.fisik.lolos === false) {
+      alasan.push(`Fisik & fungsi: ${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi (perlu minimal ${Math.round(tpl.fisikWajib.minimalPersen * 100)}%).`);
+    }
     for (const u of tpl.listrik) {
       const h = hasil.listrik[u.id];
       if (u.masukKesimpulan !== false && h && h.berlaku !== false && h.hasil !== 'Laik') alasan.push(`${u.judul}: ${tampil(h.terukur)} ${u.satuan} ± ${tampil(h.u95, 4)}, batas ${h.toleransiTeks ?? u.toleransiTeks} ${u.satuan}.`);
     }
-    return <StikerKesimpulan laik={laik} alasan={alasan} judulAlasan="Uji yang tidak memenuhi batas" />;
+    return <StikerKesimpulan laik={laik} alasan={alasan} judulAlasan="Yang tidak memenuhi syarat" />;
   }
   const [rFisik, rListrik, rKinerja] = hasil.skor.rincian;
   if ((rFisik?.nilai ?? 0) === 0) alasan.push(`Fisik & fungsi: ${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi (perlu minimal ${Math.round(sk.fisik.minimalPersen * 100)}%).`);
