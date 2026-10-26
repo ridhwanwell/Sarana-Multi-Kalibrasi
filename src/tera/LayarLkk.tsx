@@ -438,7 +438,8 @@ const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl: tplApa, is
   // Baris khusus naik-turun hanya dipakai bila bukan pompa; untuk pompa, hasil/tpl ini tidak dibaca.
   const tpl = tplApa as TemplateAlat;
   const hasil = (pompa ? null : (jejak?.hasil ?? null)) as HasilLkk | null;
-  const siap = !!hasil && !!jejak?.lengkap && !!jejak?.kesimpulan && kurang.length === 0;
+  // Siap = jejak hitung lengkap & tidak ada yang kurang. (Dulu ikut mensyaratkan hasil naik-turun → pompa/listrik tidak pernah bisa Selesai.)
+  const siap = !!jejak?.lengkap && !!jejak?.kesimpulan && kurang.length === 0;
   const laik = jejak?.kesimpulan === 'Laik Pakai';
   const iden = (isi.data.identitas ?? {}) as Peta;
   const ling = (isi.data.lingkungan ?? {}) as Peta;
@@ -459,7 +460,7 @@ const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl: tplApa, is
           </div>
         </div>
       )}
-      {siap && hasil && (
+      {siap && (
         <div className="t-stiker mt-3" data-v={laik ? 'laik' : 'tidak'} role="status">
           {laik ? <Check size={28} aria-hidden="true" /> : <AlertCircle size={28} aria-hidden="true" />}
           <div>

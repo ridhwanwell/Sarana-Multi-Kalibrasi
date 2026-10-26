@@ -204,6 +204,12 @@ t = await teks(p);
 cek('ringkasan: merek, nomor seri, aliran tampil; tombol Selesai ada', /Terumo/.test(t) && /SN1/.test(t) && /Selesai/.test(t), t.slice(0, 900));
 cek('ringkasan: tidak ada kekurangan', !/Belum lengkap/.test(t) || /Semua bagian lengkap/.test(t), t.slice(0, 900));
 cek('ringkasan: tanpa geser samping', !(await geser(p)));
+// Tombol Selesai harus benar-benar bisa ditekan (laporan Ridhwan 26 Okt 2026 18.24: pompa tidak bisa Selesai)
+cek('ringkasan: TIDAK ada daftar "masih kurang" & tanpa keterangan tombol nonaktif', !/masih kurang/.test(t) && !/Tombol Selesai aktif setelah/.test(t), t.slice(0, 1200));
+await p.getByRole('button', { name: /^Selesai$/ }).click();
+cek('Selesai → kartu konfirmasi "Selesaikan LKK ini?"', await tunggu(p, () => /Selesaikan LKK ini\?/.test(document.body.innerText)), (await teks(p)).slice(0, 600));
+await p.getByRole('button', { name: /Ya, selesai/ }).click();
+cek('Ya, selesai → "LKK selesai", disegel & masuk antrean kirim', await tunggu(p, () => /LKK selesai/.test(document.body.innerText)) && await dataTersimpan(p, id, (x) => ['tersimpan', 'mengirim', 'diterima'].includes(x.syncState) && /^[0-9a-f]{64}$/.test(x.checksum ?? '') && x.results?.lengkap === true), (await teks(p)).slice(0, 600));
 await p.context().close();
 
 // ---------- 7. Nilai TIDAK LAIK: tekanan penyumbatan melewati batas ----------
