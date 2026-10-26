@@ -10,9 +10,10 @@ NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump', 'kesel
 BERKAS = 'templat-' + KODE.replace('_', '-') + '.pdf'
 # (halaman, garis dasar y dari atas, x awal-min, x awal-maks, kunci, rata, x-jangkar|None=awal, huruf, ukuran, garis bawah)
 F = []
-# Halaman 2 & 3: seluruh isi diturunkan 2 baris (24,7 poin) supaya kotak Nomor Order / Nomor Sertifikat tidak mepet kop
-# (permintaan Ridhwan 26 Okt 2026). Teks kaki ("Halaman n dari 3" & catatan hak cipta, y > 760) tetap di tempatnya.
-GESER = {2: 24.7, 3: 24.7}
+# Halaman 2 & 3: seluruh isi diturunkan 8 poin supaya jarak kotak Nomor Order / Nomor Sertifikat ke baris e-mail kop
+# SAMA dengan sertifikat Sphygmomanometer (kotak di y 112,91; acuan Excel y 104,91). ATURAN TETAP untuk semua sertifikat
+# (Ridhwan 26 Okt 2026 19.26; sebelumnya 24,7 poin = terlalu jauh). Teks kaki (y > 760) tetap di tempatnya.
+GESER = {2: 8.0, 3: 8.0}
 KIRI = 292  # batas kanan isian kolom kiri (label kolom kanan mulai x≈297)
 def f(p, y, lo, hi, k, a='l', ax=None, h='r', s=9.96, u=0, m=None, ty=0.6): F.append(dict(p=p, y=y, lo=lo, hi=hi, k=k, a=a, ax=ax, h=h, s=s, u=u, m=m, ty=ty))
 
@@ -150,7 +151,7 @@ pdf.save(DST)
 # Sel tanggal di PDF acuan Syringe Pump kosong (tidak ada tulisan untuk dilacak) — posisinya sama persis dengan Infusion Pump
 # (susunan sel Excel identik), jadi dipakai posisi yang sudah terbukti di sertifikat Infusion Pump yang disetujui.
 CADANGAN = {('tanggalTerbit', 1): (145.81, 213.62), ('kalibrasiUlang', 1): (398.44, 213.62),
-            ('tanggalPenerimaan', 1): (196.36, 523.01), ('tanggalPelaksanaan', 2): (398.44, 254.52)}
+            ('tanggalPenerimaan', 1): (196.36, 523.01), ('tanggalPelaksanaan', 2): (398.44, 229.82 + GESER[2])}  # y acuan Excel 229,82 + geser halaman 2
 if KODE == 'syringe_pump':
     for x in F:
         if kena[id(x)] == 0 and (x['k'], x['p']) in CADANGAN:
