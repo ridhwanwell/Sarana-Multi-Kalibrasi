@@ -72,4 +72,16 @@ export const TEMPLATE_NIBP_V1: TemplatePompa = {
   sertifikat: { tata_letak: 'report_all_nibp', halaman: 3 },
 };
 
-export const TEMPLATE_NIBP = TEMPLATE_NIBP_V1;
+/**
+ * VERSI 2 (26 Okt 2026 19.02, keputusan Ridhwan): NIBP tidak memakai tegangan AC 220 V, jadi kelistrikan DITIADAKAN dari
+ * penilaian (bukan diberi nilai penuh 40). Nilai = fisik & fungsi 10 + kinerja 50 (maks 60); Laik Pakai ≥ 90 % dari 60
+ * → harus fisik & fungsi lolos (≥ 70 % kotak) DAN kinerja lolos (≥ 70 % titik). Angka hitungan lain sama dengan v1.
+ */
+export const TEMPLATE_NIBP_V2: TemplatePompa = {
+  ...TEMPLATE_NIBP_V1,
+  versi: 2,
+  sumber: 'Master_NIBP_terisi.xlsx (26 Okt 2026) + KMK-MK-075.0; alat standar NIBP Simulator + termohigrometer; kelistrikan tidak dinilai (fisik 10 + kinerja 50); guard band |koreksi| + U95 ≤ 8 mmHg',
+  skor: { ...TEMPLATE_NIBP_V1.skor!, listrikBilaTidakDiuji: 'tidak_dihitung' },
+};
+
+export const TEMPLATE_NIBP = TEMPLATE_NIBP_V2;

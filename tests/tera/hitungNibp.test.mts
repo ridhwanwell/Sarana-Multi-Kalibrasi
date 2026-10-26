@@ -5,7 +5,7 @@
 // keputusan Ridhwan (semua kotak Baik/Berfungsi ≥ 70 % → 10). Kesimpulan tetap sama karena ambang 90.
 import { readFileSync } from 'node:fs';
 import { hitungPompa, type KalibratorPompa } from '../../src/tera/shared/hitungPompa.ts';
-import { TEMPLATE_NIBP_V1 as T } from '../../src/tera/shared/templates/nibp.ts';
+import { TEMPLATE_NIBP_V1 as T, TEMPLATE_NIBP_V2 as T2, TEMPLATE_NIBP } from '../../src/tera/shared/templates/nibp.ts';
 
 let lulus = 0, gagal = 0;
 const cek = (n: string, ok: boolean, d = '') => { ok ? lulus++ : gagal++; if (!ok || process.env.RINCI) console.log((ok ? '✅ ' : '❌ ') + n + (ok ? '' : '  — ' + d)); };
@@ -50,6 +50,23 @@ const pendek = hitungPompa(T, { ...k0.data, fisik: FISIK }, { aliran: [], tekana
 cek('setting di luar rentang sertifikat (tabel s/d 150) → "Di luar rentang", tidak Laik', pendek.nibp!.titik[9].catatan === 'Di luar rentang' && pendek.nibp!.titik[9].hasil === '-' && pendek.nibp!.titik[0].hasil === 'Laik');
 const rusak = hitungPompa(T, { ...k0.data, fisik: { ...FISIK, badan: { fisik: 'Tidak Baik', fungsi: 'Tidak Berfungsi' }, kontrol: { fisik: 'Tidak Baik', fungsi: 'Berfungsi' } } }, kal(k0));
 cek('fisik 3/6 → skor fisik 0, total 90 → tetap Laik Pakai (ambang 90, sama dengan Excel)', rusak.skor.rincian[0].nilai === 0 && rusak.skor.total === 90 && rusak.kesimpulan === 'Laik Pakai');
+
+// v2 (Ridhwan 26 Okt 2026 19.02): kelistrikan tidak dinilai; nilai = fisik 10 + kinerja 50 (maks 60), laik bila keduanya memenuhi
+cek('template aktif = v2; beda dengan v1 hanya versi, sumber & listrikBilaTidakDiuji', TEMPLATE_NIBP === T2 && T2.versi === 2 && T2.skor?.listrikBilaTidakDiuji === 'tidak_dihitung'
+  && JSON.stringify({ ...T2, versi: 1, sumber: '', skor: { ...T2.skor, listrikBilaTidakDiuji: undefined } }) === JSON.stringify({ ...T, sumber: '' }));
+for (const k of fx.kasus) {
+  const h1 = hitungPompa(T, { ...k.data, fisik: FISIK }, kal(k));
+  const h2 = hitungPompa(T2, { ...k.data, fisik: FISIK }, kal(k));
+  const kin = k.harapan.skor.kinerja;
+  cek(`v2 ${k.nama}: angka titik sama dengan v1; skor ${10 + kin} dari 60 tanpa listrik; kesimpulan = Excel`,
+    JSON.stringify(h2.nibp) === JSON.stringify(h1.nibp) && h2.skor.maks === 60 && h2.skor.total === 10 + kin && !h2.skor.rincian.some((r) => r.dari === 'listrik') && h2.kesimpulan === k.harapan.kesimpulan, JSON.stringify(h2.skor));
+}
+const rusak2 = hitungPompa(T2, { ...k0.data, fisik: { ...FISIK, badan: { fisik: 'Tidak Baik', fungsi: 'Tidak Berfungsi' }, kontrol: { fisik: 'Tidak Baik', fungsi: 'Berfungsi' } } }, kal(k0));
+cek('v2: fisik 3/6 (gagal) + kinerja lolos → skor 50 dari 60 → TIDAK LAIK PAKAI', rusak2.skor.total === 50 && rusak2.kesimpulan === 'Tidak Laik Pakai');
+const satu = hitungPompa(T2, { ...k0.data, fisik: { ...FISIK, badan: { fisik: 'Baik', fungsi: 'Tidak Berfungsi' } } }, kal(k0));
+cek('v2: 1 kotak buruk (5/6 = 83 %) → tetap Laik Pakai', satu.skor.total === 60 && satu.kesimpulan === 'Laik Pakai');
+const gagalKin = fx.kasus.find((x: any) => x.nama === 'bias-plus-7-gagal');
+cek('v2: fisik baik + kinerja gagal → skor 10 dari 60 → Tidak Laik Pakai', (() => { const h = hitungPompa(T2, { ...gagalKin.data, fisik: FISIK }, kal(gagalKin)); return h.skor.total === 10 && h.kesimpulan === 'Tidak Laik Pakai'; })());
 
 console.log(`\n${lulus} lulus, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
-import { TEMPLATE_NIBP_V1 as TPL } from '../../src/tera/shared/templates/nibp.ts';
+import { TEMPLATE_NIBP_V2 as TPL } from '../../src/tera/shared/templates/nibp.ts';
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
 import { daftarStandar, jepretStandar, susunPilihan } from '../../src/tera/shared/isian.ts';
 
@@ -91,12 +91,12 @@ await p.evaluate((det) => {
 await p.waitForSelector('#b-nibp', { timeout: 8000 });
 let t = await p.evaluate(() => document.body.innerText);
 
-cek('judul memuat NIBP + nomor label; template nibp v1', /Non Invasive Blood Pressure/.test(t) && /999\.0012/.test(t) && t.includes('nibp v1'), t.slice(0, 600));
+cek('judul memuat NIBP + nomor label; template nibp v2', /Non Invasive Blood Pressure/.test(t) && /999\.0012/.test(t) && t.includes('nibp v2'), t.slice(0, 600));
 cek('tidak ada bagian Keselamatan listrik / Aliran / Penyumbatan', await p.locator('#b-listrik').count() === 0 && await p.locator('#b-aliran').count() === 0 && await p.locator('#b-sumbat').count() === 0);
 cek('NIBP: 12 baris jejak hitung, 12 dari 12 titik laik', (await p.locator('#b-nibp').locator('xpath=..').locator('tbody tr').count()) === 12 && /Titik Laik: 12 dari 12/.test(t), t.slice(0, 1500));
 cek('NIBP: Systole 60 U95 1,14 (sama dengan Excel); MAP koreksi -0,333', await p.locator('#b-nibp').locator('xpath=..').locator('tbody tr').first().innerText().then((x) => /1,14/.test(x)) && /-0,333/.test(t));
 cek('penomoran: NIBP 4, Alat standar 5, Kesimpulan 6, Pratinjau 7', /4\. NIBP/.test(t) && /5\. Alat standar/.test(t) && /6\. Kesimpulan/.test(t) && /7\. Pratinjau sertifikat/.test(t), (t.match(/\d\. [A-Z][A-Za-z]+/g) || []).join('|'));
-cek('kesimpulan: Laik Pakai, skor 100', /Laik Pakai/.test(t) && /Skor total 100/.test(t));
+cek('kesimpulan: Laik Pakai, skor 60 dari 60 (tanpa listrik di rincian)', /Laik Pakai/.test(t) && /Skor total 60 dari 60/.test(t) && !/listrik \d/.test(t));
 cek('tanpa geser samping di layar HP (tabel boleh digulir di dalam kotaknya)', !(await p.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)));
 
 // ---- Editor ----

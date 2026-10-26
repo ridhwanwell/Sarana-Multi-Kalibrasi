@@ -250,7 +250,10 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
     }
     return <StikerKesimpulan laik={laik} alasan={alasan} judulAlasan="Yang tidak memenuhi syarat" />;
   }
-  const [rFisik, rListrik, rKinerja] = hasil.skor.rincian;
+  const rinci = (dari: string) => hasil.skor.rincian.find((r) => r.dari === dari);
+  const rFisik = rinci('fisik'), rKinerja = rinci('kinerja');
+  // NIBP v2: listrik tidak dinilai (tidak ada di rincian) → tidak pernah jadi alasan
+  const rListrik = rinci('listrik') ?? { dari: 'listrik', nilai: sk.listrik.nilai };
   if ((rFisik?.nilai ?? 0) === 0) alasan.push(`Fisik & fungsi: ${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi (perlu minimal ${Math.round(sk.fisik.minimalPersen * 100)}%).`);
   if ((rListrik?.nilai ?? 0) === 0) {
     for (const u of tpl.listrik) {
@@ -269,10 +272,10 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
       alasan.push(`Penyumbatan: ${tampil(hasil.sumbat.rataRata, 2)} psi ± ${fmt2(hasil.sumbat.u95Cetak)}, batas ${dalamBatas(tpl.kinerja.sumbat.banding)} ${tpl.kinerja.sumbat.batas} psi.`);
     }
   }
-  const total = sk.fisik.nilai + sk.listrik.nilai + sk.kinerja.nilai;
+  const total = hasil.skor.maks ?? sk.fisik.nilai + sk.listrik.nilai + sk.kinerja.nilai;
   return (
     <StikerKesimpulan laik={laik} alasan={alasan} judulAlasan="Yang menurunkan nilai"
-      ket={`Skor ${hasil.skor.total} dari ${total} (batas laik ${sk.laikBila.banding.replace('>=', '≥')} ${sk.laikBila.batas}).`} />
+      ket={hasil.skor.maks ? `Skor ${hasil.skor.total} dari ${total} (kelistrikan tidak dinilai; laik bila fisik & fungsi dan kinerja sama-sama memenuhi).` : `Skor ${hasil.skor.total} dari ${total} (batas laik ${sk.laikBila.banding.replace('>=', '≥')} ${sk.laikBila.batas}).`} />
   );
 };
 
@@ -324,6 +327,6 @@ export function barisRingkasPompa(tpl: TemplatePompa, isi: IsiKerja): BarisRingk
       { label: 'Aliran', isi: `${hasil.aliran.jumlahLaik} dari ${hasil.aliran.jumlahDinilai} titik laik` },
       { label: 'Penyumbatan', isi: (<><span className="tabular">{hasil.sumbat.rataRata != null ? `${tampil(hasil.sumbat.rataRata, 2)} psi` : '-'}</span>{' '}<ChipVonis vonis={hasil.sumbat.hasil} /></>) },
     ] : []),
-    ...(jejak.lengkap && tpl.skor ? [{ label: 'Skor', isi: `${hasil.skor.total} dari ${tpl.skor.fisik.nilai + tpl.skor.listrik.nilai + tpl.skor.kinerja.nilai}` }] : []),
+    ...(jejak.lengkap && tpl.skor ? [{ label: 'Skor', isi: `${hasil.skor.total} dari ${hasil.skor.maks ?? tpl.skor.fisik.nilai + tpl.skor.listrik.nilai + tpl.skor.kinerja.nilai}` }] : []),
   ];
 }

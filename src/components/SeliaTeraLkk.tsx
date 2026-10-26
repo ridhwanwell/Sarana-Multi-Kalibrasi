@@ -525,7 +525,7 @@ export const SeliaTeraLkk: React.FC<{
               <Bagian id="b-kesimpulan" judul={`${pompa ? (tpl.kinerja ? 8 : 6) : 7}. Kesimpulan`}>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`px-4 py-2 rounded-full text-sm font-black border ${h?.kesimpulan === 'Tidak Laik Pakai' ? 'bg-[#FEE2E2] text-[#991B1B] border-[#DC2626]' : 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'}`}>{h?.kesimpulan ?? '-'}</span>
-                  {h?.skor && <span className="text-xs text-slate-600">Skor total {fmt(h.skor.total, 1)} (rincian: {(h.skor.rincian || []).map((r: Peta) => `${r.dari} ${fmt(r.nilai, 1)}`).join(', ')})</span>}
+                  {h?.skor && <span className="text-xs text-slate-600">Skor total {fmt(h.skor.total, 1)}{h.skor.maks ? ` dari ${fmt(h.skor.maks, 0)}` : ''} (rincian: {(h.skor.rincian || []).map((r: Peta) => `${r.dari} ${fmt(r.nilai, 1)}`).join(', ')})</span>}
                 </div>
               </Bagian>
 

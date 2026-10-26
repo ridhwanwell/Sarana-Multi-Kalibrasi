@@ -113,7 +113,15 @@ export interface TemplatePompa {
    * Tanpa kinerja: kesimpulan = semua uji listrik yang berlaku & masuk kesimpulan Laik (Excel View Report C18), tanpa skor.
    */
   kinerja?: KinerjaPompa;
-  skor?: { fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number } };
+  skor?: {
+    fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number };
+    /**
+     * Alat tanpa uji listrik (listrik kosong). 'nilai_penuh' (bawaan, Excel NIBP AE3) = nilai listrik diberikan penuh;
+     * 'tidak_dihitung' (NIBP v2, keputusan Ridhwan 26 Okt 2026 19.02) = listrik tidak ikut, nilai maksimum = fisik + kinerja
+     * dan ambang laikBila (dari 100) diskalakan ke maksimum itu → Laik Pakai hanya bila fisik & fungsi DAN kinerja lolos.
+     */
+    listrikBilaTidakDiuji?: 'nilai_penuh' | 'tidak_dihitung';
+  };
   /** Kinerja NIBP (tanpa `kinerja` aliran). Skor kinerja dari titik NIBP. */
   nibp?: KinerjaNibp;
   /** Klasifikasi alat untuk batas uji listrik (template Keselamatan Listrik). */
@@ -247,7 +255,7 @@ export interface HasilPompa {
   sumbat: HasilBudget & { setting: number | null; batas: number; hasil: Vonis };
   /** Hanya template NIBP. */
   nibp?: { titik: HasilNibp[]; jumlahLaik: number; jumlahDinilai: number };
-  skor: { rincian: { dari: string; nilai: number }[]; total: number };
+  skor: { rincian: { dari: string; nilai: number }[]; total: number; /** Nilai maksimum bila bukan 100 (NIBP v2 tanpa listrik: 60). */ maks?: number };
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai';
   kurang: string[];
 }
@@ -484,8 +492,23 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
     const sk = tpl.skor ?? { fisik: { minimalPersen: 0.7, nilai: 10 }, listrik: { nilai: 40 }, kinerja: { nilai: 50 }, laikBila: { banding: '>=' as Banding, batas: 90 } };
     const nFisik = fisikNilai(sk);
     // Tanpa uji listrik (alat berbaterai / hanya NIBP Simulator & termohigrometer) → nilai listrik penuh (Excel AE3)
+    const tanpaListrik = tpl.listrik.length === 0 && sk.listrikBilaTidakDiuji === 'tidak_dihitung';
     const nListrik = tpl.listrik.length === 0 || tpl.listrik.every((u) => listrik[u.id].hasil === 'Laik') ? sk.listrik.nilai : 0;
     const nKinerja = kn2.titik.length > 0 && jumlahLaik / kn2.titik.length >= kn2.minimalPersenTitik ? sk.kinerja.nilai : 0;
+    if (tanpaListrik) {
+      // NIBP v2: hanya fisik & fungsi + kinerja; ambang (dari 100) diskalakan ke maksimum 60
+      const maks = sk.fisik.nilai + sk.kinerja.nilai;
+      const total2 = nFisik + nKinerja;
+      return {
+        fisik: { jumlahBaik, jumlahItem, nilai: nFisik }, listrik,
+        aliran: { titik: [], jumlahLaik: 0, jumlahDinilai: 0 },
+        sumbat: { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: null, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null, setting: null, batas: 0, hasil: '-' },
+        nibp: { titik, jumlahLaik, jumlahDinilai: kn2.titik.length },
+        skor: { rincian: [{ dari: 'fisik', nilai: nFisik }, { dari: 'kinerja', nilai: nKinerja }], total: total2, maks },
+        kesimpulan: maks > 0 && bandingkan((total2 * 100) / maks, sk.laikBila.banding, sk.laikBila.batas) ? 'Laik Pakai' : 'Tidak Laik Pakai',
+        kurang,
+      };
+    }
     const total = nFisik + nListrik + nKinerja;
     return {
       fisik: { jumlahBaik, jumlahItem, nilai: nFisik }, listrik,

@@ -3,7 +3,7 @@
 // Jalankan: npm run test:tera:sertifikat-nibp   (opsional KOP_NON_KAN=/jalur/KOP_SERTIF_NON_KAN.pdf, KELUAR=/folder → PDF uji)
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { TEMPLATE_NIBP_V1 as T } from '../../src/tera/shared/templates/nibp.ts';
+import { TEMPLATE_NIBP_V2 as T } from '../../src/tera/shared/templates/nibp.ts';
 import { buatJejakHitung } from '../../src/tera/shared/jejak.ts';
 import { daftarStandar, jepretStandar, susunPilihan, type KalibratorMin } from '../../src/tera/shared/isian.ts';
 import { TATA_LETAK_NIBP as TL } from '../../src/tera/pdf/tataLetakNibp.ts';

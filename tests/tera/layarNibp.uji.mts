@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { readFile, mkdir } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
-import { TEMPLATE_NIBP_V1 as TPL } from '../../src/tera/shared/templates/nibp.ts';
+import { TEMPLATE_NIBP_V2 as TPL } from '../../src/tera/shared/templates/nibp.ts';
 const NAMA = 'Tensimeter Digital';
 
 const akar = fileURLToPath(new URL('../../', import.meta.url));
@@ -169,10 +169,21 @@ cek('kinerja: tanpa geser samping (HP)', !(await geser(p)));
 // ---------- 5. Kesimpulan & ringkasan & Selesai ----------
 await ke(p, 5);
 t = await teks(p);
-cek('kesimpulan: LAIK PAKAI, skor 100', /LAIK PAKAI/.test(t) && !/TIDAK LAIK PAKAI/.test(t) && /Skor 100 dari 100/.test(t), t.slice(0, 700));
+cek('kesimpulan: LAIK PAKAI, skor 60 dari 60 (kelistrikan tidak dinilai)', /LAIK PAKAI/.test(t) && !/TIDAK LAIK PAKAI/.test(t) && /Skor 60 dari 60/.test(t) && /kelistrikan tidak dinilai/.test(t), t.slice(0, 700));
+// v2: fisik & fungsi ikut menentukan — 2 kotak buruk (4/6) → TIDAK LAIK PAKAI
+await ke(p, 3);
+await p.selectOption('#fisik-badan-fisik', 'Tidak Baik');
+await p.selectOption('#fisik-badan-fungsi', 'Tidak Berfungsi');
+await ke(p, 5);
+cek('v2: fisik 4/6 → TIDAK LAIK PAKAI, skor 50 dari 60 + alasan fisik', await tunggu(p, () => /TIDAK LAIK PAKAI/.test(document.body.innerText) && /Skor 50 dari 60/.test(document.body.innerText) && /Fisik & fungsi: 4 dari 6/.test(document.body.innerText)), (await teks(p)).slice(0, 800));
+await ke(p, 3);
+await p.selectOption('#fisik-badan-fisik', 'Baik');
+await p.selectOption('#fisik-badan-fungsi', 'Berfungsi');
+await ke(p, 5);
+cek('fisik dikembalikan → LAIK PAKAI lagi', await tunggu(p, () => /LAIK PAKAI/.test(document.body.innerText) && !/TIDAK LAIK PAKAI/.test(document.body.innerText)));
 await ke(p, 6);
 t = await teks(p);
-cek('ringkasan: NIBP 12 dari 12 titik laik, alat standar NIBP Simulator', /NIBP\s+12 dari 12 titik laik/.test(t) && /Digital Pressure Meter|NIBP Simulator/.test(t), t.slice(0, 1200));
+cek('ringkasan: NIBP 12 dari 12 titik laik, alat standar NIBP Simulator, skor 60 dari 60', /NIBP\s+12 dari 12 titik laik/.test(t) && /Digital Pressure Meter|NIBP Simulator/.test(t) && /Skor\s+60 dari 60/.test(t), t.slice(0, 1200));
 cek('ringkasan: tanpa Aliran/Penyumbatan/Keselamatan', !/Aliran|Penyumbatan|Tegangan Catu/.test(t));
 cek('ringkasan: TIDAK ada daftar "masih kurang"', !/masih kurang/.test(t) && !/Tombol Selesai aktif setelah/.test(t), t.slice(0, 1200));
 await p.getByRole('button', { name: /^Selesai$/ }).click();
