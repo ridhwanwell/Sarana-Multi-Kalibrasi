@@ -216,12 +216,21 @@ export const SeliaTeraEditor: React.FC<{
       {/* Pompa: keselamatan listrik, aliran, penyumbatan */}
       {pompa && (
         <>
+          {Array.isArray(tpl.klasifikasi) && tpl.klasifikasi.length > 0 && (
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-black text-[#1C658C]">Klasifikasi alat (menentukan batas uji listrik)</legend>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(tpl.klasifikasi as Peta[]).map((k) => pilih({ id: `ubah-klas-${k.id}`, label: k.label, jalur: ['klasifikasi', k.id], opsi: k.pilihan ?? [] }))}
+              </div>
+            </fieldset>
+          )}
           <fieldset className="space-y-3">
             <legend className="text-sm font-black text-[#1C658C]">Keselamatan listrik — bacaan ESA</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(tpl.listrik as Peta[]).map((u) => kotakAngka({ id: `ubah-listrik-${u.id}`, label: u.judul, satuan: u.satuan, jalur: ['listrik', u.id] }))}
             </div>
           </fieldset>
+          {tpl.kinerja && <>
           <fieldset className="space-y-3">
             <legend className="text-sm font-black text-[#1C658C]">Aliran / Flow Rate — bacaan IDA (mL/h)</legend>
             <div className="space-y-3">
@@ -244,6 +253,7 @@ export const SeliaTeraEditor: React.FC<{
               </div>
             </div>
           </fieldset>
+          </>}
         </>
       )}
 

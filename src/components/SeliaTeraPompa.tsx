@@ -38,6 +38,8 @@ const BarisBudget: React.FC<{ t: Peta }> = ({ t }) => (
 
 export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }> = ({ tpl, data, h }) => {
   const listrik: Peta[] = Array.isArray(tpl.listrik) ? tpl.listrik : [];
+  const klasifikasi: Peta[] = Array.isArray(tpl.klasifikasi) ? tpl.klasifikasi : [];
+  const adaKinerja = !!tpl.kinerja;
   const titikAliran: number[] = Array.isArray(tpl.kinerja?.titikAliran) ? tpl.kinerja.titikAliran : [];
   const hAliran: Peta[] = Array.isArray(h?.aliran?.titik) ? h!.aliran.titik : [];
   const hs: Peta | null = h?.sumbat ?? null;
@@ -45,19 +47,31 @@ export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }>
   return (
     <>
       <Bagian id="b-listrik" judul="4. Keselamatan listrik">
+        {klasifikasi.length > 0 && (
+          <p className="text-xs text-slate-700">
+            Klasifikasi: {klasifikasi.map((k, i) => <React.Fragment key={k.id}>{i > 0 ? ' · ' : ''}<b>{k.label}</b>: {data.klasifikasi?.[k.id] || '-'}</React.Fragment>)}
+          </p>
+        )}
         <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
           <table className="w-full text-sm">
             <thead className="bg-slate-100 text-[11px] text-slate-600"><tr><th className="p-2 text-left">Uji</th><th className="p-2 text-left">Bacaan ESA</th><th className="p-2 text-left">Terukur (terkoreksi)</th><th className="p-2 text-left">U95</th><th className="p-2 text-left">Batas</th><th className="p-2 text-left">Hasil</th></tr></thead>
             <tbody>
               {listrik.map((u) => {
                 const r = h?.listrik?.[u.id];
+                if (r?.berlaku === false) {
+                  return (
+                    <tr key={u.id} className="border-t border-[#DCDFE3]">
+                      <td className="p-2">{u.judul}</td><td className="p-2 text-slate-500" colSpan={5}>Tidak berlaku untuk klasifikasi alat ini</td>
+                    </tr>
+                  );
+                }
                 return (
                   <tr key={u.id} className="border-t border-[#DCDFE3]">
                     <td className="p-2">{u.judul}</td>
                     <td className="p-2 tabular-nums">{fmt(data.listrik?.[u.id], 4)} {u.satuan}</td>
                     <td className="p-2 tabular-nums">{fmt(r?.terukur, 4)} {u.satuan}</td>
                     <td className="p-2 tabular-nums">{fmt(r?.u95, 4)}</td>
-                    <td className="p-2 tabular-nums">{u.toleransiTeks} {u.satuan}</td>
+                    <td className="p-2 tabular-nums">{r?.toleransiTeks ?? u.toleransiTeks} {u.satuan}{u.masukKesimpulan === false ? ' (tidak ikut kesimpulan)' : ''}</td>
                     <td className="p-2"><Vonis v={r?.hasil} /></td>
                   </tr>
                 );
@@ -67,6 +81,7 @@ export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }>
         </div>
       </Bagian>
 
+      {adaKinerja && <>
       <Bagian id="b-aliran" judul="5. Aliran / Flow Rate — jejak hitung">
         <p className="text-xs text-slate-600">
           Batas: ± {fmt((tpl.kinerja?.toleransiAliranPersen ?? 0) * 100, 0)}% dari setting · Titik Laik: {h?.aliran?.jumlahLaik ?? '-'} dari {h?.aliran?.jumlahDinilai ?? '-'}
@@ -114,6 +129,7 @@ export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }>
           </table>
         </div>
       </Bagian>
+      </>}
     </>
   );
 };

@@ -179,7 +179,9 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
         templateKode: template.kode_alat, templateVersi: template.versi,
         tanggalKalibrasi: tanggalLokal(),
         alatTambahan: tambahan, poItemRef: alat?.ref ?? null, jadwalId: jadwal.jadwalId,
-        data: {},
+        // Template yang dipakai banyak jenis alat (Keselamatan Listrik): Nama Alat diisi dulu dari nama alat PO
+        data: alat && Array.isArray((template as any).identitasBidang) && (template as any).identitasBidang.some((b: any) => b?.id === 'namaAlat')
+          ? { identitas: { namaAlat: alat.nama } } : {},
       });
       onDibuat(lkk, template as TemplateApa);
     } catch (e: any) {

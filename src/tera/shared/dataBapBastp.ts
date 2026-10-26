@@ -85,7 +85,8 @@ export function susunDataBap(b: BahanDataBap): DataBap {
   // Alat tambahan: satu baris per jenis alat (nama katalog dari template), Volume PO 0, sisa 0.
   const tambahan = new Map<string, number>();
   for (const l of lkk.filter((x) => x.alat_tambahan)) {
-    const nama = b.namaTemplate[l.template_kode] || l.template_kode;
+    // Template Keselamatan Listrik dipakai banyak jenis alat → nama dari isian "Nama Alat"
+    const nama = teks((l.data?.identitas as Record<string, unknown> | undefined)?.namaAlat) || b.namaTemplate[l.template_kode] || l.template_kode;
     tambahan.set(nama, (tambahan.get(nama) ?? 0) + 1);
   }
   for (const [nama, n] of tambahan) baris.push({ nama, po: 0, realisasi: n, sisa: 0 });
@@ -113,7 +114,7 @@ export function susunDataBastp(b: BahanDataBap): DataBastp {
     const kes = teks(l.results?.kesimpulan);
     if (kes === 'Laik Pakai') laik++; else if (kes === 'Tidak Laik Pakai') tidak++;
     const tgl = keTanggal(l.tanggal_kalibrasi);
-    const nama = (!l.alat_tambahan && l.po_item_ref && namaPo.get(l.po_item_ref)) || b.namaTemplate[l.template_kode] || l.template_kode;
+    const nama = (!l.alat_tambahan && l.po_item_ref && namaPo.get(l.po_item_ref)) || teks(id.namaAlat) || b.namaTemplate[l.template_kode] || l.template_kode;
     return {
       nama, merk: teks(id.merek) || '-', tipe: teks(id.tipe) || '-', noSeri: teks(id.noSeri) || '-',
       petugas: namaDenganGelar(b.namaTeknisi[l.teknisi_user_id ?? ''] ?? ''),

@@ -10,7 +10,7 @@
  * <baris> = salinan satu baris tera_calibrator_points. Titik pompa memakai bentuk tabel yang sama dengan Sphygmo
  * (koreksiNaik = koreksiTurun, u95Naik = u95Turun) sehingga tabel database tidak perlu diubah.
  */
-import type { DataPompa, KalibratorPompa, TemplatePompa, TitikKoreksi } from './hitungPompa.js';
+import { klasifikasiWajib, ujiBerlaku, type DataPompa, type KalibratorPompa, type TemplatePompa, type TitikKoreksi } from './hitungPompa.js';
 import type { IsiKerja, Kurang } from './isian.js';
 
 type Peta = Record<string, any>;
@@ -73,9 +73,16 @@ export const dataPompa = (data: unknown): DataPompa => (data && typeof data === 
 export function kurangPompa(tpl: TemplatePompa, isi: IsiKerja): Kurang[] {
   const kurang: Kurang[] = [];
   const data = dataPompa(isi?.data);
+  // Keselamatan Listrik: klasifikasi alat dulu (menentukan uji mana yang berlaku & batasnya)
+  for (const k of klasifikasiWajib(tpl, data)) {
+    const v = data.klasifikasi?.[k.id];
+    if (typeof v !== 'string' || !k.pilihan.includes(v)) kurang.push({ bagian: 'keselamatan', teks: `${k.label} belum dipilih` });
+  }
   for (const u of tpl.listrik) {
+    if (ujiBerlaku(u, data) === false) continue;
     if (!angka(data.listrik?.[u.id])) kurang.push({ bagian: 'keselamatan', teks: `${u.judul} belum diisi` });
   }
+  if (!tpl.kinerja) return kurang;
   const n = tpl.kinerja.pengulangan;
   const lengkap = (v: unknown) => Array.isArray(v) && v.length >= n && v.slice(0, n).every(angka);
   for (const s of tpl.kinerja.titikAliran) {

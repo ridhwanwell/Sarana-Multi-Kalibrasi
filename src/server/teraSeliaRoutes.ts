@@ -215,7 +215,7 @@ export function registerTeraSeliaRoutes(app: Express, deps: { rateLimitKey: (req
           id: r.id, bo: r.bo, noLabel: r.no_label, status: r.status, jadwalId: r.jadwal_id, tanggalKalibrasi: r.tanggal_kalibrasi,
           alatTambahan: r.alat_tambahan, jumlahTitik: r.jumlah_titik, clientVersion: r.client_version, isTest: r.is_test,
           checksum: r.checksum, diterimaAt: r.server_received_at,
-          templateKode: r.template_kode, templateVersi: r.template_versi, namaAlat: tpl.data?.nama ?? r.template_kode, revisi: r.revisi ?? 0,
+          templateKode: r.template_kode, templateVersi: r.template_versi, namaAlat: (typeof r.data?.identitas?.namaAlat === 'string' && r.data.identitas.namaAlat.trim()) || (tpl.data?.nama ?? r.template_kode), revisi: r.revisi ?? 0,
           accOlehNama: r.acc_oleh_nama ?? null, accAt: r.acc_at ?? null,
           namaRs: push.data?.nama_rs ?? null, kota: push.data?.kota ?? null, teknisi: prof.data?.full_name ?? null,
         },

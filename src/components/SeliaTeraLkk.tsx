@@ -504,7 +504,7 @@ export const SeliaTeraLkk: React.FC<{
               })}
 
               {/* 7. Alat standar */}
-              <Bagian id="b-kal" judul={`${pompa ? 7 : 6}. Alat standar yang dipakai (fotokopi sertifikat di LKK)`}>
+              <Bagian id="b-kal" judul={`${pompa ? (tpl.kinerja ? 7 : 5) : 6}. Alat standar yang dipakai (fotokopi sertifikat di LKK)`}>
                 {detail.calibratorSnapshot && Object.keys(detail.calibratorSnapshot).length > 0 ? (
                   <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
                     <table className="w-full text-sm">
@@ -522,7 +522,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 8. Kesimpulan */}
-              <Bagian id="b-kesimpulan" judul={`${pompa ? 8 : 7}. Kesimpulan`}>
+              <Bagian id="b-kesimpulan" judul={`${pompa ? (tpl.kinerja ? 8 : 6) : 7}. Kesimpulan`}>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`px-4 py-2 rounded-full text-sm font-black border ${h?.kesimpulan === 'Tidak Laik Pakai' ? 'bg-[#FEE2E2] text-[#991B1B] border-[#DC2626]' : 'bg-[#DCFCE7] text-[#166534] border-[#86EFAC]'}`}>{h?.kesimpulan ?? '-'}</span>
                   {h?.skor && <span className="text-xs text-slate-600">Skor total {fmt(h.skor.total, 1)} (rincian: {(h.skor.rincian || []).map((r: Peta) => `${r.dari} ${fmt(r.nilai, 1)}`).join(', ')})</span>}
@@ -530,7 +530,7 @@ export const SeliaTeraLkk: React.FC<{
               </Bagian>
 
               {/* 9. Pratinjau sertifikat (di paling bawah lembar, sebelum keputusan) */}
-              <Bagian id="b-pratinjau" judul={`${pompa ? 9 : 8}. Pratinjau sertifikat`}>
+              <Bagian id="b-pratinjau" judul={`${pompa ? (tpl.kinerja ? 9 : 7) : 8}. Pratinjau sertifikat`}>
                 {!['sphygmomanometer', 'infusion_pump', 'syringe_pump'].includes(detail.lkk.templateKode) ? (
                   <p className="text-sm text-slate-600">Pratinjau sertifikat untuk alat ini belum tersedia.</p>
                 ) : (

@@ -35,19 +35,36 @@ import { bandingkan, bulatExcel, faktorKDariVeff, rataRata, stdevS, type Banding
 
 // ───────────────────────────── Bentuk template ─────────────────────────────
 
+/** Batas uji: angka tetap, atau tabel menurut klasifikasi alat (kunci = nilai klasifikasi `menurut` digabung "|"). */
+export type BatasUji = number | { menurut: string[]; nilai: Record<string, number> };
+
 export interface UjiListrikPompa {
   id: string;
   judul: string;
   satuan: string;
   /** Kunci tabel ESA di snapshot kalibrator. */
   kalibrator: string;
-  /** sekitar: |x − nominal| + U ≤ batas · maksimum: |x| + U ≤ batas · minimum: x − U ≥ batas */
-  uji: { jenis: 'sekitar'; nominal: number; batas: number } | { jenis: 'maksimum'; batas: number } | { jenis: 'minimum'; batas: number };
+  /**
+   * sekitar: |x − nominal| + w ≤ batas · maksimum: |x| + w ≤ batas · minimum: x − w ≥ batas (tegas: x − w > batas)
+   * w = kaliU × U95 (guard band KMK-MK-003.0; bawaan kaliU = 1).
+   */
+  uji: { jenis: 'sekitar'; nominal: number; batas: number } | { jenis: 'maksimum'; batas: BatasUji } | { jenis: 'minimum'; batas: BatasUji; tegas?: boolean };
   /** Di bawah titik pertama tabel: 'ujung' = koreksi titik pertama; 'proporsional' = koreksi × x / titik pertama (arus bocor). */
   diBawahTabel: 'ujung' | 'proporsional';
-  /** Tulisan toleransi di sertifikat. */
+  /** Tulisan toleransi di sertifikat (batas tetap). Batas menurut klasifikasi → tulisan dibuat dari batasnya. */
   toleransiTeks: string;
+  /** Uji hanya berlaku bila klasifikasi tertentu bernilai salah satu dari `nilai` (selain itu "Tidak berlaku"). */
+  berlakuBila?: { klasifikasi: string; nilai: string[] };
+  /** false = hanya ditampilkan, tidak ikut kesimpulan (Keselamatan Listrik: tegangan catu daya). Bawaan true. */
+  masukKesimpulan?: boolean;
+  /** Pengali guard band w = kaliU × U95. Bawaan 1 (KMK-MK-003.0). 0 = keberterimaan sederhana. */
+  kaliU?: number;
+  /** Tulisan hasil di layar sebagai pengganti Laik/Tidak Laik, mis. ['Dalam rentang', 'Di luar rentang']. */
+  teksHasil?: [string, string];
 }
+
+/** Klasifikasi alat yang dipilih teknisi (KMK-MK-002: kelas proteksi, tipe bagian yang diaplikasikan, ...). */
+export interface KlasifikasiListrik { id: string; label: string; pilihan: string[]; /** Wajib hanya bila klasifikasi lain bernilai tertentu. */ wajibBila?: { klasifikasi: string; nilai: string[] } }
 
 export interface KinerjaPompa {
   /** Setting alat (mL/h). */
@@ -90,8 +107,21 @@ export interface TemplatePompa {
   /** [baik, tidak baik] untuk kolom Fisik dan [berfungsi, tidak berfungsi] untuk kolom Fungsi. */
   pilihanFisik: { fisik: [string, string]; fungsi: [string, string] };
   listrik: UjiListrikPompa[];
-  kinerja: KinerjaPompa;
-  skor: { fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number } };
+  /**
+   * Tidak ada pada template KESELAMATAN LISTRIK saja (kode keselamatan_listrik): alat lain yang hanya diuji ESA.
+   * Tanpa kinerja: kesimpulan = semua uji listrik yang berlaku & masuk kesimpulan Laik (Excel View Report C18), tanpa skor.
+   */
+  kinerja?: KinerjaPompa;
+  skor?: { fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number } };
+  /** Klasifikasi alat untuk batas uji listrik (template Keselamatan Listrik). */
+  klasifikasi?: KlasifikasiListrik[];
+  /**
+   * U95 hasil listrik. 'sertifikat' (bawaan, pompa) = U sertifikat ESA apa adanya.
+   * 'gum' (Keselamatan Listrik, Excel sheet Ketidakpastian baris 17–21) = k(veff) × U/2 dengan veff = derajat bebas sertifikat (60).
+   */
+  ketidakpastianListrik?: 'sertifikat' | 'gum';
+  /** Nama alat di PO yang memakai template ini selain `nama` (template Keselamatan Listrik dipakai banyak jenis alat). */
+  alatTercakup?: string[];
   sertifikat: { tata_letak: string; halaman: number };
   /**
    * Aturan keputusan. Kosong = guard band w = U sesuai KMK-MK-003.0 (|C| + U ≤ batas) — BENAR, dipakai template baru.
@@ -100,12 +130,17 @@ export interface TemplatePompa {
   aturanKeputusan?: 'guardband_w_u';
 }
 
+/** Template pompa yang PASTI punya kinerja & skor (Infusion, Syringe). */
+export type TemplatePompaKinerja = TemplatePompa & Required<Pick<TemplatePompa, 'kinerja' | 'skor'>>;
+
 // ───────────────────────────── Data & kalibrator ─────────────────────────────
 
 export type Angka = number | null | undefined;
 
 export interface DataPompa {
   identitas?: { resolusi?: Angka; jenisSkala?: string | null };
+  /** Pilihan klasifikasi alat (id KlasifikasiListrik → nilai). */
+  klasifikasi?: Record<string, string | null | undefined>;
   fisik?: Record<string, { fisik?: string | null; fungsi?: string | null }>;
   /** Hasil ukur ESA per id uji listrik. */
   listrik?: Record<string, Angka>;
@@ -146,9 +181,21 @@ export interface HasilBudget {
 
 export interface HasilAliran extends HasilBudget { setting: number; toleransi: number; hasil: Vonis }
 
+export interface HasilUjiListrik {
+  terukur: number | null;
+  u95: number | null;
+  hasil: Vonis;
+  /** false = uji tidak berlaku untuk klasifikasi alat ini (dicetak "-"). Tidak ada pada jejak lama = berlaku. */
+  berlaku?: boolean;
+  /** Batas yang dipakai (null = belum diketahui / tidak berlaku). */
+  batas?: number | null;
+  /** Tulisan toleransi sertifikat untuk alat ini. */
+  toleransiTeks?: string;
+}
+
 export interface HasilPompa {
   fisik: { jumlahBaik: number; jumlahItem: number; nilai: number };
-  listrik: Record<string, { terukur: number | null; u95: number | null; hasil: Vonis }>;
+  listrik: Record<string, HasilUjiListrik>;
   aliran: { titik: HasilAliran[]; jumlahLaik: number; jumlahDinilai: number };
   sumbat: HasilBudget & { setting: number | null; batas: number; hasil: Vonis };
   skor: { rincian: { dari: string; nilai: number }[]; total: number };
@@ -245,16 +292,52 @@ export function jenisSkalaPompa(tpl: TemplatePompa, data: DataPompa): JenisSkala
   return js === 'Analog' || js === 'Digital' ? js : null;
 }
 
+/** Klasifikasi yang wajib dipilih (untuk kelengkapan): semua, kecuali yang `wajibBila`-nya tidak terpenuhi. */
+export function klasifikasiWajib(tpl: TemplatePompa, data: DataPompa): KlasifikasiListrik[] {
+  const kl = data.klasifikasi ?? {};
+  return (tpl.klasifikasi ?? []).filter((k) => !k.wajibBila || k.wajibBila.nilai.includes(String(kl[k.wajibBila.klasifikasi] ?? '')));
+}
+
+/** Apakah uji listrik berlaku untuk klasifikasi alat ini. null = klasifikasi penentunya belum dipilih. */
+export function ujiBerlaku(u: UjiListrikPompa, data: DataPompa): boolean | null {
+  if (!u.berlakuBila) return true;
+  const v = data.klasifikasi?.[u.berlakuBila.klasifikasi];
+  if (typeof v !== 'string' || !v) return null;
+  return u.berlakuBila.nilai.includes(v);
+}
+
+/** Batas uji untuk klasifikasi alat ini. null = klasifikasi penentunya belum dipilih / tidak ada di tabel. */
+export function batasUji(b: BatasUji, data: DataPompa): number | null {
+  if (typeof b === 'number') return b;
+  const kunci = b.menurut.map((m) => String(data.klasifikasi?.[m] ?? '')).join('|');
+  const n = b.nilai[kunci];
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+}
+
+/** Tulisan toleransi sertifikat (Excel View Report I12:I15): "≤ 0,3", "> 2"; tidak berlaku / belum ada → "-". */
+function teksToleransi(u: UjiListrikPompa, batas: number | null, berlaku: boolean | null): string {
+  if (typeof u.uji.batas === 'number' && !u.berlakuBila) return u.toleransiTeks;
+  if (berlaku === false || batas === null) return '-';
+  const a = String(batas).replace('.', ',');
+  return u.uji.jenis === 'minimum' ? `${u.uji.tegas ? '>' : '≥'} ${a}` : u.uji.jenis === 'maksimum' ? `≤ ${a}` : u.toleransiTeks;
+}
+
 export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: KalibratorPompa): HasilPompa {
   const kurang: string[] = [];
   const kn = tpl.kinerja;
   const gb = tpl.aturanKeputusan === 'guardband_w_u';
   const resolusi = angka(data.identitas?.resolusi);
   const jenisSkala = jenisSkalaPompa(tpl, data);
-  if (resolusi === null) kurang.push('Resolusi alat belum diisi');
-  if (jenisSkala === null) kurang.push('Jenis skala (Analog/Digital) belum dipilih');
-  if (!kal.aliran.length || !kal.tekanan.length) kurang.push('Kalibrator IDA belum dipilih');
+  if (kn) {
+    if (resolusi === null) kurang.push('Resolusi alat belum diisi');
+    if (jenisSkala === null) kurang.push('Jenis skala (Analog/Digital) belum dipilih');
+    if (!kal.aliran.length || !kal.tekanan.length) kurang.push('Kalibrator IDA belum dipilih');
+  }
   if (tpl.listrik.some((u) => !(kal.listrik[u.kalibrator]?.length))) kurang.push('Kalibrator ESA belum dipilih');
+  for (const k of klasifikasiWajib(tpl, data)) {
+    const v = data.klasifikasi?.[k.id];
+    if (typeof v !== 'string' || !k.pilihan.includes(v)) kurang.push(`${k.label} belum dipilih`);
+  }
 
   // Fisik & Fungsi: SEMUA kotak dihitung (keputusan Ridhwan 26 Okt 2026). Spasi & huruf besar diabaikan.
   const norm = (s: string) => s.trim().toLowerCase();
@@ -271,27 +354,50 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
 
   // Keselamatan listrik
   const listrik: HasilPompa['listrik'] = {};
+  const kFaktorGum = faktorKDariVeff(kn?.derajatBebas.sertifikat ?? 60);
   for (const u of tpl.listrik) {
     const mentah = angka(data.listrik?.[u.id]);
     const tabel = kal.listrik[u.kalibrator] ?? [];
+    const berlaku = ujiBerlaku(u, data);
+    const batas = u.uji.jenis === 'sekitar' ? u.uji.batas : batasUji(u.uji.batas, data);
     let terukur: number | null = null, u95: number | null = null, hasil: Vonis = '-';
     if (mentah !== null && tabel.length) {
       terukur = mentah + (koreksiDi(tabel, mentah, u.diBawahTabel) ?? 0);
-      u95 = u95Listrik(tabel, terukur);
-      if (u95 !== null) {
+      const uSer = u95Listrik(tabel, terukur);
+      // Keselamatan Listrik (Excel Ketidakpastian!Y17:Y21): uc = U/2 (drift & resolusi kosong), veff = 60 → U95 = k × U/2
+      u95 = uSer === null ? null : tpl.ketidakpastianListrik === 'gum' && kFaktorGum !== null ? kFaktorGum * (uSer / 2) : uSer;
+      if (u95 !== null && berlaku === true && batas !== null) {
         const q = u.uji;
-        // KMK guard band w = U: U di kedua sisi saling coret → dibanding langsung (tanpa galat pembulatan desimal)
-        const uu = gb ? 0 : u95;
-        const lulus = q.jenis === 'sekitar' ? Math.abs(terukur - q.nominal) + uu <= q.batas
-          : q.jenis === 'maksimum' ? Math.abs(terukur) + uu <= q.batas
-          : terukur - uu >= q.batas;
+        // KMK-MK-003.0: guard band w = kaliU × U (bawaan 1); versi keliru pompa (gb) = 0
+        const uu = gb ? 0 : (u.kaliU ?? 1) * u95;
+        const lulus = q.jenis === 'sekitar' ? Math.abs(terukur - q.nominal) + uu <= batas
+          : q.jenis === 'maksimum' ? Math.abs(terukur) + uu <= batas
+          : q.tegas ? terukur - uu > batas : terukur - uu >= batas;
         hasil = lulus ? 'Laik' : 'Tidak Laik';
       }
     }
-    if (mentah === null) kurang.push(`${u.judul} belum diisi`);
-    listrik[u.id] = { terukur, u95, hasil };
+    if (berlaku !== false && mentah === null) kurang.push(`${u.judul} belum diisi`);
+    listrik[u.id] = {
+      terukur: berlaku === false ? null : terukur, u95: berlaku === false ? null : u95, hasil: berlaku === false ? '-' : hasil,
+      ...(tpl.klasifikasi ? { berlaku: berlaku !== false, batas: berlaku === false ? null : batas, toleransiTeks: teksToleransi(u, batas, berlaku) } : {}),
+    };
   }
 
+  const fisikNilai = (sk: NonNullable<TemplatePompa['skor']>) => (jumlahBaik / jumlahItem >= sk.fisik.minimalPersen ? sk.fisik.nilai : 0);
+
+  // ── Tanpa kinerja (Keselamatan Listrik saja): kesimpulan = semua uji yang berlaku & masuk kesimpulan Laik (Excel View Report C18)
+  if (!kn) {
+    const dinilai = tpl.listrik.filter((u) => u.masukKesimpulan !== false && listrik[u.id].berlaku !== false);
+    const laik = dinilai.length > 0 && dinilai.every((u) => listrik[u.id].hasil === 'Laik');
+    return {
+      fisik: { jumlahBaik, jumlahItem, nilai: tpl.skor ? fisikNilai(tpl.skor) : 0 }, listrik,
+      aliran: { titik: [], jumlahLaik: 0, jumlahDinilai: 0 },
+      sumbat: { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: null, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null, setting: null, batas: 0, hasil: '-' },
+      skor: { rincian: [], total: 0 },
+      kesimpulan: laik ? 'Laik Pakai' : 'Tidak Laik Pakai',
+      kurang,
+    };
+  }
   // Aliran
   const uResAliran = resolusi !== null && jenisSkala !== null ? (resolusi * 0.5) / kn.pembagiResolusi[jenisSkala] : null;
   const aliran: HasilPompa['aliran'] = { titik: [], jumlahLaik: 0, jumlahDinilai: 0 };
@@ -321,8 +427,8 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
   const sumbat = { ...bs, koreksi: null, setting: settingSumbat, batas: kn.sumbat.batas, hasil: hasilSumbat };
 
   // Skor
-  const sk = tpl.skor;
-  const nFisik = jumlahBaik / jumlahItem >= sk.fisik.minimalPersen ? sk.fisik.nilai : 0;
+  const sk = tpl.skor ?? { fisik: { minimalPersen: 0.7, nilai: 10 }, listrik: { nilai: 40 }, kinerja: { nilai: 50 }, laikBila: { banding: '>=' as Banding, batas: 90 } };
+  const nFisik = fisikNilai(sk);
   const semuaListrik = tpl.listrik.length > 0 && tpl.listrik.every((u) => listrik[u.id].hasil === 'Laik');
   const nListrik = semuaListrik ? sk.listrik.nilai : 0;
   const alirOk = aliran.jumlahDinilai > 0 && aliran.jumlahLaik / aliran.jumlahDinilai >= kn.minimalPersenAliran;

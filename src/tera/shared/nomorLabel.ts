@@ -77,7 +77,13 @@ const rapikan = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 /** Template untuk nama alat PO (nama ASPAK). Sama persis setelah huruf kecil & spasi dirapikan. */
 export function templateUntukAlat<T extends { nama: string }>(namaAlat: string, templates: readonly T[]): T | null {
   const x = rapikan(namaAlat);
-  return templates.find((t) => rapikan(t.nama) === x) ?? null;
+  // Nama template dulu; lalu nama alat lain yang memakai template itu (Keselamatan Listrik: ESWT, Fundus Camera, ...)
+  return templates.find((t) => rapikan(t.nama) === x)
+    ?? templates.find((t) => {
+      const lain = (t as { alatTercakup?: unknown }).alatTercakup;
+      return Array.isArray(lain) && lain.some((n) => typeof n === 'string' && rapikan(n) === x);
+    })
+    ?? null;
 }
 
 /** Tanggal lokal perangkat YYYY-MM-DD (tanggal pelaksanaan bawaan). */

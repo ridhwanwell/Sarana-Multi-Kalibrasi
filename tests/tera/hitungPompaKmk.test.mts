@@ -7,7 +7,7 @@
 // VONIS: listrik & penyumbatan = vonis Excel (rumusnya sama); aliran = |koreksi| + U95 ≤ 10 % setting — untuk Infusion
 // harus SAMA dengan vonis Excel; untuk Syringe Excel memakai toleransi/3 sebagai pengganti U, jadi dihitung di sini.
 import { readFileSync } from 'node:fs';
-import { hitungPompa, type KalibratorPompa, type TemplatePompa } from '../../src/tera/shared/hitungPompa.ts';
+import { hitungPompa, type KalibratorPompa, type TemplatePompaKinerja as TemplatePompa } from '../../src/tera/shared/hitungPompa.ts';
 import { TEMPLATE_INFUSION_PUMP_V3, TEMPLATE_INFUSION_PUMP_V4 } from '../../src/tera/shared/templates/infusionPump.ts';
 import { TEMPLATE_SYRINGE_PUMP_V2, TEMPLATE_SYRINGE_PUMP_V3 } from '../../src/tera/shared/templates/syringePump.ts';
 

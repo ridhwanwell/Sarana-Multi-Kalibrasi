@@ -8,7 +8,7 @@
  * Keputusan Ridhwan 26 Okt 2026: fisik & fungsi dihitung semua kotak; titik aliran 25/50/100/150/200 mL/h
  * (di bawah 250, dalam rentang kalibrasi IDA); batas penyumbatan ≤ 20 psi.
  */
-import type { TemplatePompa } from '../hitungPompa.js';
+import type { TemplatePompaKinerja as TemplatePompa } from '../hitungPompa.js';
 
 export const TEMPLATE_INFUSION_PUMP_V1: TemplatePompa = {
   tipe: 'pompa',

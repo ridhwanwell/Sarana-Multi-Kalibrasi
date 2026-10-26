@@ -23,12 +23,14 @@ export interface DefBagian { id: BagianId; nama: string; /** false = layarnya di
 export function daftarBagian(tpl: Pick<TemplateAlat, 'keselamatan_listrik'> | Pick<TemplatePompa, 'keselamatan_listrik' | 'tipe'>): DefBagian[] {
   // Pompa (Infusion/Syringe): bagian Keselamatan listrik sudah ada layarnya (Tahap 6.3).
   const listrikAda = adalahTemplatePompa(tpl);
+  // Keselamatan Listrik saja (template pompa tanpa kinerja): tidak ada bagian Kinerja
+  const adaKinerja = !(adalahTemplatePompa(tpl) && !(tpl as TemplatePompa).kinerja);
   return [
     { id: 'identitas', nama: 'Identitas alat', tersedia: true },
     { id: 'lingkungan', nama: 'Kondisi lingkungan', tersedia: true },
     { id: 'fisik', nama: 'Fisik & fungsi', tersedia: true },
     ...(tpl.keselamatan_listrik !== 'tidak_ada' ? [{ id: 'keselamatan' as const, nama: 'Keselamatan listrik', tersedia: listrikAda }] : []),
-    { id: 'kinerja', nama: 'Kinerja', tersedia: true },
+    ...(adaKinerja ? [{ id: 'kinerja' as const, nama: 'Kinerja', tersedia: true }] : []),
     { id: 'kesimpulan', nama: 'Kesimpulan', tersedia: true },
     { id: 'ringkasan', nama: 'Ringkasan & Selesai', tersedia: true },
   ];

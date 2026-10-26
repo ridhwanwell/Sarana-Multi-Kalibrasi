@@ -1,0 +1,1811 @@
+{
+ "sumber": "Master_Keselamatan_Listrik_terisi.xlsx (26 Okt 2026), dihitung ulang penuh dengan LibreOffice",
+ "dibuat": "2026-10-26",
+ "kasus": [
+  {
+   "nama": "laik-kelas1-bf-langsung",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe BF",
+     "kabelPE": "Dapat dilepas - bersama kabel",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 221.5,
+     "resistansi_pembumian": 0.12,
+     "resistansi_isolasi": 250.0,
+     "arus_bocor_peralatan": 45.0,
+     "arus_bocor_ap": 20.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 221.5,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.111,
+      "u95": 0.00260040852021245,
+      "hasil": "Laik",
+      "batas": 0.3,
+      "toleransi": "≤ 0,3"
+     },
+     "resistansi_isolasi": {
+      "terukur": 250,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 45.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 20.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "kelas2-tipe-b-alternatif",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas II",
+     "tipeAP": "Tipe B",
+     "metodeBocor": "Alternatif"
+    },
+    "listrik": {
+     "tegangan": 218.0,
+     "resistansi_isolasi": 120.0,
+     "arus_bocor_peralatan": 300.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 218,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0,
+      "u95": null,
+      "hasil": "Tidak berlaku",
+      "batas": null,
+      "toleransi": "-"
+     },
+     "resistansi_isolasi": {
+      "terukur": 120,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 300.651139494115,
+      "u95": 0.790124127295323,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": null,
+      "u95": null,
+      "hasil": "Tidak berlaku",
+      "batas": null,
+      "toleransi": "-"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "cf-ap-gagal-diferensial",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe CF",
+     "kabelPE": "Kabel catu daya saja",
+     "metodeBocor": "Diferensial"
+    },
+    "listrik": {
+     "tegangan": 230.0,
+     "resistansi_pembumian": 0.095,
+     "resistansi_isolasi": 50.0,
+     "arus_bocor_peralatan": 480.0,
+     "arus_bocor_ap": 49.8
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 230,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.086,
+      "u95": 0.00250039280789659,
+      "hasil": "Laik",
+      "batas": 0.1,
+      "toleransi": "≤ 0,1"
+     },
+     "resistansi_isolasi": {
+      "terukur": 50,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 480.966691710493,
+      "u95": 0.790124127295323,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 50.3976143141153,
+      "u95": 0.620097416358354,
+      "hasil": "Tidak Laik",
+      "batas": 50,
+      "toleransi": "≤ 50"
+     }
+    },
+    "kesimpulan": "Tidak Laik Pakai"
+   }
+  },
+  {
+   "nama": "pe-dekat-batas-laik",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe BF",
+     "kabelPE": "Tidak dapat dilepas",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 220.0,
+     "resistansi_pembumian": 0.305,
+     "resistansi_isolasi": 80.0,
+     "arus_bocor_peralatan": 60.0,
+     "arus_bocor_ap": 10.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 220,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.296,
+      "u95": 0.00260040852021245,
+      "hasil": "Laik",
+      "batas": 0.3,
+      "toleransi": "≤ 0,3"
+     },
+     "resistansi_isolasi": {
+      "terukur": 80,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 60.5367793240557,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 10.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "pe-guard-band-gagal",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe BF",
+     "kabelPE": "Tidak dapat dilepas",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 220.0,
+     "resistansi_pembumian": 0.308,
+     "resistansi_isolasi": 80.0,
+     "arus_bocor_peralatan": 60.0,
+     "arus_bocor_ap": 10.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 220,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.299,
+      "u95": 0.00260040852021245,
+      "hasil": "Tidak Laik",
+      "batas": 0.3,
+      "toleransi": "≤ 0,3"
+     },
+     "resistansi_isolasi": {
+      "terukur": 80,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 60.5367793240557,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 10.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Tidak Laik Pakai"
+   }
+  },
+  {
+   "nama": "pe-sederhana-w0",
+   "guardBand": 0,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe BF",
+     "kabelPE": "Tidak dapat dilepas",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 220.0,
+     "resistansi_pembumian": 0.308,
+     "resistansi_isolasi": 80.0,
+     "arus_bocor_peralatan": 60.0,
+     "arus_bocor_ap": 10.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 220,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.299,
+      "u95": 0.00260040852021245,
+      "hasil": "Laik",
+      "batas": 0.3,
+      "toleransi": "≤ 0,3"
+     },
+     "resistansi_isolasi": {
+      "terukur": 80,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 60.5367793240557,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 10.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "isolasi-gagal",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tidak ada",
+     "kabelPE": "Instalasi permanen",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 221.0,
+     "resistansi_pembumian": 0.1,
+     "resistansi_isolasi": 2.03,
+     "arus_bocor_peralatan": 40.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 221,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.091,
+      "u95": 0.00250039280789659,
+      "hasil": "Laik",
+      "batas": 0.3,
+      "toleransi": "≤ 0,3"
+     },
+     "resistansi_isolasi": {
+      "terukur": 2.03,
+      "u95": 0.0580091131432009,
+      "hasil": "Tidak Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 40.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": null,
+      "u95": null,
+      "hasil": "Tidak berlaku",
+      "batas": null,
+      "toleransi": "-"
+     }
+    },
+    "kesimpulan": "Tidak Laik Pakai"
+   }
+  },
+  {
+   "nama": "bocor-gagal-kelas2-langsung",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas II",
+     "tipeAP": "Tipe BF",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 221.0,
+     "resistansi_isolasi": 300.0,
+     "arus_bocor_peralatan": 150.0,
+     "arus_bocor_ap": 30.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 221,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0,
+      "u95": null,
+      "hasil": "Tidak berlaku",
+      "batas": null,
+      "toleransi": "-"
+     },
+     "resistansi_isolasi": {
+      "terukur": 300,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 150.388179313799,
+      "u95": 0.790124127295323,
+      "hasil": "Tidak Laik",
+      "batas": 100,
+      "toleransi": "≤ 100"
+     },
+     "arus_bocor_ap": {
+      "terukur": 30.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Tidak Laik Pakai"
+   }
+  },
+  {
+   "nama": "tegangan-luar-rentang",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe BF",
+     "kabelPE": "Dapat dilepas - tanpa kabel",
+     "metodeBocor": "Alternatif"
+    },
+    "listrik": {
+     "tegangan": 245.0,
+     "resistansi_pembumian": 0.2,
+     "resistansi_isolasi": 500.0,
+     "arus_bocor_peralatan": 100.0,
+     "arus_bocor_ap": 4000.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 245,
+      "u95": 0.190029853400141,
+      "hasil": "Di luar rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.191,
+      "u95": 0.00260040852021245,
+      "hasil": "Laik",
+      "batas": 0.2,
+      "toleransi": "≤ 0,2"
+     },
+     "resistansi_isolasi": {
+      "terukur": 500,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 100.300525920361,
+      "u95": 0.790124127295323,
+      "hasil": "Laik",
+      "batas": 1000,
+      "toleransi": "≤ 1000"
+     },
+     "arus_bocor_ap": {
+      "terukur": 4001,
+      "u95": 0.790124127295323,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "kotak-multipel-alternatif",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe B",
+     "kabelPE": "Kotak kontak multipel",
+     "metodeBocor": "Alternatif"
+    },
+    "listrik": {
+     "tegangan": 215.0,
+     "resistansi_pembumian": 0.45,
+     "resistansi_isolasi": 15.0,
+     "arus_bocor_peralatan": 900.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 215,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.441,
+      "u95": 0.00260040852021245,
+      "hasil": "Laik",
+      "batas": 0.5,
+      "toleransi": "≤ 0,5"
+     },
+     "resistansi_isolasi": {
+      "terukur": 15,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 901,
+      "u95": 0.790124127295323,
+      "hasil": "Laik",
+      "batas": 1000,
+      "toleransi": "≤ 1000"
+     },
+     "arus_bocor_ap": {
+      "terukur": null,
+      "u95": null,
+      "hasil": "Tidak berlaku",
+      "batas": null,
+      "toleransi": "-"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "bocor-kecil-proporsional",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe CF",
+     "kabelPE": "Dapat dilepas - bersama kabel",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 205.0,
+     "resistansi_pembumian": 0.05,
+     "resistansi_isolasi": 9.0,
+     "arus_bocor_peralatan": 5.0,
+     "arus_bocor_ap": 3.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 205,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.041,
+      "u95": 0.00250039280789659,
+      "hasil": "Laik",
+      "batas": 0.3,
+      "toleransi": "≤ 0,3"
+     },
+     "resistansi_isolasi": {
+      "terukur": 9,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 5.31914893617021,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 3.19148936170213,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 50,
+      "toleransi": "≤ 50"
+     }
+    },
+    "kesimpulan": "Laik Pakai"
+   }
+  },
+  {
+   "nama": "pe-dapat-dilepas-tanpa-kabel-gagal",
+   "guardBand": 1,
+   "data": {
+    "klasifikasi": {
+     "kelas": "Kelas I",
+     "tipeAP": "Tipe BF",
+     "kabelPE": "Dapat dilepas - tanpa kabel",
+     "metodeBocor": "Langsung"
+    },
+    "listrik": {
+     "tegangan": 220.0,
+     "resistansi_pembumian": 0.22,
+     "resistansi_isolasi": 100.0,
+     "arus_bocor_peralatan": 50.0,
+     "arus_bocor_ap": 10.0
+    }
+   },
+   "kalibrator": {
+    "listrik": {
+     "tegangan": [
+      {
+       "titik": 99.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 109.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 119.9,
+       "koreksi": 0.1,
+       "u95": 0.19
+      },
+      {
+       "titik": 200,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 220,
+       "koreksi": 0,
+       "u95": 0.19
+      },
+      {
+       "titik": 240,
+       "koreksi": 0,
+       "u95": 0.19
+      }
+     ],
+     "resistansi": [
+      {
+       "titik": 0.109,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 0.209,
+       "koreksi": -0.009,
+       "u95": 0.0026
+      },
+      {
+       "titik": 0.509,
+       "koreksi": -0.009,
+       "u95": 0.0025
+      },
+      {
+       "titik": 1.011,
+       "koreksi": -0.011,
+       "u95": 0.0025
+      }
+     ],
+     "isolasi": [
+      {
+       "titik": 1,
+       "koreksi": 0,
+       "u95": 0.058
+      },
+      {
+       "titik": 10,
+       "koreksi": 0,
+       "u95": 0.058
+      }
+     ],
+     "arus_bocor": [
+      {
+       "titik": 9.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 49.4,
+       "koreksi": 0.6,
+       "u95": 0.62
+      },
+      {
+       "titik": 99.7,
+       "koreksi": 0.3,
+       "u95": 0.62
+      },
+      {
+       "titik": 499,
+       "koreksi": 1,
+       "u95": 0.79
+      }
+     ]
+    }
+   },
+   "harapan": {
+    "listrik": {
+     "tegangan": {
+      "terukur": 220,
+      "u95": 0.190029853400141,
+      "hasil": "Dalam rentang",
+      "batas": 22,
+      "toleransi": "220 ±10 %"
+     },
+     "resistansi_pembumian": {
+      "terukur": 0.211,
+      "u95": 0.00260040852021245,
+      "hasil": "Tidak Laik",
+      "batas": 0.2,
+      "toleransi": "≤ 0,2"
+     },
+     "resistansi_isolasi": {
+      "terukur": 100,
+      "u95": 0.0580091131432009,
+      "hasil": "Laik",
+      "batas": 2,
+      "toleransi": "> 2"
+     },
+     "arus_bocor_peralatan": {
+      "terukur": 50.596421471173,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 500,
+      "toleransi": "≤ 500"
+     },
+     "arus_bocor_ap": {
+      "terukur": 10.6,
+      "u95": 0.620097416358354,
+      "hasil": "Laik",
+      "batas": 5000,
+      "toleransi": "≤ 5000"
+     }
+    },
+    "kesimpulan": "Tidak Laik Pakai"
+   }
+  }
+ ]
+}

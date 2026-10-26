@@ -70,8 +70,8 @@ export interface JejakPompa {
   jenis: 'pompa';
   template: { kode: string; versi: number; metode: string };
   kalibrator: Record<string, { asetId: string | null; nama: string | null; nomorSertifikat: string | null; berlakuSampai: string | null; jumlahTabel: number } | null>;
-  masukan: { resolusi: number | null; jenisSkala: string | null };
-  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor']; aturanKeputusan?: TemplatePompa['aturanKeputusan'] };
+  masukan: { resolusi: number | null; jenisSkala: string | null; klasifikasi?: Record<string, string> };
+  aturan: { kinerja: TemplatePompa['kinerja']; listrik: TemplatePompa['listrik']; skor: TemplatePompa['skor']; aturanKeputusan?: TemplatePompa['aturanKeputusan']; ketidakpastianListrik?: TemplatePompa['ketidakpastianListrik'] };
   hasil: HasilPompa;
   lengkap: boolean;
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai' | null;
@@ -96,8 +96,14 @@ function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null
       skema: SKEMA_JEJAK, mesinHitung: VERSI_MESIN_HITUNG, jenis: 'pompa' as const,
       template: { kode: tpl.kode_alat, versi: tpl.versi, metode: tpl.metode },
       kalibrator: { ida: identitasAlat('ida'), esa: identitasAlat('esa') },
-      masukan: { resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: jenisSkalaPompa(tpl, dataPompa(data)) },
-      aturan: { kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor, ...(tpl.aturanKeputusan ? { aturanKeputusan: tpl.aturanKeputusan } : {}) },
+      masukan: {
+        resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: jenisSkalaPompa(tpl, dataPompa(data)),
+        ...(tpl.klasifikasi ? { klasifikasi: Object.fromEntries(tpl.klasifikasi.map((k) => [k.id, String(dataPompa(data).klasifikasi?.[k.id] ?? '')])) } : {}),
+      },
+      aturan: {
+        kinerja: tpl.kinerja, listrik: tpl.listrik, skor: tpl.skor, ...(tpl.aturanKeputusan ? { aturanKeputusan: tpl.aturanKeputusan } : {}),
+        ...(tpl.ketidakpastianListrik ? { ketidakpastianListrik: tpl.ketidakpastianListrik } : {}),
+      },
       hasil, lengkap, kesimpulan: lengkap ? hasil.kesimpulan : null,
     });
   } catch {

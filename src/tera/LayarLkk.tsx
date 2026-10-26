@@ -109,6 +109,12 @@ const KartuStandar: React.FC<KartuStandarProps> = ({ def, pilihan, snap, tanggal
 /** Sphygmo/timbangan (naik-turun) atau pompa (aliran + penyumbatan + listrik). */
 type TemplateApa = TemplateAlat | TemplatePompa;
 
+/** Nama alat yang tampil: isian "Nama Alat" (template Keselamatan Listrik, dipakai banyak jenis alat) atau nama template. */
+const namaAlatLkk = (tpl: TemplateApa, data: Peta | null | undefined): string => {
+  const n = (data?.identitas as Peta | undefined)?.namaAlat;
+  return typeof n === 'string' && n.trim() ? n.trim() : tpl.nama;
+};
+
 interface BagianProps {
   tpl: TemplateApa; isi: IsiKerja; kunci: boolean; kurang: Kurang[];
   ubahData: (blok: string, bidang: string, nilai: unknown) => void;
@@ -127,7 +133,7 @@ const BagianIdentitas: React.FC<BagianProps & {
   return (
     <>
       <div className="t-isian-grid">
-        <div className="t-isian"><span className="t-label">Nama alat</span><p className="t-baca">{tpl.nama}</p></div>
+        <div className="t-isian"><span className="t-label">{bidangIdentitas(tpl).some((b) => b.id === 'namaAlat') ? 'Jenis LKK' : 'Nama alat'}</span><p className="t-baca">{tpl.nama}</p></div>
         <div className="t-isian"><span className="t-label">Tempat</span><p className="t-baca">{namaRs}</p></div>
         <div className="t-isian"><span className="t-label">Teknisi</span><p className="t-baca">{teknisi}</p></div>
         {bidangIdentitas(tpl).map((b) => {
@@ -466,7 +472,7 @@ const BagianRingkasan: React.FC<BagianProps & SelesaiProps> = ({ tpl: tplApa, is
       <section className="t-kartu mt-3" aria-label="Ringkasan LKK">
         <h3 className="t-judul-kecil">Ringkasan</h3>
         <dl className="t-ringkas mt-2">
-          <Baris label="Alat">{tpl.nama}</Baris>
+          <Baris label="Alat">{namaAlatLkk(tpl, isi.data)}</Baris>
           <Baris label="Nomor stiker"><span className="tabular">{lkk.noLabel || '-'}</span>{lkk.alatTambahan ? ' · alat tambahan' : ''}</Baris>
           <Baris label="Rumah sakit">{namaRs}</Baris>
           <Baris label="Tanggal pelaksanaan">{tglPanjang(isi.tanggal)}</Baris>
@@ -760,7 +766,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
     <div className="t-lkk-layar">
       <Link to={balik} className="t-kembali"><ChevronLeft size={20} aria-hidden="true" />Kembali ke daftar</Link>
       <header className="t-lkk-kepala">
-        <h1 className="t-judul-layar t-rs-judul">{tpl.nama}</h1>
+        <h1 className="t-judul-layar t-rs-judul">{namaAlatLkk(tpl, isi.data)}</h1>
         <p className="t-ket tabular t-rs-judul">{lkk.noLabel || 'Nomor label belum diisi'} · {namaRs}{lkk.alatTambahan ? ' · alat tambahan' : ''}{lkk.isTest ? ' · data uji' : ''}</p>
         <div className="t-lkk-status"><ChipSync state={statusNyata} /></div>
         {/* Tinggi baris ini tetap supaya layar tidak bergeser saat status simpan berganti (ketukan tidak meleset) */}

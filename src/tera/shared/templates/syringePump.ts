@@ -10,7 +10,7 @@
  *  - Laik per titik aliran = |koreksi| + toleransi/3 ≤ toleransi (View Report L18:L22), bukan memakai U95;
  *  - penyumbatan: |rata-rata| + U95 < 20 psi (tegas "<", View Report L32).
  */
-import type { TemplatePompa } from '../hitungPompa.js';
+import type { TemplatePompaKinerja as TemplatePompa } from '../hitungPompa.js';
 import { TEMPLATE_INFUSION_PUMP_V2 as INFUS } from './infusionPump.js';
 
 export const TEMPLATE_SYRINGE_PUMP_V1: TemplatePompa = {

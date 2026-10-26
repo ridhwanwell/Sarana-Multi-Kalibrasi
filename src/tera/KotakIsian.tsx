@@ -122,6 +122,24 @@ export const Dropdown: React.FC<PilihanDropdownProps> = ({ id, label, opsi, nila
   );
 };
 
+/** Dropdown pilihan bebas (klasifikasi alat): netral, tanpa warna baik/tidak. Tinggi ≥ 48 px, font 16 px. */
+export const PilihanDaftar: React.FC<{ id: string; label: string; opsi: string[]; nilai: unknown; kunci: boolean; onPilih: (v: string) => void; bantuan?: string }> = ({ id, label, opsi, nilai, kunci, onPilih, bantuan }) => {
+  const sah = typeof nilai === 'string' && opsi.includes(nilai);
+  return (
+    <div className="t-isian">
+      <label htmlFor={id} className="t-label">{label}</label>
+      <div className="t-kotak t-pilih" data-kunci={kunci ? 'true' : undefined}>
+        <span className="t-ikon-pilih" aria-hidden="true">{sah ? <Check size={18} /> : <Minus size={18} />}</span>
+        <select id={id} value={sah ? (nilai as string) : ''} disabled={kunci} onChange={(e) => onPilih(e.target.value)} aria-describedby={bantuan ? `${id}-b` : undefined}>
+          {!sah && <option value="" disabled>Pilih…</option>}
+          {opsi.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <ChevronDown size={20} aria-hidden="true" className="t-panah-pilih" />
+      </div>
+      {bantuan && <p id={`${id}-b`} className="t-ket mt-1">{bantuan}</p>}
+    </div>
+  );
+};
 
 export const HasilKoreksi: React.FC<{ judul: string; teks: string | null; ket: string }> = ({ judul, teks, ket }) => (
   <div className="t-hasil" role="status">

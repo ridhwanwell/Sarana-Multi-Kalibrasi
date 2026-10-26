@@ -63,8 +63,13 @@ export function bersihkanTemplate(mentah: unknown): TemplateApa | null {
   if (t.kop !== 'KAN' && t.kop !== 'NON_KAN') return null;
   if (t.tipe === 'pompa') {
     // Template pompa: bentuk berbeda (aliran + penyumbatan + listrik)
-    if (!Array.isArray(t.fisik) || !Array.isArray(t.listrik) || !Array.isArray(t.standar) || !t.kinerja || !Array.isArray(t.kinerja.titikAliran)) return null;
-    if (!t.kinerja.titikAliran.every(num) || !t.kinerja.sumbat || !t.skor?.laikBila || !t.pilihanFisik?.fisik || !t.pilihanFisik?.fungsi) return null;
+    if (!Array.isArray(t.fisik) || !Array.isArray(t.listrik) || !Array.isArray(t.standar) || !t.pilihanFisik?.fisik || !t.pilihanFisik?.fungsi) return null;
+    if (t.kinerja) {
+      if (!Array.isArray(t.kinerja.titikAliran) || !t.kinerja.titikAliran.every(num) || !t.kinerja.sumbat || !t.skor?.laikBila) return null;
+    } else {
+      // Keselamatan Listrik saja: wajib ada klasifikasi & minimal satu uji listrik
+      if (!Array.isArray(t.klasifikasi) || !t.listrik.length) return null;
+    }
     if (!t.identitas?.resolusi || !Array.isArray(t.identitas.resolusi.pilihan)) return null;
     return t as TemplatePompa;
   }

@@ -13,9 +13,9 @@ import React, { useMemo } from 'react';
 import { AlertCircle, Check } from 'lucide-react';
 import { buatJejakHitung } from './shared/jejak';
 import type { IsiKerja } from './shared/isian';
-import type { TemplatePompa } from './shared/hitungPompa';
+import { klasifikasiWajib, ujiBerlaku, type TemplatePompa } from './shared/hitungPompa';
 import { formatAngka } from './shared/lingkungan';
-import { ChipVonis, fmt2, KotakAngka } from './KotakIsian';
+import { ChipVonis, fmt2, KotakAngka, PilihanDaftar } from './KotakIsian';
 
 type Peta = Record<string, any>;
 
@@ -39,8 +39,22 @@ const dalamBatas = (banding: string) => banding.replace('<=', '≤').replace('>=
 export const BagianKeselamatanPompa: React.FC<SifatPompa> = ({ tpl, isi, kunci, ubahData }) => {
   const hasil = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot)?.hasil ?? null, [tpl, isi.data, isi.snapshot]);
   const nilai = (isi.data.listrik ?? {}) as Peta;
+  const kl = (isi.data.klasifikasi ?? {}) as Peta;
+  const wajib = new Set(klasifikasiWajib(tpl, isi.data).map((k) => k.id));
+  const namaKl = (id: string) => tpl.klasifikasi?.find((k) => k.id === id)?.label.toLowerCase() ?? id;
   return (
     <>
+      {tpl.klasifikasi && (
+        <section className="t-kartu mb-4" aria-label="Klasifikasi alat">
+          <h3 className="t-judul-kecil">Klasifikasi alat</h3>
+          <p className="t-ket">Lihat label alat / buku manual. Klasifikasi menentukan uji yang berlaku dan batasnya (SNI IEC 62353).</p>
+          <div className="t-isian-grid mt-2">
+            {tpl.klasifikasi.filter((k) => wajib.has(k.id)).map((k) => (
+              <PilihanDaftar key={k.id} id={`klas-${k.id}`} label={k.label} opsi={k.pilihan} nilai={kl[k.id]} kunci={kunci} onPilih={(v) => ubahData('klasifikasi', k.id, v)} />
+            ))}
+          </div>
+        </section>
+      )}
       <p className="t-ket">
         Ukur dengan Electrical Safety Analyzer (ESA), lalu isi angka yang tampil di ESA. Nilai terkoreksi dan ketidakpastian (U95) dihitung otomatis
         dari sertifikat ESA yang dipilih di bagian Identitas.
@@ -48,10 +62,20 @@ export const BagianKeselamatanPompa: React.FC<SifatPompa> = ({ tpl, isi, kunci, 
       <ul className="t-fisik-daftar mt-3">
         {tpl.listrik.map((u) => {
           const h = hasil?.listrik[u.id];
+          const berlaku = ujiBerlaku(u, isi.data);
+          if (berlaku === false) {
+            return (
+              <li key={u.id} className="t-kartu" aria-label={u.judul}>
+                <h3 className="t-judul-kecil">{u.judul}</h3>
+                <p className="t-ket">Tidak berlaku untuk {namaKl(u.berlakuBila!.klasifikasi)} "{String(kl[u.berlakuBila!.klasifikasi])}" — tidak perlu diukur.</p>
+              </li>
+            );
+          }
+          const tol = h?.toleransiTeks ?? u.toleransiTeks;
           return (
             <li key={u.id} className="t-kartu" aria-label={u.judul}>
               <h3 className="t-judul-kecil">{u.judul}</h3>
-              <p className="t-ket">Batas: <span className="tabular">{u.toleransiTeks}</span> {u.satuan}</p>
+              <p className="t-ket">Batas: <span className="tabular">{tol === '-' ? 'pilih klasifikasi dulu' : tol}</span> {tol === '-' ? '' : u.satuan}{u.masukKesimpulan === false ? ' · tidak ikut kesimpulan' : ''}</p>
               <div className="t-isian-grid mt-2">
                 <KotakAngka
                   id={`listrik-${u.id}`} label="Bacaan ESA" satuan={u.satuan} kunci={kunci}
@@ -63,7 +87,7 @@ export const BagianKeselamatanPompa: React.FC<SifatPompa> = ({ tpl, isi, kunci, 
                   <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil ${u.judul}`}>
                     <span>{h && h.terukur !== null ? `${tampil(h.terukur)} ${u.satuan}` : '-'}</span>
                     <span>U95 {h && h.u95 !== null ? tampil(h.u95, 4) : '-'}</span>
-                    <ChipVonis vonis={h?.hasil ?? '-'} />
+                    <ChipVonis vonis={h?.hasil ?? '-'} {...(u.teksHasil ? { teksLaik: u.teksHasil[0].toUpperCase(), teksTidak: u.teksHasil[1].toUpperCase() } : {})} />
                   </p>
                 </div>
               </div>
@@ -80,6 +104,7 @@ export const BagianKeselamatanPompa: React.FC<SifatPompa> = ({ tpl, isi, kunci, 
 export const BagianKinerjaPompa: React.FC<SifatPompa> = ({ tpl, isi, kunci, ubahData, ubahRun }) => {
   const hasil = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot)?.hasil ?? null, [tpl, isi.data, isi.snapshot]);
   const kn = tpl.kinerja;
+  if (!kn) return null;
   const aliran = (isi.data.aliran ?? {}) as Peta;
   const sumbat = (isi.data.sumbat ?? {}) as Peta;
   const runSumbat = (Array.isArray(sumbat.bacaan) ? sumbat.bacaan : []) as (number | null)[];
@@ -160,6 +185,14 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
   const laik = hasil.kesimpulan === 'Laik Pakai';
   const alasan: string[] = [];
   const sk = tpl.skor;
+  if (!sk || !tpl.kinerja) {
+    // Keselamatan Listrik saja: Laik Pakai bila semua uji yang berlaku Laik (tanpa skor)
+    for (const u of tpl.listrik) {
+      const h = hasil.listrik[u.id];
+      if (u.masukKesimpulan !== false && h && h.berlaku !== false && h.hasil !== 'Laik') alasan.push(`${u.judul}: ${tampil(h.terukur)} ${u.satuan} ± ${tampil(h.u95, 4)}, batas ${h.toleransiTeks ?? u.toleransiTeks} ${u.satuan}.`);
+    }
+    return <StikerKesimpulan laik={laik} alasan={alasan} judulAlasan="Uji yang tidak memenuhi batas" />;
+  }
   const [rFisik, rListrik, rKinerja] = hasil.skor.rincian;
   if ((rFisik?.nilai ?? 0) === 0) alasan.push(`Fisik & fungsi: ${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi (perlu minimal ${Math.round(sk.fisik.minimalPersen * 100)}%).`);
   if ((rListrik?.nilai ?? 0) === 0) {
@@ -178,24 +211,29 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
   }
   const total = sk.fisik.nilai + sk.listrik.nilai + sk.kinerja.nilai;
   return (
-    <>
-      <div className="t-stiker" data-v={laik ? 'laik' : 'tidak'} role="status">
-        {laik ? <Check size={32} aria-hidden="true" /> : <AlertCircle size={32} aria-hidden="true" />}
-        <div>
-          <p className="t-stiker-judul">{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</p>
-          <p className="t-stiker-petunjuk">Tempel stiker <b>{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</b> pada alat ini.</p>
-        </div>
-      </div>
-      <p className="t-ket mt-3">Skor {hasil.skor.total} dari {total} (batas laik {sk.laikBila.banding.replace('>=', '≥')} {sk.laikBila.batas}).</p>
-      {alasan.length > 0 && (
-        <section className="t-kartu mt-3" aria-label="Alasan">
-          <h3 className="t-judul-kecil">Yang menurunkan nilai</h3>
-          <ul className="t-skor-daftar mt-2">{alasan.map((a) => <li key={a}>{a}</li>)}</ul>
-        </section>
-      )}
-    </>
+    <StikerKesimpulan laik={laik} alasan={alasan} judulAlasan="Yang menurunkan nilai"
+      ket={`Skor ${hasil.skor.total} dari ${total} (batas laik ${sk.laikBila.banding.replace('>=', '≥')} ${sk.laikBila.batas}).`} />
   );
 };
+
+const StikerKesimpulan: React.FC<{ laik: boolean; alasan: string[]; judulAlasan: string; ket?: string }> = ({ laik, alasan, judulAlasan, ket }) => (
+  <>
+    <div className="t-stiker" data-v={laik ? 'laik' : 'tidak'} role="status">
+      {laik ? <Check size={32} aria-hidden="true" /> : <AlertCircle size={32} aria-hidden="true" />}
+      <div>
+        <p className="t-stiker-judul">{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</p>
+        <p className="t-stiker-petunjuk">Tempel stiker <b>{laik ? 'LAIK PAKAI' : 'TIDAK LAIK PAKAI'}</b> pada alat ini.</p>
+      </div>
+    </div>
+    {ket && <p className="t-ket mt-3">{ket}</p>}
+    {alasan.length > 0 && (
+      <section className="t-kartu mt-3" aria-label="Alasan">
+        <h3 className="t-judul-kecil">{judulAlasan}</h3>
+        <ul className="t-skor-daftar mt-2">{alasan.map((a) => <li key={a}>{a}</li>)}</ul>
+      </section>
+    )}
+  </>
+);
 
 /* ---------- Bagian 7: baris ringkasan ---------- */
 
@@ -207,20 +245,24 @@ export function barisRingkasPompa(tpl: TemplatePompa, isi: IsiKerja): BarisRingk
   const hasil = jejak?.hasil;
   if (!hasil) return [];
   const snap = (isi.snapshot ?? {}) as Peta;
+  const kl = (isi.data.klasifikasi ?? {}) as Peta;
   return [
     { label: 'Alat standar', isi: (['ida', 'esa', 'termohigrometer'] as const).map((k) => snap[k]?.nama).filter(Boolean).join(' · ') || '-' },
+    ...(tpl.klasifikasi ? [{ label: 'Klasifikasi', isi: tpl.klasifikasi.map((k) => kl[k.id]).filter(Boolean).join(' · ') || '-' }] : []),
     { label: 'Fisik & fungsi', isi: `${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi` },
     ...tpl.listrik.map((u) => ({
       label: u.judul,
-      isi: (
+      isi: hasil.listrik[u.id]?.berlaku === false ? 'Tidak berlaku' : (
         <>
           <span className="tabular">{hasil.listrik[u.id]?.terukur != null ? `${tampil(hasil.listrik[u.id].terukur)} ${u.satuan}` : '-'}</span>{' '}
-          <ChipVonis vonis={hasil.listrik[u.id]?.hasil ?? '-'} />
+          <ChipVonis vonis={hasil.listrik[u.id]?.hasil ?? '-'} {...(u.teksHasil ? { teksLaik: u.teksHasil[0].toUpperCase(), teksTidak: u.teksHasil[1].toUpperCase() } : {})} />
         </>
       ),
     })),
-    { label: 'Aliran', isi: `${hasil.aliran.jumlahLaik} dari ${hasil.aliran.jumlahDinilai} titik laik` },
-    { label: 'Penyumbatan', isi: (<><span className="tabular">{hasil.sumbat.rataRata != null ? `${tampil(hasil.sumbat.rataRata, 2)} psi` : '-'}</span>{' '}<ChipVonis vonis={hasil.sumbat.hasil} /></>) },
-    ...(jejak.lengkap ? [{ label: 'Skor', isi: `${hasil.skor.total} dari ${tpl.skor.fisik.nilai + tpl.skor.listrik.nilai + tpl.skor.kinerja.nilai}` }] : []),
+    ...(tpl.kinerja ? [
+      { label: 'Aliran', isi: `${hasil.aliran.jumlahLaik} dari ${hasil.aliran.jumlahDinilai} titik laik` },
+      { label: 'Penyumbatan', isi: (<><span className="tabular">{hasil.sumbat.rataRata != null ? `${tampil(hasil.sumbat.rataRata, 2)} psi` : '-'}</span>{' '}<ChipVonis vonis={hasil.sumbat.hasil} /></>) },
+    ] : []),
+    ...(jejak.lengkap && tpl.skor ? [{ label: 'Skor', isi: `${hasil.skor.total} dari ${tpl.skor.fisik.nilai + tpl.skor.listrik.nilai + tpl.skor.kinerja.nilai}` }] : []),
   ];
 }
