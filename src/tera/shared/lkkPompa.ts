@@ -60,6 +60,8 @@ export function kalibratorDariSnapshot(snapshot: Peta | null | undefined): Kalib
       isolasi: tabelPompa(snapshot, 'isolasi'),
       arus_bocor: tabelPompa(snapshot, 'arus_bocor'),
     },
+    // NIBP Simulator: alat standar berparameter satu (tekanan_mmhg) → salinan langsung berisi `points`
+    nibp: titikPompa(snapshot?.nibp),
   };
 }
 
@@ -81,6 +83,14 @@ export function kurangPompa(tpl: TemplatePompa, isi: IsiKerja): Kurang[] {
   for (const u of tpl.listrik) {
     if (ujiBerlaku(u, data) === false) continue;
     if (!angka(data.listrik?.[u.id])) kurang.push({ bagian: 'keselamatan', teks: `${u.judul} belum diisi` });
+  }
+  if (tpl.nibp) {
+    const nb = tpl.nibp;
+    for (const t of nb.titik) {
+      const run = Array.isArray(data.nibp?.[t.id]) ? (data.nibp![t.id] as unknown[]).slice(0, nb.pengulangan).filter(angka) : [];
+      if (run.length < nb.minimalUlangan) kurang.push({ bagian: 'kinerja', teks: `${t.label} ${t.setting} ${nb.satuan}: minimal ${nb.minimalUlangan} bacaan` });
+    }
+    return kurang;
   }
   if (!tpl.kinerja) return kurang;
   const n = tpl.kinerja.pengulangan;

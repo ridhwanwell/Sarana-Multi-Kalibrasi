@@ -1,5 +1,6 @@
 /**
- * Selia — bagian LKK POMPA (Infusion Pump, Syringe Pump): listrik, aliran, penyumbatan (Tahap 6.4).
+ * Selia — bagian LKK POMPA (Infusion Pump, Syringe Pump): listrik, aliran, penyumbatan (Tahap 6.4);
+ * juga Keselamatan Listrik (tanpa kinerja) dan NIBP (titik tekanan NIBP Simulator, tanpa uji listrik).
  *
  * Perumpamaan: lembar periksa Penyelia untuk pompa. Isinya sama dengan yang dilihat teknisi, ditambah "jejak hitung"
  * (rata-rata → koreksi → ketidakpastian → U95 → Laik/Tidak Laik) supaya angka bisa dicocokkan dengan Excel.
@@ -44,8 +45,42 @@ export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }>
   const hAliran: Peta[] = Array.isArray(h?.aliran?.titik) ? h!.aliran.titik : [];
   const hs: Peta | null = h?.sumbat ?? null;
   const runSumbat: unknown[] = Array.isArray(data.sumbat?.bacaan) ? data.sumbat.bacaan : [];
+  const nibp: Peta | null = tpl.nibp ?? null;
+  const hNibp: Peta[] = Array.isArray(h?.nibp?.titik) ? h!.nibp.titik : [];
   return (
     <>
+      {nibp && (
+        <Bagian id="b-nibp" judul={`${listrik.length ? 5 : 4}. NIBP — jejak hitung`}>
+          <p className="text-xs text-slate-600">
+            Batas: |koreksi| + U95 ≤ {fmt(nibp.toleransi)} {nibp.satuan} · minimal {nibp.minimalUlangan} bacaan · Titik Laik: {h?.nibp?.jumlahLaik ?? '-'} dari {h?.nibp?.jumlahDinilai ?? '-'} (perlu ≥ {fmt((nibp.minimalPersenTitik ?? 0) * 100, 0)}%)
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-[#DCDFE3]">
+            <table className="w-full text-xs tabular-nums">
+              <thead className="bg-slate-100 text-[11px] text-slate-600">
+                <tr>{['Titik', `Setting (${nibp.satuan})`, 'Bacaan alat', 'Koreksi std', ...KOLOM_BUDGET, 'Hasil'].map((c) => <th key={c} className="p-2 text-left whitespace-nowrap">{c}</th>)}</tr>
+              </thead>
+              <tbody>
+                {(nibp.titik as Peta[]).map((tt, i) => {
+                  const t = hNibp[i] ?? {};
+                  const bacaan: unknown[] = Array.isArray(data.nibp?.[tt.id]) ? data.nibp[tt.id] : [];
+                  return (
+                    <tr key={tt.id} className="border-t border-[#DCDFE3]">
+                      <td className="p-2 font-semibold whitespace-nowrap">{tt.label}</td>
+                      <td className="p-2">{fmt(tt.setting)}</td>
+                      <td className="p-2 whitespace-nowrap">{bacaan.filter((b) => typeof b === 'number').map((b) => fmt(b)).join('; ') || '-'}</td>
+                      <td className="p-2">{fmt(t.koreksiStd, 3)}</td>
+                      <BarisBudget t={t} />
+                      <td className="p-2">{t.catatan ? <span className="text-slate-600">{t.catatan}</span> : <Vonis v={t.hasil} />}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Bagian>
+      )}
+
+      {listrik.length > 0 && (
       <Bagian id="b-listrik" judul="4. Keselamatan listrik">
         {klasifikasi.length > 0 && (
           <p className="text-xs text-slate-700">
@@ -80,6 +115,7 @@ export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }>
           </table>
         </div>
       </Bagian>
+      )}
 
       {adaKinerja && <>
       <Bagian id="b-aliran" judul="5. Aliran / Flow Rate — jejak hitung">

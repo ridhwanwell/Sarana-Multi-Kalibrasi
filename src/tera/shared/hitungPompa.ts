@@ -96,7 +96,8 @@ export interface TemplatePompa {
   sumber: string;
   metode: string;
   kop: 'KAN' | 'NON_KAN';
-  keselamatan_listrik: 'wajib';
+  /** 'tidak_ada' = tanpa bagian Keselamatan listrik (NIBP: alat standar hanya NIBP Simulator & termohigrometer). */
+  keselamatan_listrik: 'wajib' | 'tidak_ada';
   /** v2 (26 Okt 2026): resolusi diisi bebas oleh teknisi (pilihan kosong), jenis skala tidak ditanyakan → `jenisTetap` (Digital, persegi √3). */
   identitas: { resolusi: { satuan: string; pilihan: number[] }; jenisSkala: JenisSkala[]; jenisTetap?: JenisSkala };
   /** Kolom identitas layar (menimpa bawaan Sphygmo yang bersatuan mmHg). */
@@ -113,6 +114,8 @@ export interface TemplatePompa {
    */
   kinerja?: KinerjaPompa;
   skor?: { fisik: { minimalPersen: number; nilai: number }; listrik: { nilai: number }; kinerja: { nilai: number }; laikBila: { banding: Banding; batas: number } };
+  /** Kinerja NIBP (tanpa `kinerja` aliran). Skor kinerja dari titik NIBP. */
+  nibp?: KinerjaNibp;
   /** Klasifikasi alat untuk batas uji listrik (template Keselamatan Listrik). */
   klasifikasi?: KlasifikasiListrik[];
   /**
@@ -135,6 +138,28 @@ export interface TemplatePompa {
   aturanKeputusan?: 'guardband_w_u';
 }
 
+/**
+ * KINERJA NIBP (Non Invasive Blood Pressure, Master_NIBP_terisi.xlsx 26 Okt 2026, KMK-MK-075.0).
+ * 12 titik = 4 setting × (Systole, MAP, Diastole) dari NIBP Simulator. Per titik ≤ `pengulangan` bacaan alat (minimal
+ * `minimalUlangan`). Koreksi & U NIBP Simulator diambil DI SETTING (interpolasi linier antara dua titik sertifikat yang
+ * mengapit; U = MAKS keduanya); setting di luar rentang sertifikat → "Di luar rentang" (tidak dinilai Laik).
+ * Bacaan terkoreksi = bacaan − koreksi std; koreksi alat = setting − rata-rata; budget GUM seperti Ketidakpastian!J:AA.
+ * Laik bila |koreksi| + U95 ≤ toleransi (guard band w = U, View Report AE8 = 2).
+ */
+export interface KinerjaNibp {
+  titik: { id: string; label: string; setting: number }[];
+  pengulangan: number;
+  minimalUlangan: number;
+  /** MPE absolut (mmHg). */
+  toleransi: number;
+  satuan: string;
+  driftPersen: number;
+  derajatBebas: { sertifikat: number; resolusi: number; drift: number };
+  pembagiResolusi: Record<JenisSkala, number>;
+  desimalCetak: number;
+  minimalPersenTitik: number;
+}
+
 /** Template pompa yang PASTI punya kinerja & skor (Infusion, Syringe). */
 export type TemplatePompaKinerja = TemplatePompa & Required<Pick<TemplatePompa, 'kinerja' | 'skor'>>;
 
@@ -152,6 +177,8 @@ export interface DataPompa {
   /** Bacaan standar IDA per setting aliran (kunci = setting sebagai teks), pengulangan kali. */
   aliran?: Record<string, Angka[]>;
   sumbat?: { setting?: Angka; bacaan?: Angka[] };
+  /** Bacaan alat NIBP per id titik (≤ pengulangan). */
+  nibp?: Record<string, Angka[]>;
 }
 
 /** Satu baris sertifikat kalibrator: titik = bacaan alat standar (urut naik). */
@@ -164,6 +191,8 @@ export interface KalibratorPompa {
   tekanan: TitikKoreksi[];
   /** ESA: kunci = UjiListrikPompa.kalibrator. */
   listrik: Record<string, TitikKoreksi[]>;
+  /** NIBP Simulator: tekanan (mmHg), titik = setting simulator. */
+  nibp?: TitikKoreksi[];
 }
 
 // ───────────────────────────── Hasil ─────────────────────────────
@@ -198,11 +227,26 @@ export interface HasilUjiListrik {
   toleransiTeks?: string;
 }
 
+export interface HasilNibp extends HasilBudget {
+  id: string; label: string; setting: number;
+  /** Jumlah bacaan yang terisi. */
+  n: number;
+  /** Koreksi & U sertifikat NIBP Simulator di setting (null = di luar rentang / tabel kosong). */
+  koreksiStd: number | null;
+  /** Rata-rata bacaan alat terkoreksi ("Pembacaan Alat" di sertifikat). */
+  pembacaanAlat: number | null;
+  /** 'Di luar rentang' / 'Ulangan kurang' bila tidak dinilai. */
+  catatan: string | null;
+  hasil: Vonis;
+}
+
 export interface HasilPompa {
   fisik: { jumlahBaik: number; jumlahItem: number; nilai: number; /** Keselamatan Listrik v2: fisik & fungsi memenuhi minimal persen */ lolos?: boolean };
   listrik: Record<string, HasilUjiListrik>;
   aliran: { titik: HasilAliran[]; jumlahLaik: number; jumlahDinilai: number };
   sumbat: HasilBudget & { setting: number | null; batas: number; hasil: Vonis };
+  /** Hanya template NIBP. */
+  nibp?: { titik: HasilNibp[]; jumlahLaik: number; jumlahDinilai: number };
   skor: { rincian: { dari: string; nilai: number }[]; total: number };
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai';
   kurang: string[];
@@ -389,6 +433,70 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
   }
 
   const fisikNilai = (sk: NonNullable<TemplatePompa['skor']>) => (jumlahBaik / jumlahItem >= sk.fisik.minimalPersen ? sk.fisik.nilai : 0);
+
+  // ── NIBP: kinerja dari titik tekanan NIBP Simulator; skor fisik 10 + listrik 40 (tanpa uji listrik = 40, Excel AE3) + kinerja 50
+  if (tpl.nibp) {
+    const kn2 = tpl.nibp;
+    const tabelStd = urut(kal.nibp ?? []);
+    if (!tabelStd.length) kurang.push('Kalibrator NIBP Simulator belum dipilih');
+    if (resolusi === null) kurang.push('Resolusi alat belum diisi');
+    const uRes = resolusi !== null && jenisSkala !== null ? (resolusi * 0.5) / kn2.pembagiResolusi[jenisSkala] : null;
+    const titik: HasilNibp[] = [];
+    let jumlahLaik = 0;
+    for (const t of kn2.titik) {
+      const run = (data.nibp?.[t.id] ?? []).slice(0, kn2.pengulangan).map(angka).filter((x): x is number => x !== null);
+      const n = run.length;
+      const kosongB: HasilBudget = { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: uRes, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null };
+      let b: HasilBudget = kosongB, koreksiStd: number | null = null, catatan: string | null = null, hasil: Vonis = '-';
+      // Ketidakpastian!AC:AE — segmen sertifikat yang mengapit setting
+      const nt = tabelStd.length;
+      let uStdSer: number | null = null;
+      if (nt >= 2) {
+        if (t.setting < tabelStd[0].titik || t.setting > tabelStd[nt - 1].titik) catatan = 'Di luar rentang';
+        else {
+          const i = Math.min(cocok(tabelStd, t.setting), nt - 2);
+          const a0 = tabelStd[i], a1 = tabelStd[i + 1];
+          koreksiStd = a0.koreksi + ((a1.koreksi - a0.koreksi) * (t.setting - a0.titik)) / (a1.titik - a0.titik);
+          uStdSer = Math.max(a0.u95, a1.u95);
+        }
+      }
+      if (n < kn2.minimalUlangan) {
+        if (n > 0) catatan = catatan ?? `Ulangan kurang dari ${kn2.minimalUlangan}`;
+        kurang.push(`${t.label} ${t.setting} ${kn2.satuan}: minimal ${kn2.minimalUlangan} bacaan`);
+      } else if (koreksiStd !== null && uStdSer !== null && uRes !== null) {
+        const terkoreksi = run.map((x) => x - (koreksiStd as number));
+        const rr = rataRata(terkoreksi);
+        const uA = stdevS(terkoreksi) / Math.sqrt(n);
+        const uStd = uStdSer / 2;
+        const uDrift = (uStdSer * kn2.driftPersen) / Math.sqrt(3);
+        const uc = Math.sqrt(uA ** 2 + uStd ** 2 + uRes ** 2 + uDrift ** 2);
+        const d = kn2.derajatBebas;
+        const bawah = uA ** 4 / (n - 1) + uStd ** 4 / d.sertifikat + uRes ** 4 / d.resolusi + uDrift ** 4 / d.drift;
+        const vEff = uc > 0 && bawah > 0 ? uc ** 4 / bawah : null;
+        const kk = vEff !== null ? faktorKDariVeff(vEff) : null;
+        const u95 = kk !== null ? kk * uc : 0;
+        b = { rataRata: rr, koreksi: t.setting - rr, uTipeA: uA, uSertifikat: uStd, uResolusi: uRes, uDrift, uc, vEff, k: kk, u95, u95Cetak: bulatExcel(u95, kn2.desimalCetak) };
+        hasil = Math.abs(b.koreksi as number) + u95 <= kn2.toleransi ? 'Laik' : 'Tidak Laik';
+        if (hasil === 'Laik') jumlahLaik++;
+      }
+      titik.push({ ...b, id: t.id, label: t.label, setting: t.setting, n, koreksiStd, pembacaanAlat: b.rataRata, catatan, hasil });
+    }
+    const sk = tpl.skor ?? { fisik: { minimalPersen: 0.7, nilai: 10 }, listrik: { nilai: 40 }, kinerja: { nilai: 50 }, laikBila: { banding: '>=' as Banding, batas: 90 } };
+    const nFisik = fisikNilai(sk);
+    // Tanpa uji listrik (alat berbaterai / hanya NIBP Simulator & termohigrometer) → nilai listrik penuh (Excel AE3)
+    const nListrik = tpl.listrik.length === 0 || tpl.listrik.every((u) => listrik[u.id].hasil === 'Laik') ? sk.listrik.nilai : 0;
+    const nKinerja = kn2.titik.length > 0 && jumlahLaik / kn2.titik.length >= kn2.minimalPersenTitik ? sk.kinerja.nilai : 0;
+    const total = nFisik + nListrik + nKinerja;
+    return {
+      fisik: { jumlahBaik, jumlahItem, nilai: nFisik }, listrik,
+      aliran: { titik: [], jumlahLaik: 0, jumlahDinilai: 0 },
+      sumbat: { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: null, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null, setting: null, batas: 0, hasil: '-' },
+      nibp: { titik, jumlahLaik, jumlahDinilai: kn2.titik.length },
+      skor: { rincian: [{ dari: 'fisik', nilai: nFisik }, { dari: 'listrik', nilai: nListrik }, { dari: 'kinerja', nilai: nKinerja }], total },
+      kesimpulan: bandingkan(total, sk.laikBila.banding, sk.laikBila.batas) ? 'Laik Pakai' : 'Tidak Laik Pakai',
+      kurang,
+    };
+  }
 
   // ── Tanpa kinerja (Keselamatan Listrik saja): kesimpulan = semua uji yang berlaku & masuk kesimpulan Laik (Excel View Report C18)
   if (!kn) {

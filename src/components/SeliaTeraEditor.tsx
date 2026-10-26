@@ -224,12 +224,29 @@ export const SeliaTeraEditor: React.FC<{
               </div>
             </fieldset>
           )}
+          {Array.isArray(tpl.listrik) && tpl.listrik.length > 0 && (
           <fieldset className="space-y-3">
             <legend className="text-sm font-black text-[#1C658C]">Keselamatan listrik — bacaan ESA</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(tpl.listrik as Peta[]).map((u) => kotakAngka({ id: `ubah-listrik-${u.id}`, label: u.judul, satuan: u.satuan, jalur: ['listrik', u.id] }))}
             </div>
           </fieldset>
+          )}
+          {tpl.nibp && (
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-black text-[#1C658C]">NIBP — bacaan alat ({tpl.nibp.satuan})</legend>
+              <div className="space-y-3">
+                {(tpl.nibp.titik as Peta[]).map((tt) => (
+                  <div key={tt.id} className="rounded-xl border border-[#DCDFE3] p-3">
+                    <p className="text-sm font-bold text-slate-800 tabular-nums mb-2">{tt.label} · setting {tt.setting} {tpl.nibp.satuan}</p>
+                    <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                      {Array.from({ length: Number(tpl.nibp.pengulangan) || 6 }, (_, i) => kotakAngka({ id: `ubah-nibp-${tt.id}-${i}`, label: `Bacaan ${i + 1}`, jalur: ['nibp', tt.id, i] }))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          )}
           {tpl.kinerja && <>
           <fieldset className="space-y-3">
             <legend className="text-sm font-black text-[#1C658C]">Aliran / Flow Rate — bacaan IDA (mL/h)</legend>
