@@ -523,3 +523,6 @@ oke, Tahap [n] sudah aku cek di Preview dan sesuai. Gabungkan tera-dev ke main.
 ### Hasil 6.12 (26 Okt 2026 18.30) — perbaikan: tombol Selesai pompa & listrik tidak bisa ditekan
 - Laporan Ridhwan (screenshot Infusion Pump, ringkasan lengkap, skor 100): tombol Selesai tidak bisa ditekan. Penyebab: `BagianRingkasan` (LayarLkk.tsx) mensyaratkan `hasil` naik-turun Sphygmo untuk `siap`, padahal untuk template pompa `hasil` sengaja null → Infusion, Syringe & Keselamatan Listrik tidak pernah bisa Selesai sejak 6.3b. Perbaikan: `siap = jejak lengkap + kesimpulan + tidak ada kekurangan`; stiker LAIK/TIDAK LAIK di ringkasan kini juga tampil untuk pompa & listrik.
 - Uji Chromium kini benar-benar menekan Selesai → "Ya, selesai" → LKK disegel & masuk antrean: `layar-pompa-kmk` 31 (infusion & syringe), `layar-listrik` 29. Sphygmo `layar-lkk` 145 tetap lulus.
+
+### Hasil 6.13 (26 Okt 2026 18.40) — Nama Pelanggan & Alamat lurus dengan labelnya
+- Permintaan Ridhwan: isian Nama Pelanggan & Alamat (hlm 1) sedikit lebih tinggi dari label "Nama Pelanggan:" / "Alamat:". Isian diturunkan 1,92 pt ke garis dasar label (y 294,88 → 296,8; 321,04 → 322,96) di SEMUA sertifikat: Sphygmo, Infusion, Syringe, Keselamatan Listrik (`LURUS` di `buat_templat_pompa.py`). Uji sertifikat semua lulus.

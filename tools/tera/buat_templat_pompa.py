@@ -137,6 +137,11 @@ kosong = [x['k'] + '@%s' % x['p'] for x in F if kena[id(x)] == 0]
 print(laporan); print('isian tanpa teks di acuan:', kosong)
 
 # ── tata letak
+# Nama Pelanggan & Alamat: isian diluruskan ke garis dasar labelnya ("Nama Pelanggan:" y 296,8; "Alamat:" y 322,96) —
+# di cetakan Excel isian 1,92 pt lebih tinggi (permintaan Ridhwan 26 Okt 2026 18.36).
+LURUS = {('namaPelanggan', 1): 296.8, ('alamatPelanggan', 1): 322.96}
+for x in F:
+    if (x['k'], x['p']) in LURUS and 'y0' in x: x['y0'] = LURUS[(x['k'], x['p'])]
 def num(v): return ('%.2f' % v).rstrip('0').rstrip('.')
 baris = {1: [], 2: [], 3: []}
 for x in F:
