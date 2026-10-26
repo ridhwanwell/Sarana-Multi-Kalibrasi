@@ -10,6 +10,7 @@
 import type { Isian } from './susunSertifikat.js';
 import { hitungLingkungan } from '../shared/lingkungan.js';
 import { titikDariSnapshot } from '../shared/jejak.js';
+import { bulatExcel } from '../shared/hitung.js';
 import { koma, komaBebas, tambahSetahun, tanggalPanjang, type KonteksSertifikat } from './formatSertifikat.js';
 
 type Peta = Record<string, any>;
@@ -152,6 +153,43 @@ export function isianListrik(
     const berlaku = h?.berlaku !== false;
     s[`listrik${i}`] = berlaku ? komaBebas(h?.terukur, 3) : '-';
     s[`tol${i}`] = berlaku ? String(h?.toleransiTeks ?? listrikDef?.[i]?.toleransiTeks ?? '') : '-';
+  }
+  return s;
+}
+
+/**
+ * NIBP (Report All NIBP, tataLetakNibp.ts): identitas & lingkungan sama dengan pompa (satuan mmHg), dua baris standar
+ * (NIBP Simulator, termohigrometer), tabel NIBP 12 baris: Pembacaan Alat (rata-rata terkoreksi, 0 desimal seperti Excel),
+ * Koreksi (2 desimal) dan Ketidakpastian U95 (2 desimal). Titik yang tidak dinilai (bacaan kurang / di luar rentang) dicetak "-".
+ * Kolom Diskripsi & Pembacaan Standar adalah teks tetap di kertas cetak (setting template = setting Excel).
+ */
+export function isianNibp(
+  lkk: { data: Peta | null; jejak: Peta | null; snapshot: Peta | null },
+  k: KonteksSertifikat,
+): Isian {
+  const dasar = isianPompa(lkk, k);
+  const d = (lkk.data ?? {}) as Peta;
+  const iden = (d.identitas ?? {}) as Peta;
+  const snap = (lkk.snapshot ?? {}) as Peta;
+  const titik = ((lkk.jejak?.hasil ?? {}) as Peta).nibp?.titik as Peta[] | undefined;
+  const rentang = pisahSatuan(iden.rentangUkur, 'mmHg');
+  const s: Isian = {
+    ...dasar,
+    rentangUkur: rentang.nilai,
+    satuanRentang: rentang.satuan,
+    satuanResolusi: komaBebas(iden.resolusi) ? 'mmHg' : '',
+    // Nama = nama tampil di master kalibrator (CAL-037 tercetak "NIBP Simulator", lihat teraMasterRoutes nama_tampil)
+    kalibrator1: barisStandar(snap.nibp, 'NIBP Simulator'),
+    kalibrator2: barisStandar(snap.termohigrometer, 'Digital Thermohygrometer'),
+  };
+  for (const kunci of ['kalibrator3', 'sumbatSetting', 'sumbatStd', 'sumbatU', 'tolSumbat']) delete s[kunci];
+  for (const kunci of Object.keys(s)) if (/^(a\d_|listrik\d)/.test(kunci)) delete s[kunci];
+  for (let i = 0; i < 12; i++) {
+    const t = titik?.[i];
+    const dinilai = !!t && typeof t.rataRata === 'number' && !t.catatan;
+    s[`n${i}_alat`] = dinilai ? koma(bulatExcel(t!.pembacaanAlat ?? t!.rataRata, 0), 0) : '-';
+    s[`n${i}_kor`] = dinilai ? koma(bulatExcel(t!.koreksi, 2), 2) : '-';
+    s[`n${i}_u`] = dinilai ? koma(t!.u95Cetak ?? bulatExcel(t!.u95, 2), 2) : '-';
   }
   return s;
 }

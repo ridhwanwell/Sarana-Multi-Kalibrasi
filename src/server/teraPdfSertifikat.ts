@@ -18,7 +18,8 @@ import { isianSphygmomanometer } from "../tera/pdf/formatSertifikat.js";
 import { TATA_LETAK_INFUSION_PUMP } from "../tera/pdf/tataLetakPompa.js";
 import { TATA_LETAK_SYRINGE_PUMP } from "../tera/pdf/tataLetakSyringe.js";
 import { TATA_LETAK_KESELAMATAN_LISTRIK } from "../tera/pdf/tataLetakListrik.js";
-import { isianListrik, isianPompa } from "../tera/pdf/formatSertifikatPompa.js";
+import { TATA_LETAK_NIBP } from "../tera/pdf/tataLetakNibp.js";
+import { isianListrik, isianNibp, isianPompa } from "../tera/pdf/formatSertifikatPompa.js";
 
 export const BUCKET_TERA = 'tera-assets';
 const BASE_FONT = 'https://saranamultikalibrasi.com/tera/fonts';
@@ -87,11 +88,12 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
   if (error) throw new Error(`lkk: ${error.message}`);
   if (!r) throw new GalatPdf(404, 'LKK tidak ditemukan.');
   // Alat yang sudah punya kertas cetak Report All. Semua Non-KAN (CLAUDE.md 9.5); alat lain menyusul satu per satu.
-  const SERTIFIKAT_ALAT = ['sphygmomanometer', 'infusion_pump', 'syringe_pump', 'keselamatan_listrik'];
+  const SERTIFIKAT_ALAT = ['sphygmomanometer', 'infusion_pump', 'syringe_pump', 'keselamatan_listrik', 'nibp'];
   if (!SERTIFIKAT_ALAT.includes(String(r.template_kode))) throw new GalatPdf(422, 'PDF untuk alat ini belum tersedia.');
   const syringe = r.template_kode === 'syringe_pump';
   const pompa = r.template_kode === 'infusion_pump' || syringe;
   const listrik = r.template_kode === 'keselamatan_listrik';
+  const nibp = r.template_kode === 'nibp';
 
   const [push, prof, tpl, ttd] = await Promise.all([
     r.jadwal_id ? supabaseAdmin.from('tera_jadwal_push').select('nama_rs, kota').eq('jadwal_id', r.jadwal_id).maybeSingle().abortSignal(signal) : Promise.resolve({ data: null, error: null }),
@@ -108,14 +110,14 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
 
   let kopBytes: Uint8Array | null = null;
   if (opsi.denganKop) {
-    const kop = await supabaseAdmin.storage.from(BUCKET_TERA).download('kop/KOP_SERTIF_NON_KAN.pdf'); // Sphygmomanometer, Infusion Pump, Syringe Pump & Keselamatan Listrik = Non-KAN (CLAUDE.md 9.5)
+    const kop = await supabaseAdmin.storage.from(BUCKET_TERA).download('kop/KOP_SERTIF_NON_KAN.pdf'); // Sphygmomanometer, Infusion Pump, Syringe Pump, Keselamatan Listrik & NIBP = Non-KAN (CLAUDE.md 9.5)
     if (kop.error || !kop.data) {
       console.error('[Tera/PDF] kop:', kop.error?.message);
       throw new GalatPdf(503, 'File kop sertifikat belum ada di penyimpanan (tera-assets/kop). Hubungi Developer.');
     }
     kopBytes = new Uint8Array(await kop.data.arrayBuffer());
   }
-  const [font, templat] = await Promise.all([ambilFont(signal), ambilTemplat(listrik ? 'templat-keselamatan-listrik.pdf' : syringe ? 'templat-syringe-pump.pdf' : pompa ? 'templat-infusion-pump.pdf' : 'templat-sphygmomanometer.pdf', signal)]);
+  const [font, templat] = await Promise.all([ambilFont(signal), ambilTemplat(nibp ? 'templat-nibp.pdf' : listrik ? 'templat-keselamatan-listrik.pdf' : syringe ? 'templat-syringe-pump.pdf' : pompa ? 'templat-infusion-pump.pdf' : 'templat-sphygmomanometer.pdf', signal)]);
   const bahan: BahanPdf = { fontR: font.r, fontB: font.b, fontI: font.i, kop: kopBytes, templat };
 
   // Penandatangan: sesudah ACC memakai nama & jabatan yang dibekukan; sebelum ACC dari data master.
@@ -129,13 +131,15 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
 
   const def = (tpl.data as any)?.definition ?? {};
   const konteks = {
-    bo: r.bo, noLabel: r.no_label, namaAlat: (tpl.data as any)?.nama ?? (listrik ? 'Keselamatan Listrik' : syringe ? 'Syringe Pump' : pompa ? 'Infusion Pump' : 'Sphygmomanometer'), namaRs, alamatRs: alamat,
+    bo: r.bo, noLabel: r.no_label, namaAlat: (tpl.data as any)?.nama ?? (nibp ? 'Non Invasive Blood Pressure (NIBP)' : listrik ? 'Keselamatan Listrik' : syringe ? 'Syringe Pump' : pompa ? 'Infusion Pump' : 'Sphygmomanometer'), namaRs, alamatRs: alamat,
     teknisi: (prof.data as any)?.full_name ?? '', tanggalKalibrasi: r.tanggal_kalibrasi,
     tanggalTerbit: tanggalJakarta(s ? s.ditandatangani_at : new Date()), penandatangan,
   };
   const lkk = { data: r.data, jejak: r.results, snapshot: r.calibrator_snapshot };
   let isian;
-  if (listrik) {
+  if (nibp) {
+    isian = isianNibp(lkk, konteks);
+  } else if (listrik) {
     isian = isianListrik(lkk, konteks); // Nama Alat dari isian teknisi (template dipakai banyak jenis alat)
   } else if (pompa) {
     isian = isianPompa(lkk, konteks);
@@ -149,7 +153,7 @@ export async function buatPdfLkk(id: string, opsi: { denganKop: boolean; sert: S
   const tte: Tte = s
     ? { kotak: matriksQr(`${URL_VERIFIKASI}/${s.kode_verifikasi}`), contoh: false }
     : { kotak: matriksQr(`${URL_VERIFIKASI}/CONTOH`), contoh: true };
-  const pdf = await renderSertifikatPdf(listrik ? TATA_LETAK_KESELAMATAN_LISTRIK : syringe ? TATA_LETAK_SYRINGE_PUMP : pompa ? TATA_LETAK_INFUSION_PUMP : TATA_LETAK_SPHYGMOMANOMETER, isian, bahan, tte);
+  const pdf = await renderSertifikatPdf(nibp ? TATA_LETAK_NIBP : listrik ? TATA_LETAK_KESELAMATAN_LISTRIK : syringe ? TATA_LETAK_SYRINGE_PUMP : pompa ? TATA_LETAK_INFUSION_PUMP : TATA_LETAK_SPHYGMOMANOMETER, isian, bahan, tte);
   const noLabel = String(r.no_label);
   const nama = `Sertifikat-${noLabel.replace(/[^0-9.]/g, '')}${s && s.revisi > 0 ? `-rev${s.revisi}` : ''}${opsi.denganKop ? '' : '-tanpa-kop'}`;
   return { pdf, nama, noLabel };

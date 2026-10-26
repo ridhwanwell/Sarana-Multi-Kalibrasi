@@ -38,6 +38,7 @@
     "test:tera:hitung-nibp": "tsx tests/tera/hitungNibp.test.mts",
     "test:tera:layar-nibp": "tsx tests/tera/layarNibp.uji.mts",
     "test:tera:selia-nibp": "tsx tests/tera/seliaNibp.uji.mts",
+    "test:tera:sertifikat-nibp": "tsx tests/tera/sertifikatNibp.test.mts",
     "test:tera:periksa-server": "tsx tests/tera/periksaServer.test.mts",
     "test:tera:master": "tsx tests/tera/masterLokal.uji.mts",
     "test:tera:nomor": "tsx tests/tera/nomorLabel.test.mts",

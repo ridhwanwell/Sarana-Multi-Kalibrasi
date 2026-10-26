@@ -6,7 +6,7 @@ import sys, json, pikepdf, pdfplumber
 
 SRC, DST, TS = sys.argv[1], sys.argv[2], sys.argv[3]
 KODE = sys.argv[4] if len(sys.argv) > 4 else 'infusion_pump'   # 'infusion_pump', 'syringe_pump' atau 'keselamatan_listrik'
-NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump', 'keselamatan_listrik': 'Keselamatan Listrik'}[KODE]
+NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump', 'keselamatan_listrik': 'Keselamatan Listrik', 'nibp': 'NIBP'}[KODE]
 BERKAS = 'templat-' + KODE.replace('_', '-') + '.pdf'
 # (halaman, garis dasar y dari atas, x awal-min, x awal-maks, kunci, rata, x-jangkar|None=awal, huruf, ukuran, garis bawah)
 F = []
@@ -16,7 +16,31 @@ GESER = {2: 24.7, 3: 24.7}
 KIRI = 292  # batas kanan isian kolom kiri (label kolom kanan mulai x≈297)
 def f(p, y, lo, hi, k, a='l', ax=None, h='r', s=9.96, u=0, m=None, ty=0.6): F.append(dict(p=p, y=y, lo=lo, hi=hi, k=k, a=a, ax=ax, h=h, s=s, u=u, m=m, ty=ty))
 
-if KODE == 'keselamatan_listrik':
+if KODE == 'nibp':
+    # Report All NIBP: hlm 1 sama dengan pompa (dengan Rentang & Resolusi), hlm 2 dua baris standar (NIBP Simulator,
+    # termohigrometer), hlm 3 tabel NIBP 12 baris (Pembacaan Standar & Diskripsi = teks tetap; Pembacaan Alat, Koreksi,
+    # Ketidakpastian = isian) + kesimpulan. Tanpa tabel keselamatan listrik (keputusan Ridhwan 26 Okt 2026).
+    f(1, 176.4, 145, 199.2, 'nomorOrder', m=KIRI); f(1, 176.4, 398, 480, 'nomorSertifikat')
+    f(1, 213.6, 145, 215, 'tanggalTerbit', m=KIRI); f(1, 213.6, 398, 468, 'kalibrasiUlang')
+    f(1, 294.9, 145, 313, 'namaPelanggan'); f(1, 321.0, 145, 300, 'alamatPelanggan')
+    f(1, 401.9, 145, 290, 'namaAlat', m=KIRI); f(1, 401.9, 398, 470, 'noSeri')
+    f(1, 438.2, 145, 178, 'merek', m=KIRI); f(1, 438.2, 405, 446, 'rentangUkur', 'r', 445.45); f(1, 438.2, 448, 480, 'satuanRentang', 'l', 449.0)
+    f(1, 474.4, 145, 240, 'tipe', m=KIRI); f(1, 474.4, 432, 446, 'resolusi', 'r', 445.45); f(1, 474.4, 448, 480, 'satuanResolusi', 'l', 449.0)
+    f(1, 523.0, 196, 266, 'tanggalPenerimaan')
+    f(1, 680.0, 44, 188, 'penandatanganNama', s=11.04); f(1, 695.1, 44, 117, 'penandatanganJabatan', h='b', s=11.04); f(1, 706.9, 44, 107, 'penandatanganJabatanEn', h='i', s=8.04)
+    f(2, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(2, 104.9, 398, 480, 'nomorSertifikat')
+    f(2, 157.34, 44, 600, 'kalibrator1', s=9); f(2, 169.7, 44, 600, 'kalibrator2', s=9)
+    f(2, 197.54, 145, 310, 'tempat', m=KIRI, ty=0.2); f(2, 197.54, 398, 468, 'tanggalPelaksanaan')
+    f(2, 212.78, 145, 247, 'ruang', m=KIRI, ty=0.2); f(2, 212.78, 398, 530, 'teknisi')
+    f(2, 262.13, 138, 194, 'suhuRuang', 'r', 192.89, ty=0.2); f(2, 262.13, 404, 446.5, 'rhRuang', 'r', 445.46, ty=0.2)
+    for i, y in enumerate([351.52, 366.04, 380.56], 1):
+        f(2, y, 388, 406, f'fisik{i}', 'c', 397.09); f(2, y, 479, 518, f'fungsi{i}', 'c', 498.17)
+    f(3, 104.9, 145, 200, 'nomorOrder', m=KIRI); f(3, 104.9, 398, 480, 'nomorSertifikat')
+    for i, y in enumerate([251.42, 276.17, 300.88, 325.6, 350.32, 375.04, 399.76, 424.47, 449.21, 473.93, 498.65, 523.37]):
+        f(3, y, 280, 312, f'n{i}_alat', 'c', 295.7); f(3, y, 380, 412, f'n{i}_kor', 'c', 396.73); f(3, y, 480, 512, f'n{i}_u', 'c', 497.71)
+    f(3, 605.08, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
+    Y_TEMPAT, Y_RUANG = 197.54, 212.78
+elif KODE == 'keselamatan_listrik':
     # Report All Keselamatan Listrik ("SERTIFIKAT PENGUJIAN"): hlm 1 tanpa Rentang/Resolusi, hlm 2 dua baris standar,
     # hlm 3 tabel listrik 5 baris (Terukur + Toleransi menurut klasifikasi) + kesimpulan.
     f(1, 176.4, 145, 199.2, 'nomorOrder', m=KIRI); f(1, 176.4, 398, 480, 'nomorSertifikat')
