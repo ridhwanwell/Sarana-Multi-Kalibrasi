@@ -119,44 +119,69 @@ export function pecahBaris(teks: string, lebarMaks: number, ukur: (s: string) =>
   return baris;
 }
 
+/** Satu pita halaman yang diturunkan: isi dengan y > dari (sampai batas kaki) turun dy poin. */
+export interface Pita { dari: number; dy: number }
+
 /**
- * Isian 2 baris (TataLetak.duaBaris): bila isian lebih lebar dari kolomnya, dipecah 2 baris dengan ukuran huruf ASLI,
- * dan isi halaman di bawahnya turun `jarak` poin. Mengembalikan halaman baru + besar geseran (0 = tidak ada perubahan).
+ * Isian 2 baris (TataLetak.duaBaris; Ridhwan 26 Okt 2026): Tempat, Tanggal, Ruangan, Teknisi yang lebih lebar dari kolomnya
+ * dipecah 2 baris dengan ukuran huruf ASLI (tidak pernah dikecilkan). Bila satu isian di sebuah baris terpecah, baris itu
+ * meninggi `jarak` poin dan semua isi di bawahnya (sampai teks kaki) turun — seperti baris Excel yang meninggi.
+ * Mengembalikan halaman baru + daftar pita yang turun (kosong = tidak ada perubahan).
  */
-export function terapkanDuaBaris(h: HalamanSusun, tl: TataLetak, huruf: Record<GayaHuruf, { widthOfTextAtSize(t: string, s: number): number }>): { h: HalamanSusun; dy: number } {
+export function terapkanDuaBaris(h: HalamanSusun, tl: TataLetak, huruf: Record<GayaHuruf, { widthOfTextAtSize(t: string, s: number): number }>): { h: HalamanSusun; pita: Pita[] } {
   const def = tl.duaBaris?.[h.nomor];
-  if (!def) return { h, dy: 0 };
-  const t = h.teks.find((x) => x.isian && x.kunci === def.k);
-  if (!t || t.rata !== 'l') return { h, dy: 0 };
-  const font = huruf[t.huruf];
-  const lebarMaks = (t.batas ?? BATAS_KANAN) - t.x;
-  if (font.widthOfTextAtSize(t.teks, t.ukuran) <= lebarMaks) return { h, dy: 0 };
-  const baris = pecahBaris(t.teks, lebarMaks, (s) => font.widthOfTextAtSize(s, t.ukuran), 2);
-  if (baris.length < 2) return { h, dy: 0 }; // satu kata sangat panjang: biarkan cara lama (diperkecil)
-  const dy = def.jarak;
-  const turun = (y: number) => (y > def.dari && y < def.sampai ? y + dy : y);
+  if (!def) return { h, pita: [] };
+  const pecah = new Map<TeksGambar, string[]>();
+  const pita: Pita[] = [];
+  for (const row of [...def.baris].sort((x, y) => x.dari - y.dari)) {
+    let meninggi = false;
+    for (const k of row.k) {
+      const t = h.teks.find((x) => x.isian && x.kunci === k);
+      if (!t || t.rata !== 'l') continue;
+      const font = huruf[t.huruf];
+      const lebarMaks = (t.batas ?? BATAS_KANAN) - t.x;
+      if (font.widthOfTextAtSize(t.teks, t.ukuran) <= lebarMaks) continue;
+      const baris = pecahBaris(t.teks, lebarMaks, (s) => font.widthOfTextAtSize(s, t.ukuran), 2);
+      if (baris.length < 2) continue; // satu kata sangat panjang: dipotong "…" (ukuran tetap)
+      pecah.set(t, baris);
+      meninggi = true;
+    }
+    if (meninggi) pita.push({ dari: row.dari, dy: def.jarak });
+  }
+  // Geseran total untuk sebuah y = jumlah pita yang batasnya di atas y (teks kaki di bawah `sampai` tetap)
+  const turun = (y: number) => (y >= def.sampai ? 0 : pita.reduce((n, p) => n + (y > p.dari ? p.dy : 0), 0));
   const teks: TeksGambar[] = [];
   for (const x of h.teks) {
-    if (x === t) {
-      teks.push({ ...t, teks: baris[0], tanpaKecil: true });
-      teks.push({ ...t, y: t.y + dy, teks: baris[1], tanpaKecil: true });
-    } else teks.push({ ...x, y: turun(x.y) });
+    const b = pecah.get(x);
+    const kunciBaris = def.baris.some((r) => x.kunci && r.k.includes(x.kunci));
+    const tanpaKecil = x.isian && kunciBaris ? { tanpaKecil: true } : {};
+    if (b) {
+      teks.push({ ...x, y: x.y + turun(x.y), teks: b[0], tanpaKecil: true });
+      teks.push({ ...x, y: x.y + turun(x.y) + def.jarak, teks: b[1], tanpaKecil: true });
+    } else teks.push({ ...x, y: x.y + turun(x.y), ...tanpaKecil });
   }
-  const geserKotak = (k: Kotak): Kotak => (k[1] > def.dari && k[3] < def.sampai ? [k[0], k[1] + dy, k[2], k[3] + dy] : k);
-  return { h: { ...h, teks, kotak: h.kotak.map(geserKotak), biru: h.biru.map(geserKotak) }, dy };
+  const geserKotak = (k: Kotak): Kotak => { const d = turun(k[3]) === turun(k[1]) ? turun(k[1]) : 0; return d ? [k[0], k[1] + d, k[2], k[3] + d] : k; };
+  return { h: { ...h, teks, kotak: h.kotak.map(geserKotak), biru: h.biru.map(geserKotak) }, pita };
 }
 
-/** Gambar halaman templat dengan pita [dari, sampai) diturunkan dy poin (tiga potongan berpotong-klip). */
-function gambarTemplatBergeser(page: PDFPage, tp: PDFEmbeddedPage, lebar: number, tinggi: number, dari: number, sampai: number, dy: number) {
-  // y PDF dihitung dari BAWAH; dari/sampai dihitung dari ATAS halaman.
+/** Gambar halaman templat dengan pita-pita diturunkan (potongan berpotong-klip); teks kaki (≥ sampai) tetap. */
+function gambarTemplatBergeser(page: PDFPage, tp: PDFEmbeddedPage, lebar: number, tinggi: number, pita: Pita[], sampai: number) {
+  // y PDF dihitung dari BAWAH; batas potongan dihitung dari ATAS halaman (posisi SESUDAH digeser).
   const potong = (atas: number, bawah: number, geser: number) => {
+    if (bawah <= atas) return;
     page.pushOperators(pushGraphicsState(), rectangle(0, tinggi - bawah, lebar, bawah - atas), clip(), endPath());
     page.drawPage(tp, { x: 0, y: -geser, width: lebar, height: tinggi });
     page.pushOperators(popGraphicsState());
   };
-  potong(0, dari, 0);                      // atas: tetap
-  potong(dari + dy, sampai + dy, dy);      // pita: turun dy
-  potong(sampai + dy, tinggi, 0);          // kaki: tetap
+  const urut = [...pita].sort((a, b) => a.dari - b.dari);
+  let geser = 0, atas = 0;
+  for (const p of urut) {
+    potong(atas, p.dari + geser, geser);
+    geser += p.dy;
+    atas = p.dari + geser;
+  }
+  potong(atas, sampai + geser, geser);   // pita terakhir sampai batas kaki
+  potong(sampai + geser, tinggi, 0);     // kaki: tetap
 }
 
 export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: Isian, huruf: HurufTerpasang, kop: Uint8Array | null, tte?: Tte | null, templat?: Uint8Array | null): Promise<PDFEmbeddedPage[]> {
@@ -166,14 +191,14 @@ export async function gambarSertifikat(doc: PDFDocument, tl: TataLetak, isian: I
   const templatHalaman = templat ? await doc.embedPdf(templat, Array.from({ length: tl.halaman }, (_, i) => i)) : null;
   const logo = tte ? await doc.embedPng(dariB64(LOGO_TTE_PNG_B64)) : null;
   for (const asli of susun(tl, isian)) {
-    const { h, dy } = terapkanDuaBaris(asli, tl, huruf);
+    const { h, pita } = terapkanDuaBaris(asli, tl, huruf);
     const page = doc.addPage([lebar, tinggi]);
     page.node.set(PDFName.of('Group'), grupTransparan(doc));
     if (kopHalaman) page.drawPage(kopHalaman, { x: 0, y: 0, width: lebar, height: tinggi });
     if (templatHalaman) {
       // Teks tetap, garis & kotak biru = templat Excel; aplikasi hanya mencetak isian.
       const def = tl.duaBaris?.[h.nomor];
-      if (dy && def) gambarTemplatBergeser(page, templatHalaman[h.nomor - 1], lebar, tinggi, def.dari, def.sampai, dy);
+      if (pita.length && def) gambarTemplatBergeser(page, templatHalaman[h.nomor - 1], lebar, tinggi, pita, def.sampai);
       else page.drawPage(templatHalaman[h.nomor - 1], { x: 0, y: 0, width: lebar, height: tinggi });
       gambarHalaman(page, { ...h, biru: [], kotak: [], teks: h.teks.filter((t) => t.isian) }, huruf, tinggi);
     } else {

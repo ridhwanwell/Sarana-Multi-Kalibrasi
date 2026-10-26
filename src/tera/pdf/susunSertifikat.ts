@@ -39,11 +39,12 @@ export interface TataLetak {
   kotak: Record<number, Kotak[]>;
   teks: Record<number, OpTeks[]>;
   /**
-   * Isian yang boleh dipecah menjadi 2 baris (keputusan Ridhwan 26 Okt 2026: nama RS di "Tempat" yang kepanjangan
-   * TIDAK dikecilkan, tetapi dibuat 2 baris). Bila terpecah, semua isi halaman itu dari y `dari` sampai `sampai`
-   * (y dari atas) ikut turun `jarak` poin — seperti baris Excel yang meninggi. Teks kaki (di bawah `sampai`) tetap.
+   * Baris isian yang boleh dipecah menjadi 2 baris (keputusan Ridhwan 26 Okt 2026: Tempat, Tanggal, Ruangan, Teknisi
+   * yang kepanjangan TIDAK dikecilkan, tetapi dibuat 2 baris dengan ukuran huruf yang sama). Tiap `baris` = isian yang
+   * sebaris; bila salah satunya terpecah, isi halaman dengan y > `dari` (y dari atas) turun `jarak` poin, seperti baris
+   * Excel yang meninggi. Teks kaki (y ≥ `sampai`) tetap.
    */
-  duaBaris?: Record<number, { k: string; dari: number; sampai: number; jarak: number }>;
+  duaBaris?: Record<number, { baris: { k: string[]; dari: number }[]; sampai: number; jarak: number }>;
 }
 
 export type Isian = Record<string, string | null | undefined>;

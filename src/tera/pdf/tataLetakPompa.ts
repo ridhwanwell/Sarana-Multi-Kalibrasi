@@ -11,8 +11,8 @@ export const TATA_LETAK_INFUSION_PUMP: TataLetak = {
   ukuran: { lebar: 595.2756, tinggi: 841.8898 },
   biru: [],
   kotak: {},
-  // Nama RS kepanjangan → 2 baris, isi di bawahnya turun 1 baris (Ridhwan 26 Okt 2026)
-  duaBaris: { 2: { k: 'tempat', dari: 259.5, sampai: 750, jarak: 12.2 } },
+  // Tempat/Tanggal/Ruangan/Teknisi kepanjangan → 2 baris (ukuran huruf sama), isi di bawahnya turun (Ridhwan 26 Okt 2026)
+  duaBaris: { 2: { baris: [{ k: ['tempat', 'tanggalPelaksanaan'], dari: 259.5 }, { k: ['ruang', 'teknisi'], dari: 274.5 }], sampai: 750, jarak: 12.2 } },
   teks: {
     1: [
       {j:"f",x:145.81,y:176.42,f:"r",s:9.96,a:"l",k:"nomorOrder",m:292},

@@ -122,8 +122,8 @@ sat = ["/**", " * TATA LETAK SERTIFIKAT — " + NAMA + " (Report All), 3 halaman
        " * semua teks tetap, garis & kotak biru ada di kertas cetak " + BERKAS + ". Jangan diedit tangan.", " */",
        "import type { TataLetak } from './susunSertifikat.js';", "", "export const TATA_LETAK_" + KODE.upper() + ": TataLetak = {",
        "  kode: 'report_all_" + KODE + "',", "  halaman: 3,", "  ukuran: { lebar: 595.2756, tinggi: 841.8898 },", "  biru: [],", "  kotak: {},",
-       "  // Nama RS kepanjangan → 2 baris, isi di bawahnya turun 1 baris (Ridhwan 26 Okt 2026)",
-       "  duaBaris: { 2: { k: 'tempat', dari: 259.5, sampai: 750, jarak: 12.2 } },", "  teks: {"]
+       "  // Tempat/Tanggal/Ruangan/Teknisi kepanjangan → 2 baris (ukuran huruf sama), isi di bawahnya turun (Ridhwan 26 Okt 2026)",
+       "  duaBaris: { 2: { baris: [{ k: ['tempat', 'tanggalPelaksanaan'], dari: 259.5 }, { k: ['ruang', 'teknisi'], dari: 274.5 }], sampai: 750, jarak: 12.2 } },", "  teks: {"]
 for p in (1, 2, 3):
     sat.append('    %d: [' % p); sat.append(',\n'.join(baris[p])); sat.append('    ],')
 sat += ["  },", "};", ""]

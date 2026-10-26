@@ -1,5 +1,5 @@
-// Uji isian "Tempat" 2 baris (Ridhwan 26 Okt 2026): nama RS kepanjangan TIDAK dikecilkan, dipecah 2 baris,
-// isi halaman di bawahnya turun satu baris; teks kaki tetap. Berlaku untuk semua sertifikat (Sphygmo, Infusion, Syringe).
+// Uji isian 2 baris (Ridhwan 26 Okt 2026): Tempat / Tanggal / Ruangan / Teknisi kepanjangan TIDAK dikecilkan (ukuran huruf
+// sama dengan isian lain), dipecah 2 baris, isi halaman di bawahnya turun satu baris; teks kaki tetap. Berlaku untuk semua sertifikat (Sphygmo, Infusion, Syringe).
 // Jalankan: npm run test:tera:sertifikat-dua-baris   (opsional KOP_NON_KAN=/jalur/kop.pdf, KELUAR=/folder → PDF uji)
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -28,22 +28,24 @@ for (const [nama, tl, berkas] of [
   ['Syringe Pump', TATA_LETAK_SYRINGE_PUMP, 'templat-syringe-pump.pdf'],
 ] as [string, TataLetak, string][]) {
   const def = tl.duaBaris?.[2];
-  cek(`${nama}: tata letak punya "tempat" 2 baris`, !!def && def.k === 'tempat');
+  cek(`${nama}: tata letak punya baris Tempat/Tanggal & Ruangan/Teknisi`, !!def && def.baris.length === 2 && def.baris[0].k.includes('tempat') && def.baris[1].k.includes('ruang'));
   const isian: Record<string, string> = Object.fromEntries(kunciIsian(tl).map((k) => [k, 'X']));
   isian.ruang = 'FISIOTERAPI'; isian.teknisi = 'Teknisi Uji';
+  const ukuranSama = (h: any) => new Set(h.teks.filter((t: any) => ['tempat', 'ruang', 'tanggalPelaksanaan', 'teknisi'].includes(t.kunci)).map((t: any) => t.ukuran)).size === 1;
 
   // Nama pendek: tidak berubah sama sekali
   const pendek = susun(tl, { ...isian, tempat: PENDEK })[1];
   const r0 = terapkanDuaBaris(pendek, tl, f);
-  cek(`${nama}: nama pendek → 1 baris, tidak ada geseran`, r0.dy === 0 && r0.h === pendek);
+  cek(`${nama}: nama pendek → 1 baris, tidak ada geseran`, r0.pita.length === 0 && r0.h.teks.length === pendek.teks.length && r0.h.teks.every((t, i) => t.y === pendek.teks[i].y && t.teks === pendek.teks[i].teks));
 
   // Nama panjang: 2 baris, ukuran huruf asli, yang di bawah turun, kaki & kolom kanan baris Tempat tetap
   const hal = susun(tl, { ...isian, tempat: PANJANG })[1];
   const asliTempat = hal.teks.find((t) => t.kunci === 'tempat')!;
-  const { h, dy } = terapkanDuaBaris(hal, tl, f);
+  const { h, pita } = terapkanDuaBaris(hal, tl, f);
+  const dy = def!.jarak;
   const baris = h.teks.filter((t) => t.kunci === 'tempat');
-  cek(`${nama}: nama panjang → 2 baris`, dy > 0 && baris.length === 2 && `${baris[0].teks} ${baris[1].teks}` === PANJANG, JSON.stringify(baris.map((b) => b.teks)));
-  cek(`${nama}: ukuran huruf tidak dikecilkan`, baris.every((b) => b.ukuran === asliTempat.ukuran && b.tanpaKecil));
+  cek(`${nama}: nama panjang → 2 baris`, pita.length === 1 && baris.length === 2 && `${baris[0].teks} ${baris[1].teks}` === PANJANG, JSON.stringify(baris.map((b) => b.teks)));
+  cek(`${nama}: ukuran huruf tidak dikecilkan & sama dengan Tanggal/Ruangan/Teknisi`, baris.every((b) => b.ukuran === asliTempat.ukuran && b.tanpaKecil) && ukuranSama(h));
   cek(`${nama}: baris 1 muat di kolom`, f.r.widthOfTextAtSize(baris[0].teks, baris[0].ukuran) <= (asliTempat.batas ?? 548.2) - asliTempat.x);
   cek(`${nama}: baris 2 tepat satu baris di bawah`, Math.abs(baris[1].y - asliTempat.y - dy) < 1e-9);
   const ruangA = hal.teks.find((t) => t.kunci === 'ruang')!, ruangB = h.teks.find((t) => t.kunci === 'ruang')!;
@@ -54,12 +56,21 @@ for (const [nama, tl, berkas] of [
   cek(`${nama}: teks kaki tetap`, kakiA.length === kakiB.length);
   cek(`${nama}: isi turun tidak menembus kaki`, h.teks.filter((t) => t.y < def!.sampai + dy).every((t) => t.y < 760));
 
+  // Tempat DAN Ruangan & Teknisi panjang: dua baris meninggi → isi di bawah Ruangan turun 2 × jarak
+  const semua = susun(tl, { ...isian, tempat: PANJANG, ruang: 'Instalasi Rehabilitasi Medik dan Fisioterapi Gedung B', teknisi: 'Muhammad Esak Muhandis Abdurrahman Wijaya, S.Tr.T.' })[1];
+  const r2 = terapkanDuaBaris(semua, tl, f);
+  const ruang2 = r2.h.teks.filter((t) => t.kunci === 'ruang'), tek2 = r2.h.teks.filter((t) => t.kunci === 'teknisi');
+  cek(`${nama}: Ruangan & Teknisi panjang → 2 baris, ukuran sama`, r2.pita.length === 2 && ruang2.length === 2 && tek2.length === 2 && ukuranSama(r2.h), JSON.stringify([ruang2.map((t) => t.teks), tek2.map((t) => t.teks)]));
+  cek(`${nama}: Ruangan turun 1 baris, Teknisi sebaris Ruangan`, Math.abs(ruang2[0].y - ruangA.y - dy) < 1e-9 && ruang2[0].y === tek2[0].y);
+  const bawahA = semua.teks.find((t) => t.kunci === 'suhuRuang'), bawahB = r2.h.teks.find((t) => t.kunci === 'suhuRuang');
+  cek(`${nama}: isi di bawah Ruangan turun 2 baris`, !!bawahA && !!bawahB && Math.abs(bawahB.y - bawahA.y - 2 * dy) < 1e-9);
+
   // PDF lengkap dengan templat (kop opsional)
   const templat = readFileSync(new URL(`../../public/tera/sertifikat/${berkas}`, import.meta.url));
   const doc = await PDFDocument.create();
   const ff = { r: await doc.embedFont(StandardFonts.Helvetica), b: await doc.embedFont(StandardFonts.HelveticaBold), i: await doc.embedFont(StandardFonts.HelveticaOblique) };
   const kop = process.env.KOP_NON_KAN && existsSync(process.env.KOP_NON_KAN) ? readFileSync(process.env.KOP_NON_KAN) : null;
-  await gambarSertifikat(doc, tl, { ...isian, tempat: PANJANG }, ff, kop, null, templat);
+  await gambarSertifikat(doc, tl, { ...isian, tempat: PANJANG, ruang: 'Instalasi Rehabilitasi Medik dan Fisioterapi Gedung B' }, ff, kop, null, templat);
   const bytes = await doc.save();
   cek(`${nama}: PDF 3 halaman`, (await PDFDocument.load(bytes)).getPageCount() === 3);
   if (process.env.KELUAR) {
