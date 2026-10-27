@@ -660,14 +660,14 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
   }, [ubah]);
 
   /** Satu bacaan pompa: data.aliran[kunci][urutan], data.sumbat.bacaan[urutan], atau NIBP data.nibp[titik][urutan]. */
-  const ubahRun = useCallback((blok: 'aliran' | 'sumbat' | 'nibp', kunci: string, urutan: number, jumlah: number, nilai: number | null) => {
+  const ubahRun = useCallback((blok: 'aliran' | 'sumbat' | 'nibp' | 'termo', kunci: string, urutan: number, jumlah: number, nilai: number | null) => {
     ubah((i) => {
-      if (blok === 'nibp') {
-        // NIBP: data.nibp[id titik][urutan]; bacaan 5–6 boleh kosong (minimal 4)
-        const lamaN = (i.data.nibp as Peta)?.[kunci];
+      if (blok === 'nibp' || blok === 'termo') {
+        // NIBP: data.nibp[id titik][urutan]; bacaan 5–6 boleh kosong (minimal 4). Thermohygrometer: data.termo[id titik][urutan] (6 bacaan standar)
+        const lamaN = (i.data[blok] as Peta)?.[kunci];
         const runN: (number | null)[] = Array.from({ length: jumlah }, (_, j) => (typeof lamaN?.[j] === 'number' ? lamaN[j] : null));
         runN[urutan] = nilai;
-        return { ...i, data: { ...i.data, nibp: { ...((i.data.nibp as Peta) ?? {}), [kunci]: runN } } };
+        return { ...i, data: { ...i.data, [blok]: { ...((i.data[blok] as Peta) ?? {}), [kunci]: runN } } };
       }
       const lama = blok === 'aliran' ? (i.data.aliran as Peta)?.[kunci] : (i.data.sumbat as Peta)?.bacaan;
       const run: (number | null)[] = Array.from({ length: jumlah }, (_, j) => (typeof lama?.[j] === 'number' ? lama[j] : null));

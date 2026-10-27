@@ -6,7 +6,7 @@ import sys, json, pikepdf, pdfplumber
 
 SRC, DST, TS = sys.argv[1], sys.argv[2], sys.argv[3]
 KODE = sys.argv[4] if len(sys.argv) > 4 else 'infusion_pump'   # 'infusion_pump', 'syringe_pump' atau 'keselamatan_listrik'
-NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump', 'keselamatan_listrik': 'Keselamatan Listrik', 'nibp': 'NIBP'}[KODE]
+NAMA = {'infusion_pump': 'Infusion Pump', 'syringe_pump': 'Syringe Pump', 'keselamatan_listrik': 'Keselamatan Listrik', 'nibp': 'NIBP', 'termohigro': 'Thermohygrometer'}[KODE]
 BERKAS = 'templat-' + KODE.replace('_', '-') + '.pdf'
 # (halaman, garis dasar y dari atas, x awal-min, x awal-maks, kunci, rata, x-jangkar|None=awal, huruf, ukuran, garis bawah)
 F = []
@@ -41,6 +41,40 @@ if KODE == 'nibp':
         f(3, y, 280, 312, f'n{i}_alat', 'c', 295.7); f(3, y, 380, 412, f'n{i}_kor', 'c', 396.73); f(3, y, 480, 512, f'n{i}_u', 'c', 497.71)
     f(3, 605.08, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
     Y_TEMPAT, Y_RUANG = 197.54, 212.78
+elif KODE == 'termohigro':
+    # BATAS KANAN isian (hi) harus mencakup SELURUH teks contoh di PDF acuan (mis. No. Sertifikat contoh lebih panjang dari NIBP),
+    # kalau tidak sisa huruf contoh ikut tercetak. Report All Thermohygrometer (Master_Thermohygrometer.pdf, 27 Okt 2026): hlm 1 sama dengan NIBP (Rentang & Resolusi), hlm 2 dua baris
+    # standar (Climatic Chamber, termohigrometer) + 2 baris fisik, hlm 3 dua tabel (Suhu 7 baris, Kelembaban 7 baris; Pembacaan Alat,
+    # Pembacaan Standar, Koreksi, Ketidakpastian = isian; satuan & judul = teks tetap) + kesimpulan.
+    f(1, 176.4, 145, 292, 'nomorOrder', m=KIRI); f(1, 176.4, 398, 590, 'nomorSertifikat')
+    f(1, 213.6, 145, 292, 'tanggalTerbit', m=KIRI); f(1, 213.6, 398, 590, 'kalibrasiUlang')
+    f(1, 294.9, 145, 313, 'namaPelanggan'); f(1, 321.0, 145, 590, 'alamatPelanggan')
+    f(1, 401.9, 145, 290, 'namaAlat', m=KIRI); f(1, 401.9, 398, 590, 'noSeri')
+    f(1, 438.2, 145, 178, 'merek', m=KIRI); f(1, 438.2, 398, 440, 'rentangUkur', 'l'); f(1, 438.2, 448, 480, 'satuanRentang', 'l', 449.0)
+    f(1, 474.4, 145, 240, 'tipe', m=KIRI); f(1, 474.4, 398, 440, 'resolusi', 'l'); f(1, 474.4, 448, 480, 'satuanResolusi', 'l', 449.0)
+    f(1, 523.0, 196, 266, 'tanggalPenerimaan')
+    f(1, 678.43, 44, 188, 'penandatanganNama', s=11.04); f(1, 693.3, 44, 117, 'penandatanganJabatan', h='b', s=11.04); f(1, 705.06, 44, 107, 'penandatanganJabatanEn', h='i', s=8.04)
+    f(2, 104.9, 145, 292, 'nomorOrder', m=KIRI); f(2, 104.9, 398, 590, 'nomorSertifikat')
+    f(2, 165.14, 44, 600, 'kalibrator1', s=9); f(2, 177.62, 44, 600, 'kalibrator2', s=9)
+    f(2, 224.3, 145, 310, 'tempat', m=KIRI, ty=0.2); f(2, 224.3, 398, 590, 'tanggalPelaksanaan')
+    f(2, 239.3, 145, 247, 'ruang', m=KIRI, ty=0.2); f(2, 239.3, 398, 530, 'teknisi')
+    f(2, 287.56, 138, 194, 'suhuRuang', 'r', 192.89, ty=0.2); f(2, 287.56, 404, 446.5, 'rhRuang', 'r', 445.46, ty=0.2)
+    for i, y in enumerate([375.52, 389.44], 1):
+        f(2, y, 388, 406, f'fisik{i}', 'c', 397.09); f(2, y, 479, 518, f'fungsi{i}', 'c', 498.17)
+    f(3, 104.9, 145, 292, 'nomorOrder', m=KIRI); f(3, 104.9, 398, 590, 'nomorSertifikat')
+    for kode, ys in (('s', [274.25, 293.68, 313.12, 332.56, 352.0, 371.44, 390.88]), ('r', [502.37, 521.81, 541.25, 560.68, 580.12, 599.56, 619.03])):
+        for i, y in enumerate(ys):
+            f(3, y, 80, 106, f'{kode}{i}_alat', 'c', 93.65); f(3, y, 178, 210, f'{kode}{i}_std', 'c', 194.6)
+            f(3, y, 280, 312, f'{kode}{i}_kor', 'c', 295.7); f(3, y, 385, 408, f'{kode}{i}_u', 'c', 396.7)
+    f(3, 681.79, 145, 300, 'kesimpulan', 'l', None, 'b', 11.04, 1)
+    # SIMBOL CELSIUS: PDF acuan mencetak "0C" (angka nol kecil + C). Keputusan Ridhwan 27 Okt 2026: pakai simbol "°C", tanpa bentuk lain.
+    # Nol kecil & C lama dibuang (kunci x_… = hanya dibuang), diganti isian derajat… ("°C") di posisi nol kecil, garis dasar huruf C.
+    f(2, 283.61, 195, 198, 'x_sup2', ty=0.2); f(2, 288.52, 199, 202, 'derajat2', 'l', 196.36, ty=0.2)
+    f(3, 184.94, 155, 158, 'x_sup3h', s=8.04, ty=0.2); f(3, 190.94, 159, 162, 'derajat3h', 'l', 155.6, s=10.2, ty=0.2)
+    for n, (xs, xc) in enumerate([(89.3, 92.66), (190.36, 193.72), (291.39, 294.75)]):
+        f(3, 253.58, xs - 1, xs + 1, f'x_sup3_{n}', ty=0.2); f(3, 258.5, xc - 1, xc + 1, f'derajat3_{n}', 'l', xs, ty=0.2)
+    f(3, 254.06, 397, 400, 'x_sup3u', ty=0.2); f(3, 258.98, 400.5, 403, 'derajat3u', 'l', 398.44, ty=0.2)
+    Y_TEMPAT, Y_RUANG = 224.3, 239.3
 elif KODE == 'keselamatan_listrik':
     # Report All Keselamatan Listrik ("SERTIFIKAT PENGUJIAN"): hlm 1 tanpa Rentang/Resolusi, hlm 2 dua baris standar,
     # hlm 3 tabel listrik 5 baris (Terukur + Toleransi menurut klasifikasi) + kesimpulan.
@@ -167,10 +201,14 @@ print(laporan); print('isian tanpa teks di acuan:', kosong)
 LURUS = {('namaPelanggan', 1): 296.8, ('alamatPelanggan', 1): 322.96}
 for x in F:
     if (x['k'], x['p']) in LURUS and 'y0' in x: x['y0'] = LURUS[(x['k'], x['p'])]
+# Termohigro: garis dasar "°C" di halaman 2 sebaris dengan isian Suhu Ruang (287,56), di kolom U sebaris dengan kolom lain (258,5)
+GANTI_Y = {('derajat2', 2): 287.56, ('derajat3u', 3): 258.5}
+for x in F:
+    if (x['k'], x['p']) in GANTI_Y and 'y0' in x: x['y0'] = GANTI_Y[(x['k'], x['p'])]
 def num(v): return ('%.2f' % v).rstrip('0').rstrip('.')
 baris = {1: [], 2: [], 3: []}
 for x in F:
-    if kena[id(x)] == 0: continue
+    if kena[id(x)] == 0 or x['k'].startswith('x_'): continue
     ax = x['ax'] if x['ax'] is not None else x['x0']
     ops_s = '{j:"f",x:%s,y:%s,f:"%s",s:%s,a:"%s",k:"%s"%s}' % (num(ax), num(x['y0'] + GESER.get(x['p'], 0)), x['h'], num(x['s']), x['a'], x['k'], (',u:1' if x['u'] else '') + (',m:%s' % num(x['m']) if x['m'] else ''))
     baris[x['p']].append('      ' + ops_s)

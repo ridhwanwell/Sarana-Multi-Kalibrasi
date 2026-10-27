@@ -69,6 +69,9 @@ export function bersihkanTemplate(mentah: unknown): TemplateApa | null {
     } else if (t.nibp) {
       // NIBP: titik tekanan (tanpa uji listrik)
       if (!Array.isArray(t.nibp.titik) || !t.nibp.titik.length || !t.nibp.titik.every((x: any) => num(x?.setting) && typeof x?.id === 'string') || !t.skor?.laikBila) return null;
+    } else if (t.termo) {
+      // Thermohygrometer: parameter (suhu, kelembaban) × titik
+      if (!Array.isArray(t.termo.parameter) || !t.termo.parameter.length || !t.termo.parameter.every((p: any) => teks(p?.id) && teks(p?.tabel) && num(p?.toleransi) && Array.isArray(p?.titik) && p.titik.length && p.titik.every((x: any) => num(x?.setting) && typeof x?.id === 'string')) || !t.skor?.laikBila) return null;
     } else {
       // Keselamatan Listrik saja: wajib ada klasifikasi & minimal satu uji listrik
       if (!Array.isArray(t.klasifikasi) || !t.listrik.length) return null;

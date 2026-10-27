@@ -193,3 +193,45 @@ export function isianNibp(
   }
   return s;
 }
+
+/**
+ * THERMOHYGROMETER (Report All Thermohygrometer, tataLetakTermohigro.ts; acuan PDF Master_Thermohygrometer.pdf): identitas & lingkungan
+ * sama dengan pompa. Satuan Rentang & Resolusi dicetak "%" persis PDF acuan (Excel Input 1!F19). Dua baris standar: Climatic Chamber
+ * dan termohigrometer. Dua tabel (suhu s0–s6, kelembaban r0–r6): Pembacaan Alat = titik (teks isian), Pembacaan Standar (1 desimal),
+ * Koreksi (2 desimal), Ketidakpastian U95 (1 desimal). Titik yang belum dinilai dicetak "-". Tanpa nilai "Tidak ada MK".
+ */
+export function isianTermohigro(
+  lkk: { data: Peta | null; jejak: Peta | null; snapshot: Peta | null },
+  k: KonteksSertifikat,
+): Isian {
+  const dasar = isianPompa(lkk, k);
+  const d = (lkk.data ?? {}) as Peta;
+  const iden = (d.identitas ?? {}) as Peta;
+  const snap = (lkk.snapshot ?? {}) as Peta;
+  const termo = ((lkk.jejak?.hasil ?? {}) as Peta).termo as Peta | undefined;
+  const rentang = pisahSatuan(iden.rentangUkur, '%');
+  const s: Isian = {
+    ...dasar,
+    rentangUkur: rentang.nilai,
+    satuanRentang: rentang.satuan,
+    satuanResolusi: komaBebas(iden.resolusi) ? '%' : '',
+    kalibrator1: barisStandar(snap.chamber, 'Climatic Chamber'),
+    kalibrator2: barisStandar(snap.termohigrometer, 'Digital Thermohygrometer'),
+  };
+  for (const kunci of ['kalibrator3', 'sumbatSetting', 'sumbatStd', 'sumbatU', 'tolSumbat']) delete s[kunci];
+  for (const kunci of Object.keys(s)) if (/^(a\d_|listrik\d|tol\d)/.test(kunci)) delete s[kunci];
+  delete s.fisik3; delete s.fungsi3;
+  // Simbol Celsius "°C" (keputusan Ridhwan 27 Okt 2026) menggantikan "0C" di acuan: halaman 2 (Suhu Ruang) & halaman 3 (judul, 4 kolom tabel suhu)
+  for (const kunci of ['derajat2', 'derajat3h', 'derajat3_0', 'derajat3_1', 'derajat3_2', 'derajat3u']) s[kunci] = '°C';
+  for (const [kode, id] of [['s', 'suhu'], ['r', 'rh']] as const) {
+    for (let i = 0; i < 7; i++) {
+      const t = (termo?.[id]?.titik as Peta[] | undefined)?.[i];
+      const dinilai = !!t && typeof t.rataRata === 'number';
+      s[`${kode}${i}_alat`] = typeof t?.setting === 'number' ? komaBebas(t.setting) : '-';
+      s[`${kode}${i}_std`] = dinilai ? koma(bulatExcel(t!.pembacaanStandar ?? t!.rataRata, 1), 1) : '-';
+      s[`${kode}${i}_kor`] = dinilai ? koma(bulatExcel(t!.koreksi, 2), 2) : '-';
+      s[`${kode}${i}_u`] = dinilai ? koma(t!.u95Cetak ?? bulatExcel(t!.u95, 1), 1) : '-';
+    }
+  }
+  return s;
+}

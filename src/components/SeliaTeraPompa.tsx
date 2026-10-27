@@ -47,8 +47,41 @@ export const SeliaTeraPompa: React.FC<{ tpl: Peta; data: Peta; h: Peta | null }>
   const runSumbat: unknown[] = Array.isArray(data.sumbat?.bacaan) ? data.sumbat.bacaan : [];
   const nibp: Peta | null = tpl.nibp ?? null;
   const hNibp: Peta[] = Array.isArray(h?.nibp?.titik) ? h!.nibp.titik : [];
+  const termo: Peta | null = tpl.termo ?? null;
   return (
     <>
+      {termo && (
+        <Bagian id="b-termo" judul="4. Thermohygrometer — jejak hitung">
+          <p className="text-xs text-slate-600">
+            Titik Laik bila |koreksi| ≤ batas (tanpa U95, sesuai Master Excel; tidak ada MK Kemenkes) · {termo.minimalUlangan} bacaan standar per titik · kinerja penuh bila tiap parameter ≥ {fmt((termo.minimalPersenTitik ?? 0) * 100, 0)}% titik Laik.
+          </p>
+          {(termo.parameter as Peta[]).map((p) => (
+            <div key={p.id} className="overflow-x-auto rounded-xl border border-[#DCDFE3] mt-3">
+              <p className="p-2 text-xs font-bold text-slate-700">{p.judul} ({p.satuan}) · batas ±{fmt(p.toleransi)} · Laik {h?.termo?.[p.id]?.jumlahLaik ?? '-'} dari {(p.titik as Peta[]).length}</p>
+              <table className="w-full text-xs tabular-nums">
+                <thead className="bg-slate-100 text-[11px] text-slate-600">
+                  <tr>{['Titik', 'Bacaan standar', ...KOLOM_BUDGET, 'Hasil'].map((c) => <th key={c} className="p-2 text-left whitespace-nowrap">{c}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {(p.titik as Peta[]).map((tt, i) => {
+                    const t = h?.termo?.[p.id]?.titik?.[i] ?? {};
+                    const bacaan: unknown[] = Array.isArray(data.termo?.[tt.id]) ? data.termo[tt.id] : [];
+                    return (
+                      <tr key={tt.id} className="border-t border-[#DCDFE3]">
+                        <td className="p-2 font-semibold whitespace-nowrap">{fmt(tt.setting)}</td>
+                        <td className="p-2 whitespace-nowrap">{bacaan.filter((b) => typeof b === 'number').map((b) => fmt(b)).join('; ') || '-'}</td>
+                        <BarisBudget t={t} />
+                        <td className="p-2"><Vonis v={t.hasil} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </Bagian>
+      )}
+
       {nibp && (
         <Bagian id="b-nibp" judul={`${listrik.length ? 5 : 4}. NIBP — jejak hitung`}>
           <p className="text-xs text-slate-600">

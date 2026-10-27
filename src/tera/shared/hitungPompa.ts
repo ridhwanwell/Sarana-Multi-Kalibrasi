@@ -124,6 +124,8 @@ export interface TemplatePompa {
   };
   /** Kinerja NIBP (tanpa `kinerja` aliran). Skor kinerja dari titik NIBP. */
   nibp?: KinerjaNibp;
+  /** Kinerja Thermohygrometer (suhu + kelembaban). Skor: fisik 10 + kinerja 90. */
+  termo?: KinerjaTermo;
   /** Klasifikasi alat untuk batas uji listrik (template Keselamatan Listrik). */
   klasifikasi?: KlasifikasiListrik[];
   /**
@@ -169,7 +171,33 @@ export interface KinerjaNibp {
 }
 
 /** Template pompa yang PASTI punya kinerja & skor (Infusion, Syringe). */
-export type TemplatePompaKinerja = TemplatePompa & Required<Pick<TemplatePompa, 'kinerja' | 'skor'>>;
+/**
+ * KINERJA THERMOHYGROMETER (Master_Thermohygrometer.xlsx 27 Okt 2026; TIDAK ADA MK Kemenkes — keputusan Ridhwan 27 Okt 2026:
+ * ikuti Master Excel). Dua parameter (suhu °C, kelembaban %RH), tiap parameter 7 titik. "Pembacaan Alat" = nilai titik
+ * (kolom Setting alat, tetap dari template); teknisi mengisi `pengulangan` bacaan ALAT STANDAR per titik (Input 2!E:J), dikoreksi
+ * tabel standar (Calibrator 1: Climatic Chamber). Koreksi sertifikat = rata-rata terkoreksi − titik (Ketidakpastian!L).
+ * Laik per titik bila |koreksi| ≤ toleransi (View Report!L, tanpa U95). Kinerja penuh bila SETIAP parameter ≥ `minimalPersenTitik`
+ * titik Laik (View Report!AE4). Resolusi memakai satu nilai (Input 1!E19) untuk suhu dan kelembaban, seperti Excel (T47 = T25).
+ */
+export interface KinerjaTermo {
+  parameter: { id: string; judul: string; satuan: string; /** parameter di master kalibrator */ tabel: string; toleransi: number; titik: { id: string; setting: number }[] }[];
+  pengulangan: number;
+  minimalUlangan: number;
+  driftPersen: number;
+  derajatBebas: { sertifikat: number; resolusi: number; drift: number };
+  pembagiResolusi: Record<JenisSkala, number>;
+  desimalCetak: number;
+  minimalPersenTitik: number;
+}
+
+export interface HasilTermoTitik extends HasilBudget {
+  id: string; setting: number; n: number;
+  /** "Pembacaan Standar" di sertifikat = rata-rata bacaan standar terkoreksi. */
+  pembacaanStandar: number | null;
+  hasil: Vonis;
+}
+
+export type TemplatePompaKinerja =TemplatePompa & Required<Pick<TemplatePompa, 'kinerja' | 'skor'>>;
 
 // ───────────────────────────── Data & kalibrator ─────────────────────────────
 
@@ -187,6 +215,8 @@ export interface DataPompa {
   sumbat?: { setting?: Angka; bacaan?: Angka[] };
   /** Bacaan alat NIBP per id titik (≤ pengulangan). */
   nibp?: Record<string, Angka[]>;
+  /** Thermohygrometer: bacaan alat standar per id titik (≤ pengulangan). */
+  termo?: Record<string, Angka[]>;
 }
 
 /** Satu baris sertifikat kalibrator: titik = bacaan alat standar (urut naik). */
@@ -201,6 +231,8 @@ export interface KalibratorPompa {
   listrik: Record<string, TitikKoreksi[]>;
   /** NIBP Simulator: tekanan (mmHg), titik = setting simulator. */
   nibp?: TitikKoreksi[];
+  /** Thermohygrometer: alat standar (Climatic Chamber), kunci = KinerjaTermo.parameter[].tabel. */
+  termo?: Record<string, TitikKoreksi[]>;
 }
 
 // ───────────────────────────── Hasil ─────────────────────────────
@@ -255,6 +287,8 @@ export interface HasilPompa {
   sumbat: HasilBudget & { setting: number | null; batas: number; hasil: Vonis };
   /** Hanya template NIBP. */
   nibp?: { titik: HasilNibp[]; jumlahLaik: number; jumlahDinilai: number };
+  /** Hanya template Thermohygrometer: kunci = KinerjaTermo.parameter[].id. */
+  termo?: Record<string, { titik: HasilTermoTitik[]; jumlahLaik: number; jumlahDinilai: number }>;
   skor: { rincian: { dari: string; nilai: number }[]; total: number; /** Nilai maksimum bila bukan 100 (NIBP v2 tanpa listrik: 60). */ maks?: number };
   kesimpulan: 'Laik Pakai' | 'Tidak Laik Pakai';
   kurang: string[];
@@ -312,9 +346,9 @@ function lengkapRun(v: Angka[] | undefined, n: number): number[] | null {
 }
 
 /** Budget ketidakpastian satu titik (Ketidakpastian!K:AB). resolusiU = resolusi × 0,5 / pembagi. */
-function budgetTitik(
+export function budgetTitik(
   run: number[] | null, mentah: number[] | null, setting: number | null, tabel: TitikKoreksi[],
-  uResolusi: number | null, k: KinerjaPompa, desimal: number, diBawah: 'ujung' | 'proporsional' = 'ujung',
+  uResolusi: number | null, k: Pick<KinerjaPompa, 'driftPersen' | 'derajatBebas'>, desimal: number, diBawah: 'ujung' | 'proporsional' = 'ujung',
 ): HasilBudget {
   const kosong: HasilBudget = { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null };
   if (!run || !mentah || setting === null || !tabel.length || uResolusi === null) return kosong;
@@ -516,6 +550,53 @@ export function hitungPompa(tpl: TemplatePompa, data: DataPompa, kal: Kalibrator
       sumbat: { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: null, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null, setting: null, batas: 0, hasil: '-' },
       nibp: { titik, jumlahLaik, jumlahDinilai: kn2.titik.length },
       skor: { rincian: [{ dari: 'fisik', nilai: nFisik }, { dari: 'listrik', nilai: nListrik }, { dari: 'kinerja', nilai: nKinerja }], total },
+      kesimpulan: bandingkan(total, sk.laikBila.banding, sk.laikBila.batas) ? 'Laik Pakai' : 'Tidak Laik Pakai',
+      kurang,
+    };
+  }
+
+  // ── Thermohygrometer: 2 parameter × 7 titik; skor fisik 10 + kinerja 90 (View Report!AE2:AE6), Laik Pakai ≥ 90
+  if (tpl.termo) {
+    const tm = tpl.termo;
+    if (resolusi === null) kurang.push('Resolusi alat belum diisi');
+    const uRes = resolusi !== null && jenisSkala !== null ? (resolusi * 0.5) / tm.pembagiResolusi[jenisSkala] : null;
+    const hasilTermo: NonNullable<HasilPompa['termo']> = {};
+    let semuaLolos = tm.parameter.length > 0;
+    for (const p of tm.parameter) {
+      const tabel = urut(kal.termo?.[p.tabel] ?? []);
+      if (!tabel.length) kurang.push(`Alat standar (Climatic Chamber) belum dipilih untuk ${p.judul}`);
+      const titik: HasilTermoTitik[] = [];
+      let jumlahLaik = 0, jumlahDinilai = 0;
+      for (const t of p.titik) {
+        const bacaan = (data.termo?.[t.id] ?? []).slice(0, tm.pengulangan).map(angka);
+        const run = bacaan.filter((x): x is number => x !== null);
+        const n = run.length;
+        let b: HasilBudget = { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: uRes, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null };
+        let hasil: Vonis = '-';
+        if (n < tm.minimalUlangan) kurang.push(`${p.judul} ${t.setting} ${p.satuan}: ${tm.minimalUlangan} bacaan standar belum lengkap`);
+        else if (tabel.length) {
+          b = budgetTitik(run, run, t.setting, tabel, uRes, tm, tm.desimalCetak);
+          if (b.koreksi !== null) {
+            hasil = Math.abs(b.koreksi) <= p.toleransi ? 'Laik' : 'Tidak Laik';
+            jumlahDinilai++;
+            if (hasil === 'Laik') jumlahLaik++;
+          }
+        }
+        titik.push({ ...b, id: t.id, setting: t.setting, n, pembacaanStandar: b.rataRata, hasil });
+      }
+      hasilTermo[p.id] = { titik, jumlahLaik, jumlahDinilai };
+      if (!(jumlahDinilai > 0 && jumlahLaik / jumlahDinilai >= tm.minimalPersenTitik)) semuaLolos = false;
+    }
+    const sk = tpl.skor ?? { fisik: { minimalPersen: 0.7, nilai: 10 }, listrik: { nilai: 0 }, kinerja: { nilai: 90 }, laikBila: { banding: '>=' as Banding, batas: 90 } };
+    const nFisik = fisikNilai(sk);
+    const nKinerja = semuaLolos ? sk.kinerja.nilai : 0;
+    const total = nFisik + nKinerja;
+    return {
+      fisik: { jumlahBaik, jumlahItem, nilai: nFisik }, listrik,
+      aliran: { titik: [], jumlahLaik: 0, jumlahDinilai: 0 },
+      sumbat: { rataRata: null, koreksi: null, uTipeA: null, uSertifikat: null, uResolusi: null, uDrift: null, uc: null, vEff: null, k: null, u95: null, u95Cetak: null, setting: null, batas: 0, hasil: '-' },
+      termo: hasilTermo,
+      skor: { rincian: [{ dari: 'fisik', nilai: nFisik }, { dari: 'kinerja', nilai: nKinerja }], total },
       kesimpulan: bandingkan(total, sk.laikBila.banding, sk.laikBila.batas) ? 'Laik Pakai' : 'Tidak Laik Pakai',
       kurang,
     };

@@ -36,6 +36,8 @@
     "test:tera:selia-listrik": "tsx tests/tera/seliaListrik.uji.mts",
     "test:tera:sertifikat-listrik": "tsx tests/tera/sertifikatListrik.test.mts",
     "test:tera:hitung-nibp": "tsx tests/tera/hitungNibp.test.mts",
+    "test:tera:hitung-termohigro": "tsx tests/tera/hitungTermohigro.test.mts",
+    "test:tera:sertifikat-termohigro": "tsx tests/tera/sertifikatTermohigro.test.mts",
     "test:tera:layar-nibp": "tsx tests/tera/layarNibp.uji.mts",
     "test:tera:selia-nibp": "tsx tests/tera/seliaNibp.uji.mts",
     "test:tera:sertifikat-nibp": "tsx tests/tera/sertifikatNibp.test.mts",

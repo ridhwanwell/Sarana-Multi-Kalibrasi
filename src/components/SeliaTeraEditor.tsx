@@ -232,6 +232,24 @@ export const SeliaTeraEditor: React.FC<{
             </div>
           </fieldset>
           )}
+          {tpl.termo && (
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-black text-[#1C658C]">Thermohygrometer — bacaan alat standar</legend>
+              {(tpl.termo.parameter as Peta[]).map((p) => (
+                <div key={p.id} className="space-y-3">
+                  <p className="text-sm font-black text-slate-700">{p.judul} ({p.satuan})</p>
+                  {(p.titik as Peta[]).map((tt) => (
+                    <div key={tt.id} className="rounded-xl border border-[#DCDFE3] p-3">
+                      <p className="text-sm font-bold text-slate-800 tabular-nums mb-2">Titik {tt.setting} {p.satuan}</p>
+                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                        {Array.from({ length: Number(tpl.termo.pengulangan) || 6 }, (_, i) => kotakAngka({ id: `ubah-termo-${tt.id}-${i}`, label: `Bacaan ${i + 1}`, jalur: ['termo', tt.id, i] }))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </fieldset>
+          )}
           {tpl.nibp && (
             <fieldset className="space-y-3">
               <legend className="text-sm font-black text-[#1C658C]">NIBP — bacaan alat ({tpl.nibp.satuan})</legend>

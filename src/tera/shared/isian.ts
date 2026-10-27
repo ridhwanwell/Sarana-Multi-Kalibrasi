@@ -24,7 +24,7 @@ export function daftarBagian(tpl: Pick<TemplateAlat, 'keselamatan_listrik'> | Pi
   // Pompa (Infusion/Syringe): bagian Keselamatan listrik sudah ada layarnya (Tahap 6.3).
   const listrikAda = adalahTemplatePompa(tpl);
   // Keselamatan Listrik saja (template pompa tanpa kinerja): tidak ada bagian Kinerja
-  const adaKinerja = !(adalahTemplatePompa(tpl) && !(tpl as TemplatePompa).kinerja && !(tpl as TemplatePompa).nibp);
+  const adaKinerja = !(adalahTemplatePompa(tpl) && !(tpl as TemplatePompa).kinerja && !(tpl as TemplatePompa).nibp && !(tpl as TemplatePompa).termo);
   return [
     { id: 'identitas', nama: 'Identitas alat', tersedia: true },
     { id: 'lingkungan', nama: 'Kondisi lingkungan', tersedia: true },
@@ -73,7 +73,7 @@ export function batasLingkungan(tpl: TemplateAlat | TemplatePompa): BatasLingkun
 
 // ───────────────────────────── Alat standar ─────────────────────────────
 
-export type PeranStandar = 'tekanan' | 'stopwatch' | 'termohigrometer' | 'ida' | 'esa' | 'nibp';
+export type PeranStandar = 'tekanan' | 'stopwatch' | 'termohigrometer' | 'ida' | 'esa' | 'nibp' | 'chamber';
 
 export interface DefStandar {
   peran: PeranStandar;

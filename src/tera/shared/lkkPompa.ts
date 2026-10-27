@@ -62,6 +62,11 @@ export function kalibratorDariSnapshot(snapshot: Peta | null | undefined): Kalib
     },
     // NIBP Simulator: alat standar berparameter satu (tekanan_mmhg) → salinan langsung berisi `points`
     nibp: titikPompa(snapshot?.nibp),
+    // Thermohygrometer: Climatic Chamber berparameter banyak (suhu_c, kelembaban_rh) → salinan 'multi'
+    termo: {
+      suhu_c: titikPompa(snapshot?.chamber?.tabel?.suhu_c),
+      kelembaban_rh: titikPompa(snapshot?.chamber?.tabel?.kelembaban_rh),
+    },
   };
 }
 
@@ -89,6 +94,16 @@ export function kurangPompa(tpl: TemplatePompa, isi: IsiKerja): Kurang[] {
     for (const t of nb.titik) {
       const run = Array.isArray(data.nibp?.[t.id]) ? (data.nibp![t.id] as unknown[]).slice(0, nb.pengulangan).filter(angka) : [];
       if (run.length < nb.minimalUlangan) kurang.push({ bagian: 'kinerja', teks: `${t.label} ${t.setting} ${nb.satuan}: minimal ${nb.minimalUlangan} bacaan` });
+    }
+    return kurang;
+  }
+  if (tpl.termo) {
+    const tm = tpl.termo;
+    for (const p of tm.parameter) {
+      for (const t of p.titik) {
+        const run = Array.isArray(data.termo?.[t.id]) ? (data.termo![t.id] as unknown[]).slice(0, tm.pengulangan).filter(angka) : [];
+        if (run.length < tm.minimalUlangan) kurang.push({ bagian: 'kinerja', teks: `${p.judul} ${t.setting} ${p.satuan}: ${tm.minimalUlangan} bacaan standar belum lengkap` });
+      }
     }
     return kurang;
   }

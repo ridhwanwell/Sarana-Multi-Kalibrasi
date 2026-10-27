@@ -17,12 +17,14 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 - Syringe Pump — template v3
 - Keselamatan Listrik — template v2 (fisik & fungsi ≥ 70 % ikut menentukan)
 - NIBP — template v2 (kelistrikan tidak dinilai, skor maks 60)
-- Migrasi terakhir yang dijalankan: 0030.
+- Thermohygrometer — template v1 (kode SELESAI 27 Okt; baru aktif setelah migrasi **0031** dijalankan; mengikuti Master Excel, tanpa MK)
+- Migrasi terakhir yang dijalankan: 0030. **0031 sudah ditulis, MENUNGGU "lanjutkan".**
 
-**Langkah berikutnya:** alat ke-6 — menunggu Ridhwan menentukan dan mengunggah filenya (Master Excel + Excel contoh isi + PDF sertifikat contoh + data kalibrator). Jangan menebak isi master; minta filenya. Satu keluarga per chat. Setelah Tahap 6 selesai → Tahap 7 (Pemindai AI & highlight).
+**Langkah berikutnya:** jalankan migrasi 0031 (setelah "lanjutkan") lalu uji LKK Thermohygrometer di tablet; kemudian alat ke-7 — menunggu Ridhwan menentukan dan mengunggah filenya (Master Excel + Excel contoh isi + PDF sertifikat contoh + data kalibrator). Jangan menebak isi master; minta filenya. Satu keluarga per chat. Setelah Tahap 6 selesai → Tahap 7 (Pemindai AI & highlight).
 
 **Menunggu jawaban Ridhwan:**
-1. Alat ke-6 yang mana. Suction Pump DITUNDA (LKK belum selesai dicek); Timbangan Bayi Digital & Thermohygrometer menyusul.
+1. Alat ke-7 yang mana. Suction Pump DITUNDA (LKK belum selesai dicek); Timbangan Bayi Digital menyusul.
+1b. Thermohygrometer: angka Calibrator 1 di Master Excel hanyalah sisa ESU (koreksi 0, U 1 °C/4 %RH) — perlu sertifikat Climatic Chamber asli; sertifikat contoh mencetak "%" untuk rentang & resolusi; Suhu/RH ruang di contoh kosong (aplikasi memakai HTC-1).
 2. NIBP: di Excel (View Report AE2) skor fisik menghitung "Baik" di G:I ÷ 6 sehingga selalu 0; aplikasi memakai aturan "semua kotak". Sudah ditanyakan, belum ada jawaban tercatat.
 3. Master Excel Syringe L18:L22: disarankan `ABS(F18)+N(I18)<=T18` (pakai U95, bukan T/3). Opsional, di file Excel Ridhwan.
 4. Sphygmomanometer: baris "Tempat" belum punya batas kanan (RS bernama panjang bisa menimpa "Tanggal"). Belum dikerjakan; tawarkan bila diminta.

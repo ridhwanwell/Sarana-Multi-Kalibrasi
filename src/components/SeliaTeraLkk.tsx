@@ -531,7 +531,7 @@ export const SeliaTeraLkk: React.FC<{
 
               {/* 9. Pratinjau sertifikat (di paling bawah lembar, sebelum keputusan) */}
               <Bagian id="b-pratinjau" judul={`${pompa ? (tpl.kinerja ? 9 : 7) : 8}. Pratinjau sertifikat`}>
-                {!['sphygmomanometer', 'infusion_pump', 'syringe_pump', 'keselamatan_listrik', 'nibp'].includes(detail.lkk.templateKode) ? (
+                {!['sphygmomanometer', 'infusion_pump', 'syringe_pump', 'keselamatan_listrik', 'nibp', 'termohigrometer'].includes(detail.lkk.templateKode) ? (
                   <p className="text-sm text-slate-600">Pratinjau sertifikat untuk alat ini belum tersedia.</p>
                 ) : (
                   <div className="space-y-3">

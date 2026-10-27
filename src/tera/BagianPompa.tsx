@@ -25,7 +25,7 @@ export interface SifatPompa {
   kunci: boolean;
   ubahData: (blok: string, bidang: string, nilai: unknown) => void;
   /** Satu bacaan di data.aliran[kunci][urutan] atau data.sumbat.bacaan[urutan]. */
-  ubahRun: (blok: 'aliran' | 'sumbat' | 'nibp', kunci: string, urutan: number, jumlah: number, nilai: number | null) => void;
+  ubahRun: (blok: 'aliran' | 'sumbat' | 'nibp' | 'termo', kunci: string, urutan: number, jumlah: number, nilai: number | null) => void;
 }
 
 /** Angka tampil dengan koma Indonesia dan paling banyak `maks` desimal (angka ekstrem tetap terbaca). */
@@ -153,10 +153,58 @@ const BagianKinerjaNibp: React.FC<SifatPompa> = ({ tpl, isi, kunci, ubahRun }) =
   );
 };
 
+/* ---------- Bagian 5 (Thermohygrometer): suhu & kelembaban, 7 titik tiap parameter ---------- */
+
+const BagianKinerjaTermo: React.FC<SifatPompa> = ({ tpl, isi, kunci, ubahRun }) => {
+  const hasil = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot)?.hasil ?? null, [tpl, isi.data, isi.snapshot]);
+  const tm = tpl.termo!;
+  const data = (isi.data.termo ?? {}) as Peta;
+  return (
+    <>
+      <p className="t-ket">
+        Atur Climatic Chamber di tiap titik, lalu isi {tm.pengulangan} bacaan ALAT STANDAR. Rata-rata terkoreksi, koreksi, dan ketidakpastian (U95) dihitung otomatis
+        dengan koreksi alat standar. Titik laik bila |koreksi| ≤ batas (suhu ±{formatAngka(tm.parameter[0]?.toleransi)} {tm.parameter[0]?.satuan}, kelembaban ±{formatAngka(tm.parameter[1]?.toleransi)} {tm.parameter[1]?.satuan}).
+      </p>
+      {tm.parameter.map((p) => (
+        <section key={p.id} aria-label={p.judul} className="mt-4">
+          <h3 className="t-judul-kecil">{p.judul} ({p.satuan})</h3>
+          <ul className="t-fisik-daftar mt-2">
+            {p.titik.map((t, idx) => {
+              const h = hasil?.termo?.[p.id]?.titik[idx];
+              const run = (Array.isArray(data[t.id]) ? data[t.id] : []) as (number | null)[];
+              return (
+                <li key={t.id} className="t-kartu" aria-label={`${p.judul} ${t.setting} ${p.satuan}`}>
+                  <h4 className="t-label">Titik <span className="tabular">{formatAngka(t.setting)}</span> {p.satuan}</h4>
+                  <div className="t-baca-grid mt-1">
+                    {Array.from({ length: tm.pengulangan }, (_, i) => (
+                      <KotakAngka
+                        key={i} id={`termo-${t.id}-${i}`} label={`${p.judul} ${t.setting} bacaan ${i + 1}`} nilai={typeof run[i] === 'number' ? run[i] : null}
+                        kunci={kunci} onNilai={(n) => ubahRun('termo', t.id, i, tm.pengulangan, n)}
+                      />
+                    ))}
+                  </div>
+                  <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil ${p.judul} ${t.setting}`}>
+                    <span>Rata-rata {tampil(h?.rataRata, 2)}</span>
+                    <span>Koreksi {tampil(h?.koreksi, 2)}</span>
+                    <span>U95 {fmt2(h?.u95Cetak)}</span>
+                    <ChipVonis vonis={h?.hasil ?? '-'} />
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="t-ket mt-2">Titik laik {p.judul.split(' ')[0].toLowerCase()}: <span className="tabular">{hasil?.termo?.[p.id]?.jumlahLaik ?? 0} dari {p.titik.length}</span> (perlu minimal {Math.round(tm.minimalPersenTitik * 100)}%).</p>
+        </section>
+      ))}
+    </>
+  );
+};
+
 export const BagianKinerjaPompa: React.FC<SifatPompa> = (props) => {
   const { tpl, isi, kunci, ubahData, ubahRun } = props;
   const hasil = useMemo(() => buatJejakHitung(tpl, isi.data, isi.snapshot)?.hasil ?? null, [tpl, isi.data, isi.snapshot]);
   const kn = tpl.kinerja;
+  if (tpl.termo) return <BagianKinerjaTermo {...props} />;
   if (tpl.nibp) return <BagianKinerjaNibp {...props} />;
   if (!kn) return null;
   const aliran = (isi.data.aliran ?? {}) as Peta;
@@ -239,7 +287,7 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
   const laik = hasil.kesimpulan === 'Laik Pakai';
   const alasan: string[] = [];
   const sk = tpl.skor;
-  if (!sk || (!tpl.kinerja && !tpl.nibp)) {
+  if (!sk || (!tpl.kinerja && !tpl.nibp && !tpl.termo)) {
     // Keselamatan Listrik saja: Laik Pakai bila semua uji yang berlaku Laik (tanpa skor); v2: fisik & fungsi ikut menentukan
     if (tpl.fisikWajib && hasil.fisik.lolos === false) {
       alasan.push(`Fisik & fungsi: ${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi (perlu minimal ${Math.round(tpl.fisikWajib.minimalPersen * 100)}%).`);
@@ -259,6 +307,14 @@ export const KesimpulanPompaFinal: React.FC<{ tpl: TemplatePompa; isi: IsiKerja 
     for (const u of tpl.listrik) {
       const h = hasil.listrik[u.id];
       if (h && h.hasil !== 'Laik') alasan.push(`${u.judul}: ${tampil(h.terukur)} ${u.satuan} ± ${tampil(h.u95, 4)}, batas ${u.toleransiTeks} ${u.satuan}.`);
+    }
+  }
+  if ((rKinerja?.nilai ?? 0) === 0 && tpl.termo && hasil.termo) {
+    for (const p of tpl.termo.parameter) {
+      const h = hasil.termo[p.id];
+      if (h && !(h.jumlahDinilai > 0 && h.jumlahLaik / h.jumlahDinilai >= tpl.termo.minimalPersenTitik)) {
+        alasan.push(`${p.judul.split(' ')[0]}: ${h.jumlahLaik} dari ${p.titik.length} titik laik (perlu minimal ${Math.round(tpl.termo.minimalPersenTitik * 100)}%).`);
+      }
     }
   }
   if ((rKinerja?.nilai ?? 0) === 0 && tpl.nibp && hasil.nibp) {
@@ -310,7 +366,7 @@ export function barisRingkasPompa(tpl: TemplatePompa, isi: IsiKerja): BarisRingk
   const snap = (isi.snapshot ?? {}) as Peta;
   const kl = (isi.data.klasifikasi ?? {}) as Peta;
   return [
-    { label: 'Alat standar', isi: (['ida', 'esa', 'nibp', 'termohigrometer'] as const).map((k) => snap[k]?.nama).filter(Boolean).join(' · ') || '-' },
+    { label: 'Alat standar', isi: (['ida', 'esa', 'nibp', 'chamber', 'termohigrometer'] as const).map((k) => snap[k]?.nama).filter(Boolean).join(' · ') || '-' },
     ...(tpl.klasifikasi ? [{ label: 'Klasifikasi', isi: tpl.klasifikasi.map((k) => kl[k.id]).filter(Boolean).join(' · ') || '-' }] : []),
     { label: 'Fisik & fungsi', isi: `${hasil.fisik.jumlahBaik} dari ${hasil.fisik.jumlahItem} kotak baik/berfungsi` },
     ...tpl.listrik.map((u) => ({
@@ -322,6 +378,7 @@ export function barisRingkasPompa(tpl: TemplatePompa, isi: IsiKerja): BarisRingk
         </>
       ),
     })),
+    ...(tpl.termo && hasil.termo ? tpl.termo.parameter.map((p) => ({ label: p.judul.split(' ')[0], isi: `${hasil.termo![p.id]?.jumlahLaik ?? 0} dari ${p.titik.length} titik laik` })) : []),
     ...(tpl.nibp && hasil.nibp ? [{ label: 'NIBP', isi: `${hasil.nibp.jumlahLaik} dari ${hasil.nibp.jumlahDinilai} titik laik` }] : []),
     ...(tpl.kinerja ? [
       { label: 'Aliran', isi: `${hasil.aliran.jumlahLaik} dari ${hasil.aliran.jumlahDinilai} titik laik` },

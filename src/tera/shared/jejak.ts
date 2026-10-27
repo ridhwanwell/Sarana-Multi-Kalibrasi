@@ -95,7 +95,7 @@ function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null
     return aman({
       skema: SKEMA_JEJAK, mesinHitung: VERSI_MESIN_HITUNG, jenis: 'pompa' as const,
       template: { kode: tpl.kode_alat, versi: tpl.versi, metode: tpl.metode },
-      kalibrator: { ida: identitasAlat('ida'), esa: identitasAlat('esa'), ...(tpl.nibp ? { nibp: identitasAlat('nibp') } : {}) },
+      kalibrator: { ida: identitasAlat('ida'), esa: identitasAlat('esa'), ...(tpl.nibp ? { nibp: identitasAlat('nibp') } : {}), ...(tpl.termo ? { chamber: identitasAlat('chamber') } : {}) },
       masukan: {
         resolusi: angka(iden.resolusi) ? iden.resolusi : null, jenisSkala: jenisSkalaPompa(tpl, dataPompa(data)),
         ...(tpl.klasifikasi ? { klasifikasi: Object.fromEntries(tpl.klasifikasi.map((k) => [k.id, String(dataPompa(data).klasifikasi?.[k.id] ?? '')])) } : {}),
@@ -105,6 +105,7 @@ function buatJejakPompa(tpl: TemplatePompa, data: unknown, snapshot: Peta | null
         ...(tpl.ketidakpastianListrik ? { ketidakpastianListrik: tpl.ketidakpastianListrik } : {}),
         ...(tpl.fisikWajib ? { fisikWajib: tpl.fisikWajib } : {}),
         ...(tpl.nibp ? { nibp: tpl.nibp } : {}),
+        ...(tpl.termo ? { termo: tpl.termo } : {}),
       },
       hasil, lengkap, kesimpulan: lengkap ? hasil.kesimpulan : null,
     });
