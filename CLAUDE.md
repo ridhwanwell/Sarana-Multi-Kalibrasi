@@ -1,4 +1,4 @@
-# CLAUDE.md — Tera SMK (sub-website PWA LKK Digital di dalam `qrcode-smk`)
+# CLAUDE.md — Tera SMK (sub-website PWA LKK Digital di dalam `Sarana-Multi-Kalibrasi`)
 
 > File ini adalah **aturan kerja untuk Claude** (Claude Code atau Cowork / Project "TERA-SMK"). Semua aturan di sini WAJIB diikuti.
 > **Cara kerja proyek ini (diperbarui 22 Okt 2026): Claude (lewat Claude Code atau Cowork) menulis kode, menguji build, lalu commit & push LANGSUNG ke `main` (tanpa cabang `tera-dev`), dengan pengaman di bagian 2A. Perubahan database & pengaturan Vercel dijelaskan dulu dan baru dijalankan setelah kata "lanjutkan"** (lihat bagian 2A).
@@ -32,7 +32,7 @@
 | Nama resmi | **TERA — Teknologi Evaluasi & Rekam Alkes** |
 | Slogan | ***Tertelusur · Efisien · Rapi · Akurat*** |
 | Pemilik | PT Sarana Multi Kalibrasi |
-| Rumah kode | Repo **`ridhwanwell/qrcode-smk`** (website "Manajemen Aset SMK" yang sudah berjalan) |
+| Rumah kode | Repo **`ridhwanwell/Sarana-Multi-Kalibrasi`** (website "Manajemen Aset SMK" yang sudah berjalan) |
 | Domain | **saranamultikalibrasi.com** |
 | Dua PWA | **Manajemen Aset SMK** → `saranamultikalibrasi.com/admin` (kantor, akun `@smk.co.id`) · **Tera SMK** → `saranamultikalibrasi.com/tera` (teknisi, akun `@tera.smk`) |
 | Pembagian | **Tera SMK = khusus LKK digital.** Selia, master kalibrator & nilai sertifikatnya, template, akun, pengaturan → **Manajemen Aset SMK** |
@@ -99,7 +99,7 @@ Aturan berkomunikasi:
 
 ## 2. BEKERJA DI DALAM KODE YANG SUDAH ADA (WAJIB)
 
-Website `qrcode-smk` **sudah dipakai** (± 3.934 label QR aktif tertempel di alat rumah sakit). Tera SMK **ditambahkan** ke dalamnya, bukan menggantikannya.
+Website `Sarana-Multi-Kalibrasi` **sudah dipakai** (± 3.934 label QR aktif tertempel di alat rumah sakit). Tera SMK **ditambahkan** ke dalamnya, bukan menggantikannya.
 
 1. **Fase 0 dulu**: audit kode **tanpa mengubah apa pun** (dari repo yang tersambung ke Project, atau file yang ditempel pemilik proyek), tulis hasilnya sebagai dokumen `docs/audit-fase0.md`, tunggu persetujuan.
 2. **Jangan merapikan, memformat ulang, atau mengubah modul lain** (SPH, label, keuangan, aset, ASPAK) kecuali PRD memintanya.
@@ -109,7 +109,7 @@ Website `qrcode-smk` **sudah dipakai** (± 3.934 label QR aktif tertempel di ala
 6. Kerja langsung di **`main`** dengan pengaman 2A; cek di deployment produksi setelah push.
 7. Kode harus lolos build (TypeScript tanpa error) sebelum di-commit, dan lolos build Vercel. Bila Vercel gagal, perbaiki dari log build.
 8. **Bahan acuan** (Master LKK v12, Report All, golden file, kop, contoh BAP/BASTP, MK Kemenkes) ada di **Project knowledge** (diunggah pemilik proyek) dan di folder laptop `_referensi/` — susunan lengkap di PRD Lampiran E. Bila file yang dibutuhkan belum diunggah, **minta** pemilik proyek mengunggahnya; jangan menebak isinya.
-9. **Repo `qrcode-smk` publik** (sampai pemilik proyek menjadikannya Private): **`_referensi/`, `.env`, dan data pelanggan TIDAK BOLEH di-commit.** Pastikan `_referensi/` ada di `.gitignore` sebelum commit pertama, dan cek `git status` sebelum setiap commit.
+9. **Repo `Sarana-Multi-Kalibrasi` publik** (sampai pemilik proyek menjadikannya Private): **`_referensi/`, `.env`, dan data pelanggan TIDAK BOLEH di-commit.** Pastikan `_referensi/` ada di `.gitignore` sebelum commit pertama, dan cek `git status` sebelum setiap commit.
 10. Golden file Excel adalah acuan angka. Kalau hasil aplikasi berbeda dengan golden file, **cari dulu penyebabnya di Excel** (sel terkunci, teks berspasi, rujukan rusak) dan laporkan — jangan menyesuaikan rumus aplikasi agar sama dengan kesalahan Excel.
 11. Uji hitungan (golden file) ditulis sebagai file test di repo dan dijalankan Claude sebelum commit; cara mengecek manual (angka yang harus muncul di layar) tetap dijelaskan.
 

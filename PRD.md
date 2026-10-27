@@ -7,7 +7,7 @@
 | Slogan | *Tertelusur · Efisien · Rapi · Akurat* |
 | Pemilik produk | Ridhwan (Developer, PT SMK) |
 | Dibangun dengan | **Claude Code** menulis kode, menguji build, dan **commit + push langsung ke `main`** *(diubah 22 Okt 2026; sebelumnya cabang `tera-dev`)* dengan pengaman CLAUDE.md 2A; SQL & pengaturan Vercel dijalankan setelah "lanjutkan" |
-| Rumah kode | Repo GitHub **`ridhwanwell/qrcode-smk`** · Vercel project **`qrcode-smk`** · Supabase project **`qr-label-kalibrasi`** |
+| Rumah kode | Repo GitHub **`ridhwanwell/Sarana-Multi-Kalibrasi`** · Vercel project **`qrcode-smk`** · Supabase project **`qr-label-kalibrasi`** |
 | Dokumen pendamping | `CLAUDE.md` (aturan kerja & desain — WAJIB dibaca bersama PRD ini) |
 | Acuan data | Paket **143 Master LKK v12** (`LKK-143_.zip`) |
 | Domain | **saranamultikalibrasi.com** — dua PWA: **Manajemen Aset SMK** (`/admin`) & **Tera SMK** (`/tera`) |
