@@ -16,6 +16,7 @@ import type { IsiKerja } from './shared/isian';
 import { klasifikasiWajib, ujiBerlaku, type TemplatePompa } from './shared/hitungPompa';
 import { formatAngka } from './shared/lingkungan';
 import { ChipVonis, fmt2, KotakAngka, PilihanDaftar } from './KotakIsian';
+import { BarisBacaan } from './salinBacaan';
 
 type Peta = Record<string, any>;
 
@@ -127,14 +128,14 @@ const BagianKinerjaNibp: React.FC<SifatPompa> = ({ tpl, isi, kunci, ubahRun }) =
               return (
                 <div key={t.id} className="mt-3">
                   <h4 className="t-label">{t.label} · <span className="tabular">{formatAngka(t.setting)}</span> {nb.satuan}</h4>
-                  <div className="t-baca-grid mt-1">
+                  <BarisBacaan kunci={kunci} className="t-baca-grid mt-1">
                     {Array.from({ length: nb.pengulangan }, (_, i) => (
                       <KotakAngka
                         key={i} id={`nibp-${t.id}-${i}`} label={`${t.label} ${i + 1}${i >= nb.minimalUlangan ? ' (boleh kosong)' : ''}`} nilai={typeof run[i] === 'number' ? run[i] : null}
-                        kunci={kunci} onNilai={(n) => ubahRun('nibp', t.id, i, nb.pengulangan, n)}
+                        bacaan kunci={kunci} onNilai={(n) => ubahRun('nibp', t.id, i, nb.pengulangan, n)}
                       />
                     ))}
-                  </div>
+                  </BarisBacaan>
                   <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil ${t.label} ${t.setting}`}>
                     <span>Rata-rata {tampil(h?.rataRata, 2)}</span>
                     <span>Koreksi {tampil(h?.koreksi, 2)}</span>
@@ -175,14 +176,14 @@ const BagianKinerjaTermo: React.FC<SifatPompa> = ({ tpl, isi, kunci, ubahRun }) 
               return (
                 <li key={t.id} className="t-kartu" aria-label={`${p.judul} ${t.setting} ${p.satuan}`}>
                   <h4 className="t-label">Titik <span className="tabular">{formatAngka(t.setting)}</span> {p.satuan}</h4>
-                  <div className="t-baca-grid mt-1">
+                  <BarisBacaan kunci={kunci} className="t-baca-grid mt-1">
                     {Array.from({ length: tm.pengulangan }, (_, i) => (
                       <KotakAngka
                         key={i} id={`termo-${t.id}-${i}`} label={`${p.judul} ${t.setting} bacaan ${i + 1}`} nilai={typeof run[i] === 'number' ? run[i] : null}
-                        kunci={kunci} onNilai={(n) => ubahRun('termo', t.id, i, tm.pengulangan, n)}
+                        bacaan kunci={kunci} onNilai={(n) => ubahRun('termo', t.id, i, tm.pengulangan, n)}
                       />
                     ))}
-                  </div>
+                  </BarisBacaan>
                   <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil ${p.judul} ${t.setting}`}>
                     <span>Rata-rata {tampil(h?.rataRata, 2)}</span>
                     <span>Koreksi {tampil(h?.koreksi, 2)}</span>
@@ -226,14 +227,14 @@ export const BagianKinerjaPompa: React.FC<SifatPompa> = (props) => {
           return (
             <li key={s} className="t-kartu" aria-label={`Setting ${s} mL/h`}>
               <h4 className="t-judul-kecil">Setting {formatAngka(s)} mL/h</h4>
-              <div className="t-baca-grid mt-2">
+              <BarisBacaan kunci={kunci} className="t-baca-grid mt-2">
                 {Array.from({ length: kn.pengulangan }, (_, i) => (
                   <KotakAngka
                     key={i} id={`aliran-${s}-${i}`} label={`Bacaan ${i + 1}`} nilai={typeof run[i] === 'number' ? run[i] : null}
-                    kunci={kunci} onNilai={(n) => ubahRun('aliran', String(s), i, kn.pengulangan, n)}
+                    bacaan kunci={kunci} onNilai={(n) => ubahRun('aliran', String(s), i, kn.pengulangan, n)}
                   />
                 ))}
-              </div>
+              </BarisBacaan>
               <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil setting ${s} mL/h`}>
                 <span>Rata-rata {tampil(h?.rataRata, 2)}</span>
                 <span>Koreksi {tampil(h?.koreksi, 2)}</span>
@@ -259,14 +260,14 @@ export const BagianKinerjaPompa: React.FC<SifatPompa> = (props) => {
             onNilai={(n) => ubahData('sumbat', 'setting', n)}
           />
         </div>
-        <div className="t-baca-grid mt-2">
+        <BarisBacaan kunci={kunci} className="t-baca-grid mt-2">
           {Array.from({ length: kn.pengulangan }, (_, i) => (
             <KotakAngka
               key={i} id={`sumbat-${i}`} label={`Bacaan ${i + 1}`} satuan="psi" nilai={typeof runSumbat[i] === 'number' ? runSumbat[i] : null}
-              kunci={kunci} onNilai={(n) => ubahRun('sumbat', '', i, kn.pengulangan, n)}
+              bacaan kunci={kunci} onNilai={(n) => ubahRun('sumbat', '', i, kn.pengulangan, n)}
             />
           ))}
-        </div>
+        </BarisBacaan>
         <p className="t-hasil-baris tabular" role="status" aria-label="Hasil penyumbatan">
           <span>Rata-rata {tampil(hs?.rataRata, 2)} psi</span>
           <span>U95 {fmt2(hs?.u95Cetak)}</span>

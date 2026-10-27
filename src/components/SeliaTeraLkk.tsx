@@ -463,6 +463,22 @@ export const SeliaTeraLkk: React.FC<{
                 </Bagian>
               )}
 
+              {/* Bacaan yang diisi lewat "= Sama" / tempel di tablet (data.salinan) — hanya penanda, rumus tidak berubah */}
+              {(() => {
+                const sal = Object.entries((data.salinan ?? {}) as Record<string, unknown>).filter(([, j]) => j === 'sama' || j === 'tempel') as [string, 'sama' | 'tempel'][];
+                if (sal.length === 0) return null;
+                const sama = sal.filter(([, j]) => j === 'sama').length;
+                const baca = (id: string) => { const m = id.match(/^(.*)-(\d+)$/); return m ? `${m[1].replace(/-/g, ' · ')} · bacaan ${Number(m[2]) + 1}` : id; };
+                return (
+                  <Bagian id="b-salinan" judul="Bacaan hasil salin / tempel">
+                    <p className="text-sm text-[#44505C]">
+                      {sal.length} bacaan diisi teknisi dengan bantuan tablet ({sama} lewat "= sama dengan sebelumnya", {sal.length - sama} lewat tempel). Angkanya tetap dihitung seperti biasa; mohon periksa kewajarannya (bacaan alat yang berubah-ubah biasanya tidak persis sama).
+                    </p>
+                    <p className="text-xs text-[#6B7785] tabular-nums break-words">{sal.slice(0, 24).map(([id, j]) => `${baca(id)} (${j === 'sama' ? '=' : 'tempel'})`).join(' ; ')}{sal.length > 24 ? ` ; … +${sal.length - 24} lagi` : ''}</p>
+                  </Bagian>
+                );
+              })()}
+
               {/* Pompa: listrik + aliran + penyumbatan */}
               {pompa && <SeliaTeraPompa tpl={tpl} data={data} h={h} />}
 

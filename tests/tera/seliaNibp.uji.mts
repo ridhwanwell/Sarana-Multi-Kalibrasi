@@ -29,8 +29,11 @@ const FISIK = { badan: { fisik: 'Baik', fungsi: 'Berfungsi' }, kontrol: { fisik:
 const data = {
   identitas: { merek: 'Omron', tipe: 'HEM-7120', noSeri: 'NIBP-1', rentangUkur: '0 - 300 mmHg', resolusi: 1, tanggalPenerimaan: '2026-10-26', ruang: 'Poli' },
   lingkungan: { suhuAwal: 25, suhuAkhir: 25, rhAwal: 50, rhAkhir: 50 }, fisik: FISIK, nibp: K.data.nibp,
+  salinan: { 'nibp-s1_systole-2': 'sama', 'nibp-s1_systole-3': 'tempel', 'nibp-s1_map-1': null },   // penanda bantuan salin (tidak dipakai rumus)
 };
 const jejak = buatJejakHitung(TPL as any, data, snapshot);
+const { salinan: _s, ...tanpaSalinan } = data as any;
+const jejakTanpa = buatJejakHitung(TPL as any, tanpaSalinan, snapshot);
 const detail = {
   lkk: { id: '11111111-1111-4111-8111-111111111111', bo: '999', noLabel: '999.0012', status: 'submitted', jadwalId: 'j', tanggalKalibrasi: '2026-10-26', alatTambahan: true, jumlahTitik: 0, clientVersion: 3, isTest: true, checksum: 'x', diterimaAt: '2026-10-26T01:00:00Z', templateKode: TPL.kode_alat, templateVersi: TPL.versi, namaAlat: 'Non Invasive Blood Pressure (NIBP)', revisi: 0, accOlehNama: null, accAt: null, namaRs: 'RS UJI TERA (DATA UJI)', kota: 'Solo', teknisi: 'Ridhwan' },
   data, jejakHitung: jejak, calibratorSnapshot: snapshot, template: TPL,
@@ -91,6 +94,8 @@ await p.evaluate((det) => {
 await p.waitForSelector('#b-nibp', { timeout: 8000 });
 let t = await p.evaluate(() => document.body.innerText);
 
+cek('data.salinan TIDAK mengubah hasil hitung (jejak sama persis dengan tanpa penanda)', JSON.stringify(jejak) === JSON.stringify(jejakTanpa));
+cek('Selia: bagian "Bacaan hasil salin / tempel" menyebut 2 bacaan (1 = sama, 1 tempel), penanda kosong tidak dihitung', await p.locator('#b-salinan').count() === 1 && /2 bacaan diisi teknisi/.test(t) && /1 lewat "= sama dengan sebelumnya", 1 lewat tempel/.test(t), t.slice(0, 300));
 cek('judul memuat NIBP + nomor label; template nibp v2', /Non Invasive Blood Pressure/.test(t) && /999\.0012/.test(t) && t.includes('nibp v2'), t.slice(0, 600));
 cek('tidak ada bagian Keselamatan listrik / Aliran / Penyumbatan', await p.locator('#b-listrik').count() === 0 && await p.locator('#b-aliran').count() === 0 && await p.locator('#b-sumbat').count() === 0);
 cek('NIBP: 12 baris jejak hitung, 12 dari 12 titik laik', (await p.locator('#b-nibp').locator('xpath=..').locator('tbody tr').count()) === 12 && /Titik Laik: 12 dari 12/.test(t), t.slice(0, 1500));

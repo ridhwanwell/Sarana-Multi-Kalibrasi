@@ -4,10 +4,11 @@
  * Isi tidak berubah: label di atas kotak, font 16 px, tinggi ≥ 48 px, koma desimal Indonesia, galat setelah kotak
  * ditinggalkan, status bukan warna saja (CLAUDE.md 13.6, 13.8).
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, Check, ChevronDown, Minus } from 'lucide-react';
 import type { Vonis } from './shared/hitung';
 import { diLuarBatas, formatAngka, uraiKetikan } from './shared/lingkungan';
+import { apaSedangMenyalin, pindahKotak, teksTanda, tempelKeKotak, useSalin } from './salinBacaan';
 
 export const tglPanjang = (v: string | null | undefined): string => {
   if (!v || !/^\d{4}-\d{2}-\d{2}/.test(v)) return '-';
@@ -49,14 +50,20 @@ export const KotakTeks: React.FC<KotakTeksProps> = ({ id, label, nilai, onUbah, 
 export interface KotakAngkaProps {
   id: string; label: string; nilai: number | null; onNilai: (n: number | null) => void; kunci: boolean;
   satuan?: string; batas?: { min: number; maks: number }; pesanBatas?: string; sudahDiisi?: boolean;
+  /** true = kotak BACAAN KINERJA: ikut bantuan Enter-pindah, "= Sama", dan tempel banyak angka (salinBacaan.tsx). */
+  bacaan?: boolean;
 }
 
 /**
  * Kotak angka berkoma Indonesia. Teks yang diketik disimpan terpisah dari angkanya, jadi "27," tidak
  * hilang di tengah ketikan. Galat batas muncul SETELAH kotak ditinggalkan (bukan saat "2" menuju "27").
  */
-export const KotakAngka: React.FC<KotakAngkaProps> = ({ id, label, nilai, onNilai, kunci, satuan, batas, pesanBatas }) => {
+export const KotakAngka: React.FC<KotakAngkaProps> = ({ id, label, nilai, onNilai, kunci, satuan, batas, pesanBatas, bacaan }) => {
   const [teks, setTeks] = useState(() => formatAngka(nilai));
+  const salin = useSalin();
+  const tanda = bacaan ? teksTanda(salin.tanda(id)) : null;
+  // Nilai bisa diubah dari luar ("= Sama" / tempel): samakan teks kotak, kecuali ketikan setengah jadi ("27,") yang nilainya sama.
+  useEffect(() => { if (uraiKetikan(teks).nilai !== nilai) setTeks(formatAngka(nilai)); }, [nilai]); // eslint-disable-line react-hooks/exhaustive-deps
   const [disentuh, setDisentuh] = useState(nilai !== null);
   const di_luar = batas ? diLuarBatas(nilai, batas) : false;
   const galat = disentuh && di_luar ? pesanBatas || 'Angka di luar batas.' : null;
@@ -68,12 +75,25 @@ export const KotakAngka: React.FC<KotakAngkaProps> = ({ id, label, nilai, onNila
           id={id} type="text" inputMode="decimal" autoComplete="off" readOnly={kunci}
           className="tabular" value={teks} aria-invalid={galat ? true : undefined}
           aria-describedby={galat ? `${id}-galat` : undefined}
-          onChange={(e) => { const u = uraiKetikan(e.target.value); setTeks(u.bersih); setDisentuh(false); onNilai(u.nilai); }}
+          data-baca={bacaan ? '1' : undefined}
+          onChange={(e) => {
+            const u = uraiKetikan(e.target.value); setTeks(u.bersih); setDisentuh(false); onNilai(u.nilai);
+            if (bacaan && !apaSedangMenyalin()) salin.setTanda(id, null); // diketik manual = bacaan teknisi sendiri
+          }}
+          onKeyDown={bacaan ? (e) => { if (e.key === 'Enter') { e.preventDefault(); pindahKotak(e.currentTarget, 1); } } : undefined}
+          onPaste={bacaan ? (e) => {
+            const t = e.clipboardData.getData('text');
+            if (t.trim().split(/[\s;]+/).length < 2) return;       // satu angka: tempel biasa
+            e.preventDefault();
+            const r = tempelKeKotak(e.currentTarget, t, salin.setTanda);
+            e.currentTarget.dispatchEvent(new CustomEvent('tera-salin-pesan', { bubbles: true, detail: r.pesan }));
+          } : undefined}
           onBlur={() => { setDisentuh(true); setTeks(formatAngka(nilai)); }}
         />
         {satuan && <span className="t-akhiran" aria-hidden="true">{satuan}</span>}
       </div>
       <Galat id={`${id}-galat`} pesan={galat} />
+      {tanda && <p className="t-tanda-salin" data-salin={salin.tanda(id)}>{tanda}</p>}
     </div>
   );
 };

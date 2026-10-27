@@ -39,6 +39,7 @@
     "test:tera:hitung-termohigro": "tsx tests/tera/hitungTermohigro.test.mts",
     "test:tera:sertifikat-termohigro": "tsx tests/tera/sertifikatTermohigro.test.mts",
     "test:tera:layar-nibp": "tsx tests/tera/layarNibp.uji.mts",
+    "test:tera:layar-salin": "tsx tests/tera/layarSalin.uji.mts",
     "test:tera:selia-nibp": "tsx tests/tera/seliaNibp.uji.mts",
     "test:tera:sertifikat-nibp": "tsx tests/tera/sertifikatNibp.test.mts",
     "test:tera:periksa-server": "tsx tests/tera/periksaServer.test.mts",

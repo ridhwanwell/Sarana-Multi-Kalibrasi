@@ -20,6 +20,7 @@ import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock, Min
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
+import { BarisBacaan, SalinContext, type SalinKonteks } from './salinBacaan';
 import { ChipVonis, Dropdown, fmt2, Galat, HasilKoreksi, KotakAngka, KotakTeks, Segmen, tglPanjang } from './KotakIsian';
 import { MulaiLkk } from './MulaiLkk';
 import { ambilLkk, bolehDiubah, simpanIsian, tandaiSelesai, type LkkLokal, type SyncState } from './data/teraDb';
@@ -316,14 +317,14 @@ const BagianKinerja: React.FC<BagianSph> = ({ tpl, isi, kunci, ubahData, ubahBac
                     return (
                       <div key={arah} className="t-baca-grup">
                         <p className="t-label">{arah === 'naik' ? 'Naik' : 'Turun'}</p>
-                        <div className="t-baca-grid">
+                        <BarisBacaan kunci={kunci}>
                           {Array.from({ length: k.pengulangan }, (_, i) => (
                             <KotakAngka
                               key={i} id={`kin-${k.id}-${t}-${arah}-${i}`} label={`Bacaan ${i + 1}`} nilai={typeof run[i] === 'number' ? run[i] : null}
-                              kunci={kunci} onNilai={(n) => ubahBacaan(k.id, t, arah, i, k.pengulangan, n)}
+                              bacaan kunci={kunci} onNilai={(n) => ubahBacaan(k.id, t, arah, i, k.pengulangan, n)}
                             />
                           ))}
-                        </div>
+                        </BarisBacaan>
                         <p className="t-hasil-baris tabular" role="status" aria-label={`Hasil titik ${t} ${arah}`}>
                           <span>Rata-rata {ht?.rataRata != null ? formatAngka(Math.round(ht.rataRata * 100) / 100) : '-'}</span>
                           <span>Koreksi {ht?.koreksi != null ? formatAngka(Math.round(ht.koreksi * 100) / 100) : '-'}</span>
@@ -768,9 +769,20 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
   const sifat: BagianProps = { tpl, isi, kunci, kurang, ubahData, ubahBacaan };
   const pompa = adalahTemplatePompa(tpl) ? tpl : null;
   const sifatSph: BagianSph = { ...sifat, tpl: tpl as TemplateAlat };
+  // Tanda "= sama" / "tempel" per kotak bacaan, disimpan di data.salinan (tidak dipakai rumus; dilihat Selia)
+  const salinan = ((isi.data.salinan ?? {}) as Record<string, 'sama' | 'tempel' | null>);
+  const salinKonteks = useMemo<SalinKonteks>(() => ({
+    tanda: (id) => salinan[id] || undefined,
+    setTanda: (id, jenis) => {
+      const sekarang = ((isiRef.current.data.salinan ?? {}) as Record<string, unknown>)[id] ?? null;
+      if (sekarang === jenis) return;
+      ubahData('salinan', id, jenis);
+    },
+  }), [salinan, ubahData]);
   const balik = lkk.jadwalId ? `/tera/rs/${encodeURIComponent(lkk.jadwalId)}` : '/tera/lkk';
 
   return (
+    <SalinContext.Provider value={salinKonteks}>
     <div className="t-lkk-layar">
       <Link to={balik} className="t-kembali"><ChevronLeft size={20} aria-hidden="true" />Kembali ke daftar</Link>
       <header className="t-lkk-kepala">
@@ -862,6 +874,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
         </div>
       </div>
     </div>
+    </SalinContext.Provider>
   );
 };
 

@@ -758,6 +758,11 @@ html.tera-aktif body {
 /* Kinerja: bacaan naik/turun, hasil, chip Laik */
 .t-baca-pasang { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
 .t-baca-grup { min-width: 0; }
+/* Bantuan mengisi bacaan: Enter-pindah, "= Sama", tempel (salinBacaan.tsx). Tombol ≥ 48 px. */
+.t-salin-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.t-salin-tombol { min-height: 48px; min-width: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--t-input-border); background: var(--t-surface); color: var(--t-text); font-size: 16px; font-weight: 600; }
+.t-salin-pesan { flex-basis: 100%; margin: 0; min-height: 1.25em; }
+.t-tanda-salin { margin: 2px 0 0; font-size: 12px; line-height: 1.2; color: var(--t-text-2); }
 .t-baca-grid { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 4px; }
 .t-hasil-baris { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; padding: 8px 12px; border-radius: var(--t-radius-ctl); background: var(--t-bg); border: 1px solid var(--t-border); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .t-vonis { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 2px 10px; border-radius: 9999px; font-size: 13px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
