@@ -17,10 +17,10 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 - Syringe Pump — template v3
 - Keselamatan Listrik — template v2 (fisik & fungsi ≥ 70 % ikut menentukan)
 - NIBP — template v2 (kelistrikan tidak dinilai, skor maks 60)
-- Thermohygrometer — template v1 (kode SELESAI 27 Okt; baru aktif setelah migrasi **0031** dijalankan; mengikuti Master Excel, tanpa MK)
-- Migrasi terakhir yang dijalankan: 0030. **0031 sudah ditulis, MENUNGGU "lanjutkan".**
+- Thermohygrometer — template v1 (27 Okt; mengikuti Master Excel, tanpa MK; Climatic Chamber CAL-048 masih angka sementara Excel)
+- Migrasi terakhir yang dijalankan: 0031.
 
-**Langkah berikutnya:** jalankan migrasi 0031 (setelah "lanjutkan") lalu uji LKK Thermohygrometer di tablet; kemudian alat ke-7 — menunggu Ridhwan menentukan dan mengunggah filenya (Master Excel + Excel contoh isi + PDF sertifikat contoh + data kalibrator). Jangan menebak isi master; minta filenya. Satu keluarga per chat. Setelah Tahap 6 selesai → Tahap 7 (Pemindai AI & highlight).
+**Langkah berikutnya:** uji LKK Thermohygrometer di tablet (BO 999); kemudian alat ke-7 lewat `/buatkanlkk` — menunggu Ridhwan menentukan dan mengunggah filenya (Master Excel + Excel contoh isi + PDF sertifikat contoh + data kalibrator). Jangan menebak isi master; minta filenya. Satu keluarga per chat. Setelah Tahap 6 selesai → Tahap 7 (Pemindai AI & highlight).
 
 **Menunggu jawaban Ridhwan:**
 1. Alat ke-7 yang mana. Suction Pump DITUNDA (LKK belum selesai dicek); Timbangan Bayi Digital menyusul.
