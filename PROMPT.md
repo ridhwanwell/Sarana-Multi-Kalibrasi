@@ -19,7 +19,7 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 - NIBP — template v2 (kelistrikan tidak dinilai, skor maks 60)
 - Thermohygrometer — template v1 (27 Okt; mengikuti Master Excel, tanpa MK; Climatic Chamber CAL-048 masih angka sementara Excel)
 - Bantuan isi bacaan kinerja (27 Okt): Enter-pindah, "= Sama", tempel banyak angka; semua alat; tanda disimpan di `data.salinan` (rumus tidak berubah). Kotak bacaan baru WAJIB memakai `<BarisBacaan>` + `<KotakAngka bacaan>` (src/tera/salinBacaan.tsx).
-- Migrasi terakhir yang dijalankan: 0031.
+- Migrasi terakhir yang dijalankan: 0032 (Chamber CAL-048 + Traceability BIOBASE SCIENTIFIC).
 
 **Langkah berikutnya:** uji LKK Thermohygrometer di tablet (BO 999); kemudian alat ke-7 lewat `/buatkanlkk` — menunggu Ridhwan menentukan dan mengunggah filenya (Master Excel + Excel contoh isi + PDF sertifikat contoh + data kalibrator). Jangan menebak isi master; minta filenya. Satu keluarga per chat. Setelah Tahap 6 selesai → Tahap 7 (Pemindai AI & highlight).
 
