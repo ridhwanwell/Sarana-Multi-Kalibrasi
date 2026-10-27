@@ -26,13 +26,13 @@ export function tambahHari(iso: unknown, hari: number): string {
 const SEBELUM_KURUNG = (s: unknown) => String(s ?? '').replace(/\s*\(.*$/, '').trim();
 
 /** Satu baris "Standar yang digunakan": nama  Tipe: …  s/n: …  Cert. Number: …  Traceability: … (sama dengan Report All Excel). */
-function barisStandar(snap: Peta | null | undefined, nama: string): string {
+function barisStandar(snap: Peta | null | undefined, nama: string, certKosong?: string): string {
   if (!snap || typeof snap !== 'object') return '';
   return [
     String(snap.nama ?? nama),
     snap.model ? `Tipe: ${snap.model}` : '',
     snap.nomorSeri ? `s/n: ${snap.nomorSeri}` : '',
-    snap.nomorSertifikat ? `Cert. Number: ${snap.nomorSertifikat}` : '',
+    snap.nomorSertifikat ? `Cert. Number: ${snap.nomorSertifikat}` : certKosong ? `Cert. Number: ${certKosong}` : '',
     snap.tertelusur ? `Traceability: ${SEBELUM_KURUNG(snap.tertelusur)}` : '',
   ].filter(Boolean).join('  ');
 }
@@ -215,7 +215,8 @@ export function isianTermohigro(
     rentangUkur: rentang.nilai,
     satuanRentang: rentang.satuan,
     satuanResolusi: komaBebas(iden.resolusi) ? '%' : '',
-    kalibrator1: barisStandar(snap.chamber, 'Climatic Chamber'),
+    // Chamber tanpa sertifikat (angka master): "Cert. Number: -" seperti di PDF acuan Excel
+    kalibrator1: barisStandar(snap.chamber, 'Climatic Chamber', '-'),
     kalibrator2: barisStandar(snap.termohigrometer, 'Digital Thermohygrometer'),
   };
   for (const kunci of ['kalibrator3', 'sumbatSetting', 'sumbatStd', 'sumbatU', 'tolSumbat']) delete s[kunci];

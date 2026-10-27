@@ -215,7 +215,8 @@ export async function renderSertifikatPdf(tl: TataLetak, isian: Isian, bahan: Ba
   doc.registerFontkit(fontkit);
   // kern:false — PDF acuan (Excel) tidak memakai kerning; lebar kata mengikuti acuan.
   // subset:false — pemotongan font (subset) fontkit membuat sebagian huruf hilang di iPhone/Acrobat; font dipasang utuh.
-  const opsi = { subset: false, features: { kern: false } } as const;
+  // liga:false — ligatur "ti"/"tt"/"fi" Carlito membuat teks isian tampak patah ("Climati c Chamber") di sebagian penampil PDF; setiap huruf digambar sendiri.
+  const opsi = { subset: false, features: { kern: false, liga: false } } as const;
   const huruf: HurufTerpasang = {
     r: await doc.embedFont(bahan.fontR, opsi),
     b: await doc.embedFont(bahan.fontB, opsi),
