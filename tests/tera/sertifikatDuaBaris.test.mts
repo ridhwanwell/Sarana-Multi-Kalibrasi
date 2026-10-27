@@ -1,11 +1,14 @@
 // Uji isian 2 baris (Ridhwan 26 Okt 2026): Tempat / Tanggal / Ruangan / Teknisi kepanjangan TIDAK dikecilkan (ukuran huruf
-// sama dengan isian lain), dipecah 2 baris, isi halaman di bawahnya turun satu baris; teks kaki tetap. Berlaku untuk semua sertifikat (Sphygmo, Infusion, Syringe).
+// sama dengan isian lain), dipecah 2 baris, isi halaman di bawahnya turun satu baris; teks kaki tetap. Berlaku untuk semua sertifikat (Sphygmo, Infusion, Syringe, NIBP, Keselamatan Listrik, Thermohygrometer).
 // Jalankan: npm run test:tera:sertifikat-dua-baris   (opsional KOP_NON_KAN=/jalur/kop.pdf, KELUAR=/folder → PDF uji)
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TATA_LETAK_SPHYGMOMANOMETER } from '../../src/tera/pdf/tataLetakSphygmo.ts';
 import { TATA_LETAK_INFUSION_PUMP } from '../../src/tera/pdf/tataLetakPompa.ts';
 import { TATA_LETAK_SYRINGE_PUMP } from '../../src/tera/pdf/tataLetakSyringe.ts';
+import { TATA_LETAK_NIBP } from '../../src/tera/pdf/tataLetakNibp.ts';
+import { TATA_LETAK_KESELAMATAN_LISTRIK } from '../../src/tera/pdf/tataLetakListrik.ts';
+import { TATA_LETAK_TERMOHIGRO } from '../../src/tera/pdf/tataLetakTermohigro.ts';
 import { susun, kunciIsian, type TataLetak } from '../../src/tera/pdf/susunSertifikat.ts';
 import { gambarSertifikat, pecahBaris, terapkanDuaBaris } from '../../src/tera/pdf/renderSertifikat.ts';
 
@@ -26,6 +29,9 @@ for (const [nama, tl, berkas] of [
   ['Sphygmomanometer', TATA_LETAK_SPHYGMOMANOMETER, 'templat-sphygmomanometer.pdf'],
   ['Infusion Pump', TATA_LETAK_INFUSION_PUMP, 'templat-infusion-pump.pdf'],
   ['Syringe Pump', TATA_LETAK_SYRINGE_PUMP, 'templat-syringe-pump.pdf'],
+  ['NIBP', TATA_LETAK_NIBP, 'templat-nibp.pdf'],
+  ['Keselamatan Listrik', TATA_LETAK_KESELAMATAN_LISTRIK, 'templat-keselamatan-listrik.pdf'],
+  ['Thermohygrometer', TATA_LETAK_TERMOHIGRO, 'templat-termohigro.pdf'],
 ] as [string, TataLetak, string][]) {
   const def = tl.duaBaris?.[2];
   cek(`${nama}: tata letak punya baris Tempat/Tanggal & Ruangan/Teknisi`, !!def && def.baris.length === 2 && def.baris[0].k.includes('tempat') && def.baris[1].k.includes('ruang'));
@@ -46,6 +52,7 @@ for (const [nama, tl, berkas] of [
   const baris = h.teks.filter((t) => t.kunci === 'tempat');
   cek(`${nama}: nama panjang → 2 baris`, pita.length === 1 && baris.length === 2 && `${baris[0].teks} ${baris[1].teks}` === PANJANG, JSON.stringify(baris.map((b) => b.teks)));
   cek(`${nama}: ukuran huruf tidak dikecilkan & sama dengan Tanggal/Ruangan/Teknisi`, baris.every((b) => b.ukuran === asliTempat.ukuran && b.tanpaKecil) && ukuranSama(h));
+  cek(`${nama}: Tempat dipecah SEBELUM kolom "Tanggal" (batas kanan x ≤ 292)`, (asliTempat.batas ?? 999) <= 292);
   cek(`${nama}: baris 1 muat di kolom`, f.r.widthOfTextAtSize(baris[0].teks, baris[0].ukuran) <= (asliTempat.batas ?? 548.2) - asliTempat.x);
   cek(`${nama}: baris 2 tepat satu baris di bawah`, Math.abs(baris[1].y - asliTempat.y - dy) < 1e-9);
   const ruangA = hal.teks.find((t) => t.kunci === 'ruang')!, ruangB = h.teks.find((t) => t.kunci === 'ruang')!;
@@ -72,7 +79,7 @@ for (const [nama, tl, berkas] of [
   const kop = process.env.KOP_NON_KAN && existsSync(process.env.KOP_NON_KAN) ? readFileSync(process.env.KOP_NON_KAN) : null;
   await gambarSertifikat(doc, tl, { ...isian, tempat: PANJANG, ruang: 'Instalasi Rehabilitasi Medik dan Fisioterapi Gedung B' }, ff, kop, null, templat);
   const bytes = await doc.save();
-  cek(`${nama}: PDF 3 halaman`, (await PDFDocument.load(bytes)).getPageCount() === 3);
+  cek(`${nama}: PDF ${tl.halaman} halaman`, (await PDFDocument.load(bytes)).getPageCount() === tl.halaman);
   if (process.env.KELUAR) {
     mkdirSync(process.env.KELUAR, { recursive: true });
     writeFileSync(`${process.env.KELUAR}/dua-baris-${berkas.replace('templat-', '')}`, bytes);
