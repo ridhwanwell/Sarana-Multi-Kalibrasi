@@ -25,7 +25,7 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 
 **Menunggu jawaban Ridhwan:**
 1. Alat ke-7 yang mana. Suction Pump DITUNDA (LKK belum selesai dicek); Timbangan Bayi Digital menyusul.
-1b. Thermohygrometer: angka Calibrator 1 di Master Excel hanyalah sisa ESU (koreksi 0, U 1 °C/4 %RH) — perlu sertifikat Climatic Chamber asli; sertifikat contoh mencetak "%" untuk rentang & resolusi; Suhu/RH ruang di contoh kosong (aplikasi memakai HTC-1).
+1b. Thermohygrometer: sertifikat contoh mencetak "%" untuk rentang & resolusi; Suhu/RH ruang di contoh kosong (aplikasi memakai HTC-1).
 2. NIBP: LKK digital SUDAH benar (fisik semua Baik = 10, total = fisik + kinerja, maks 60, Laik ≥ 54). Excel perlu diperbaiki (AE2 COUNTIF "Baik"/6 selalu 0; AE3 listrik 40 gratis) — menunggu Ridhwan mengunggah Master_NIBP.xlsx.
 3. Master Excel Syringe L18:L22: disarankan `ABS(F18)+N(I18)<=T18` (pakai U95, bukan T/3). Opsional, di file Excel Ridhwan.
 4. Climatic Chamber: angka = datasheet pabrik (alat baru, belum ada sertifikat) — sah; ganti teks `sumber` bila diminta.
