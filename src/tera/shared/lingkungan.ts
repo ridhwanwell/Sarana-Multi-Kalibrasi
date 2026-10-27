@@ -1,5 +1,5 @@
 /**
- * KONDISI LINGKUNGAN — suhu & kelembaban ruang kalibrasi (Tahap 4.3c, PRD-AISTUDIO 3.2 · Master v12 "Calibrator 2").
+ * KONDISI LINGKUNGAN — suhu & kelembaban ruang kalibrasi (Tahap 4.3c, PRD-TAHAP4-LKK 3.2 · Master v12 "Calibrator 2").
  *
  * Perumpamaan: teknisi membaca termohigrometer di ruangan, lalu angka bacaan "dikoreksi" memakai
  * sertifikat termohigrometer itu (fotokopi sertifikatnya ada di snapshot LKK). Koreksi antar-titik

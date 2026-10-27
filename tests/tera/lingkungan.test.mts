@@ -1,4 +1,4 @@
-// Uji KONDISI LINGKUNGAN (Tahap 4.3c, PRD-AISTUDIO 3.2). Jalankan: npm run test:tera:lingkungan
+// Uji KONDISI LINGKUNGAN (Tahap 4.3c, PRD-TAHAP4-LKK 3.2). Jalankan: npm run test:tera:lingkungan
 // Angka acuan = Master Sphygmomanometer v12 (Calibrator 2) yang dihitung ulang dengan numpy.polyfit.
 import { BATAS_LINGKUNGAN_BAWAAN, bulatNaikExcel, diLuarBatas, formatAngka, hitungLingkungan, regresiKuadrat, uraiKetikan } from '../../src/tera/shared/lingkungan.ts';
 

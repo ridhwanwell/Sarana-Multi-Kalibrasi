@@ -1,5 +1,5 @@
 # SPESIFIKASI SERTIFIKAT — Report All Sphygmomanometer (Master v12 + keputusan T6–T8)
-**Untuk:** langkah A4 di `PRD-AISTUDIO.md`. Diekstrak Claude langsung dari sheet **Report All** file `Master_Sphygmomanometer_golden_1_v3.xlsx` (data anonim "RS CONTOH", BO 999), 20 Okt 2026.
+**Untuk:** langkah A4 di `PRD-TAHAP4-LKK.md`. Diekstrak Claude langsung dari sheet **Report All** file `Master_Sphygmomanometer_golden_1_v3.xlsx` (data anonim "RS CONTOH", BO 999), 20 Okt 2026.
 Tujuan: AI Studio **tidak perlu menebak isi Excel**. PDF wajib mengikuti tabel di bawah: urutan, teks, ukuran huruf, tebal/miring, rata, garis, lebar kolom, tinggi baris.
 
 ## 1. Halaman

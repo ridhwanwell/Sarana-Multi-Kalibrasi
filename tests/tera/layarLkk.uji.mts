@@ -1,4 +1,4 @@
-// Uji LAYAR "Isi LKK" bagian 1–3 di Chromium sungguhan — Tahap 4.3c (PRD-AISTUDIO A1).
+// Uji LAYAR "Isi LKK" bagian 1–3 di Chromium sungguhan — Tahap 4.3c (PRD-TAHAP4-LKK A1).
 // Router/ikon/login/apiFetch ditiru (stub); SinkronProvider, LayarLkk, teraDb, masterLokal, isian, lingkungan
 // dan tera-tema.css adalah kode ASLI.
 // Jalankan: npm run test:tera:layar-lkk   (butuh paket "playwright" & Chromium; tidak ikut build Vercel)
@@ -79,7 +79,7 @@ const JADWAL = (namaRs = 'RS Uji Solo') => ({
   versi: 1, isTest: false, pushedAt: '2026-10-19T01:00:00Z', dicabut: false,
 });
 
-// Master kalibrator tiruan (angka suhu & %RH = contoh Master v12 di PRD-AISTUDIO 3.2)
+// Master kalibrator tiruan (angka suhu & %RH = contoh Master v12 di PRD-TAHAP4-LKK 3.2)
 const baris = (titik: number, k: number, u: number) => ({ titik, koreksiNaik: k, koreksiTurun: k, u95Naik: u, u95Turun: u });
 const KAL = (extra: any) => ({ pointsId: 'p-' + extra.asetId + extra.parameter, kode: extra.asetId, merk: 'Merk', model: 'Model', nomorSeri: 'SN-' + extra.asetId, satuan: '', nomorSertifikat: 'SK-' + extra.asetId, tertelusur: 'KIM-LIPI', tanggalKalibrasi: '2026-03-05', berlakuSampai: '2027-03-04', sumber: 'uji', diubahPada: '2026-10-01', budget: null, ...extra });
 const MASTER = [

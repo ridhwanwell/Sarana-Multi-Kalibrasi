@@ -1,4 +1,4 @@
-// Uji ATURAN ISIAN LKK bagian 1–5 (Tahap 4.3c + 4.3d-2, PRD-AISTUDIO A1). Jalankan: npm run test:tera:isian
+// Uji ATURAN ISIAN LKK bagian 1–5 (Tahap 4.3c + 4.3d-2, PRD-TAHAP4-LKK A1). Jalankan: npm run test:tera:isian
 import { TEMPLATE_SPHYGMOMANOMETER as T } from '../../src/tera/shared/templates/sphygmomanometer.ts';
 import {
   BIDANG_IDENTITAS_BAWAAN, STANDAR_BAWAAN, bagianLengkap, batasLingkungan, bidangIdentitas, daftarBagian, daftarStandar,

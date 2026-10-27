@@ -1,8 +1,10 @@
 # PRD SERAH-TERIMA — Tera SMK, sisa Tahap 4 (+ Tahap 5 opsional)
+
+> **Catatan 27 Okt 2026:** dokumen ini adalah serah-terima era Google AI Studio. Sekarang Claude yang mengerjakan langsung; aturan yang berlaku ada di `CLAUDE.md`. Bagian spesifikasi (bentuk data LKK, kondisi lingkungan, aturan isian) tetap dipakai sebagai acuan. Sebutan "AI Studio" di bawah hanya sisa riwayat.
 **Untuk:** Google AI Studio (Build mode) · **Disusun:** Claude, 19 Oktober 2026 · **Pemilik produk:** Ridhwan (PT Sarana Multi Kalibrasi)
 **Hasil kerja AI Studio akan DIAUDIT Claude** sebelum masuk ke cabang `tera-dev` dan sebelum menyentuh database produksi.
 
-> Baca juga (urut): `docs/aistudio/ATURAN-AISTUDIO.md` (aturan kerja WAJIB) → `docs/aistudio/SPEK-REPORT-ALL-SPHYGMO.md` (isi & tata letak sertifikat per sel, diekstrak dari Excel — **pakai ini, jangan menebak dari Excel**) → `CLAUDE.md` (aturan proyek lengkap) → `PRD.md` (PRD induk, keputusan bagian 11 sudah DIKUNCI) → `PROMPT.md` bagian "STATUS TERAKHIR" → `docs/tahap4-u95-sphygmomanometer.md` (keputusan rumus).
+> Baca juga (urut): `docs/spesifikasi/SPEK-REPORT-ALL-SPHYGMO.md` (isi & tata letak sertifikat per sel, diekstrak dari Excel — **pakai ini, jangan menebak dari Excel**) → `CLAUDE.md` (aturan proyek lengkap) → `PRD.md` (PRD induk, keputusan bagian 11 sudah DIKUNCI) → `PROMPT.md` bagian "STATUS TERAKHIR" → `docs/tahap4-u95-sphygmomanometer.md` (keputusan rumus).
 > Bila dokumen ini bertentangan dengan `CLAUDE.md`/`PRD.md`, yang menang **CLAUDE.md/PRD.md**, kecuali 3 pengecualian di bagian 2.3.
 
 ---
@@ -169,7 +171,7 @@ Alat selain Sphygmomanometer · pemindai AI & highlight (Tahap 7) · menu pengat
 | ID | Kebutuhan | Kriteria terima |
 |---|---|---|
 | A4.1 | `src/server/tera/pdfSertifikat.ts`: `pdf-lib` + `@pdf-lib/fontkit` (sudah ada di package.json) + font **Carlito** (OFL; file TTF ditaruh di `src/server/tera/fonts/`, lisensi OFL ikut). Fungsi murni `buatPdfSertifikat(lkk, hasil, snapshot, penandatangan, esign, opsi) → Uint8Array` | Bisa diuji tanpa database |
-| A4.2 | Tata letak, urutan tabel, teks, kolom, gaya judul, jumlah halaman **sama persis Report All** Sphygmomanometer — ikuti **`docs/aistudio/SPEK-REPORT-ALL-SPHYGMO.md`** (peta sel lengkap) + PDF acuan dari Ridhwan untuk perbandingan visual. Nomor Order = `BBB/SMK-BO/<romawi bulan>-<tahun>` (PRD F10.4), Nomor Sertifikat = nomor label `BBB.NNNN`. Header: Indonesia **tebal**, Inggris *miring 8 pt* di bawahnya. Judul tabel kinerja: "Parameter Kinerja / *Performance Parameters*". U95 cetak 2 desimal (`u95Cetak`). Teks "± 4 mmHg" (keputusan T8) | Laporkan perbandingan berdampingan (gambar halaman PDF vs acuan) |
+| A4.2 | Tata letak, urutan tabel, teks, kolom, gaya judul, jumlah halaman **sama persis Report All** Sphygmomanometer — ikuti **`docs/spesifikasi/SPEK-REPORT-ALL-SPHYGMO.md`** (peta sel lengkap) + PDF acuan dari Ridhwan untuk perbandingan visual. Nomor Order = `BBB/SMK-BO/<romawi bulan>-<tahun>` (PRD F10.4), Nomor Sertifikat = nomor label `BBB.NNNN`. Header: Indonesia **tebal**, Inggris *miring 8 pt* di bawahnya. Judul tabel kinerja: "Parameter Kinerja / *Performance Parameters*". U95 cetak 2 desimal (`u95Cetak`). Teks "± 4 mmHg" (keputusan T8) | Laporkan perbandingan berdampingan (gambar halaman PDF vs acuan) |
 | A4.3 | **Tanpa kop** (2.3): area kop dikosongkan, posisi isi tetap; opsi `pakaiKop` disiapkan | — |
 | A4.4 | **QR tanda tangan elektronik** di halaman 1, ruang kosong di bawah "Disetujui oleh," tepat di atas nama **Hafizh Pasifianto Utomo, S.Tr.T.** — Manajer Teknik. QR berisi `https://saranamultikalibrasi.com/verifikasi/e/<kode_verifikasi>` (atau pola lain yang **tidak** bentrok dengan rute publik lama — jelaskan pilihanmu). **Tidak ada** tanda tangan/paraf penyelia; nama penyelia dari akun yang ACC | Kode acak, tidak bisa ditebak dari nomor label |
 | A4.5 | Pemeriksaan kata terlarang otomatis (CLAUDE.md 9.1: "Tambahan", "Additional", "sesuai KMK terbaru", "revisi", "diperbarui", "parameter baru", nomor KMK-MK di judul tabel) + "Tera SMK" tidak tercetak | Uji gagal bila ada |
@@ -209,9 +211,9 @@ Ikuti PRD F10.1–F10.9 & F11 dan CLAUDE.md 11, **tanpa kop surat** (area kosong
 | T15 | Batas suhu & kelembaban tidak ada di Master | Lihat bagian 3.2 |
 | T16 | Format **Nomor Order** di sertifikat (contoh Excel hanya "CONTOH") | Pakai format PRD F10.4 `BBB/SMK-BO/<romawi>-<tahun>` |
 
-Tulis jawaban/keputusan Ridhwan untuk T9–T16 di `LAPORAN-AISTUDIO.md` bila ia memberikannya.
+Tulis jawaban/keputusan Ridhwan untuk T9–T16 di catatan harian `docs/riwayat/` bila ia memberikannya.
 
 ## 5. Urutan kerja & laporan
 1. Kerjakan **A1 → A7 berurutan**, satu langkah per giliran, ±3 file kode per giliran.
-2. Setiap langkah: tulis kode + uji, jalankan uji, lalu tambahkan entri di **`docs/aistudio/LAPORAN-AISTUDIO.md`**: tanggal, langkah, file yang dibuat/diubah (dan alasan bila file lama diubah), hasil uji (angka lulus/gagal, jujur), SQL yang ditulis (belum dijalankan), keputusan yang kamu ambil sendiri, hal "PERLU KONFIRMASI RIDHWAN", dan teks sertifikat baru yang perlu disetujui.
+2. Setiap langkah: tulis kode + uji, jalankan uji, lalu tambahkan entri di **`docs/riwayat/AAAA-BB-HH.md`**: tanggal, langkah, file yang dibuat/diubah (dan alasan bila file lama diubah), hasil uji (angka lulus/gagal, jujur), SQL yang ditulis (belum dijalankan), keputusan yang kamu ambil sendiri, hal "PERLU KONFIRMASI RIDHWAN", dan teks sertifikat baru yang perlu disetujui.
 3. Jangan lanjut ke Fase B sebelum Ridhwan menulis "lanjut Fase B".

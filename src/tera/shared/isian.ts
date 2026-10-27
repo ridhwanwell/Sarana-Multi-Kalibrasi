@@ -1,11 +1,11 @@
 /**
- * ATURAN ISIAN LKK — bagian, kolom identitas, alat standar, kelengkapan (Tahap 4.3c, PRD-AISTUDIO A1).
+ * ATURAN ISIAN LKK — bagian, kolom identitas, alat standar, kelengkapan (Tahap 4.3c, PRD-TAHAP4-LKK A1).
  *
  * Perumpamaan: daftar periksa di sampul lembar kerja. Layar membaca daftar ini; angka & batas
  * datang dari TEMPLATE alat bila ada, bila belum ada dipakai nilai bawaan Master v12 / PRD Lampiran C.
  * Fungsi murni (tanpa jaringan/database): dipakai layar teknisi sekarang, Selia & server nanti.
  *
- * Bentuk data LKK (PRD-AISTUDIO bagian 3): data.identitas / data.lingkungan / data.fisik,
+ * Bentuk data LKK (PRD-TAHAP4-LKK bagian 3): data.identitas / data.lingkungan / data.fisik,
  * `tanggalKalibrasi` (tanggal pelaksanaan) dan `calibratorSnapshot.{tekanan,stopwatch,termohigrometer}`.
  */
 import type { TemplateAlat } from './hitung.js';

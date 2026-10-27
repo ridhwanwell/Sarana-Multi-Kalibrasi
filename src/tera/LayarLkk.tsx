@@ -1,5 +1,5 @@
 /**
- * Tera SMK — layar isi LKK, bagian 1–3 (Tahap 4.3c, PRD-AISTUDIO A1 · CLAUDE.md 5, 9.3, 9.4, 13).
+ * Tera SMK — layar isi LKK, bagian 1–3 (Tahap 4.3c, PRD-TAHAP4-LKK A1 · CLAUDE.md 5, 9.3, 9.4, 13).
  *
  * Perumpamaan: lembar kerja kalibrasi di tangan teknisi. Setiap isian LANGSUNG ditulis ke buku di perangkat
  * (auto-save ≤ 400 ms + saat kotak ditinggalkan, pindah bagian, aplikasi disembunyikan/ditutup), jadi muat
