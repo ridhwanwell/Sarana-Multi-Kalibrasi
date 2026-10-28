@@ -2,7 +2,7 @@
 -- MIGRASI 0034 — AKTIFKAN 9 AKUN TEKNISI @tera.smk (beri baris profiles role 'teknisi')
 -- Supabase : qr-label-kalibrasi (PRODUKSI)
 -- Dibuat   : 28 Oktober 2026
--- Disetujui: (menunggu "lanjutkan" Ridhwan)
+-- Disetujui: Ridhwan ("lanjutkan", 28 Okt 2026 18.47 WIB) — DIJALANKAN, 4 cek true
 --
 -- Masalah: 9 akun @tera.smk (dibuat 18 Okt) belum punya baris di public.profiles,
 -- sehingga login ditolak "Akun belum diaktifkan, hubungi Admin Utama".
