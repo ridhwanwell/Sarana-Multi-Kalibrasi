@@ -11,7 +11,7 @@ const akar = fileURLToPath(new URL('../../', import.meta.url));
 const ASAL = 'http://localhost:9996';
 const keluar = process.env.TERA_FOTO_DIR || '';
 
-const ikon = ['FileDown','AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
+const ikon = ['FileDown','AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','Users','WifiOff','X'];
 const stubIkon = ikon.map((n) => `export const ${n} = (p) => React.createElement('svg', { 'data-ikon': '${n}', width: p.size || 24, height: p.size || 24, className: p.className, 'aria-hidden': 'true' });`).join('\n');
 const stubRouter = `
 import React from 'react';
@@ -91,13 +91,14 @@ async function halaman(lebar: number, tinggi: number, gelap = false): Promise<Pa
   return p;
 }
 /** api tiruan: GET /api/tera/jadwal membalas isi `jadwal` (atau gagal bila `mode` ≠ ok); lainnya 503. */
-const atur = (p: Page, jadwal: any[], mode: 'ok' | 'offline' = 'ok') => p.evaluate(([jd, mode]) => {
+const atur = (p: Page, jadwal: any[], mode: 'ok' | 'offline' = 'ok', tim: any[] | null = null) => p.evaluate(([jd, mode, tim]) => {
   (window as any).__api = async (u: string) => {
     if (mode === 'offline') throw new TypeError('Failed to fetch');
     if (u.startsWith('/api/tera/jadwal')) return new Response(JSON.stringify({ jadwal: jd }), { status: 200, headers: { 'content-type': 'application/json' } });
+    if (u.startsWith('/api/tera/tim') && tim) return new Response(JSON.stringify({ tim }), { status: 200, headers: { 'content-type': 'application/json' } });
     return new Response('{}', { status: 503 });
   };
-}, [jadwal, mode] as const);
+}, [jadwal, mode, tim] as const);
 const tunggu = async (p: Page, fn: () => boolean, ms = 8000) => {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) { if (await p.evaluate(fn)) return true; await p.waitForTimeout(100); }
@@ -196,6 +197,38 @@ for (const [lebar, tinggi, gelap] of [[320, 640, false], [390, 800, true], [1180
   }
   await p.context().close();
 }
+
+// ---------- 7. Papan Tim (28 Okt 2026): LKK teman satu jadwal ----------
+p = await halaman(390, 800);
+const TIM = [{
+  jadwalId: 'j1', anggota: [{ userId: 'u-alin', nama: 'Alin' }],
+  lkk: [
+    { noLabel: '095.0003', templateKode: 'sphygmomanometer', alatTambahan: false, poItemRef: 'A', status: 'submitted', teknisiUserId: 'u-alin', waktu: '2026-10-28T11:00:00Z' },
+    { noLabel: '095.0004', templateKode: 'sphygmomanometer', alatTambahan: false, poItemRef: null, status: 'draft', teknisiUserId: 'u-alin', waktu: '2026-10-28T11:00:00Z' },
+    { noLabel: '095.0012', templateKode: 'termohigrometer', alatTambahan: true, poItemRef: null, status: 'approved', teknisiUserId: 'u-alin', waktu: '2026-10-28T11:00:00Z' },
+  ],
+}];
+await atur(p, [J('j1')], 'ok', TIM);
+await p.evaluate(async () => { await (window as any).tera.buatLkk({ pemilik: 'u-t', bo: '095', noLabel: '095.0001', jadwalId: 'j1', poItemRef: 'A', templateKode: 'UJI', templateVersi: 1 }); });
+await p.evaluate(() => (window as any).pasang('beranda'));
+cek('Beranda: baris "Tim: 3 dari 10 dikerjakan" (saya 1 + teman 1 terkirim + 1 draft)', await tunggu(p, () => /Tim: 3 dari 10 dikerjakan/.test(document.body.innerText)), await p.evaluate(() => document.body.innerText.slice(0, 500)));
+cek('Beranda: angka milik saya tetap "1 dari 10"', /1 dari 10 dikerjakan · sisa 9/.test(await p.evaluate(() => document.body.innerText)));
+await p.evaluate(() => { (window as any).__params = { id: 'j1' }; (window as any).pasang('detail'); });
+await tunggu(p, () => /Dikerjakan teman satu tim/.test(document.body.innerText) && /Alin/.test(document.body.innerText));
+teks = await p.evaluate(() => document.body.innerText);
+cek('Detail: progres tim (saya 1 · teman 2)', /Progres tim: 3 dari 10 PO dikerjakan \(saya 1 · teman 2\)/.test(teks), teks.slice(0, 900));
+cek('Detail: Papan Tim — Alin 3 alat dengan nomor & status', /Alin/.test(teks) && /3 alat/.test(teks) && /095\.0003 · Sphygmo[^·\n]* · terkirim/i.test(teks) && /095\.0004 · Sphygmo[^·\n]* · sedang diisi/i.test(teks) && /095\.0012 · (Thermohygro|termohigro)[^·\n]* · alat tambahan · ACC/i.test(teks), teks);
+cek('Detail: keterangan "Diperbarui pukul" + isi LKK teman tidak bisa dibuka', /Diperbarui pukul/.test(teks) && /tidak bisa dibuka/.test(teks));
+cek('Detail: LKK teman tidak masuk daftar LKK saya (tetap 1)', await p.evaluate(() => document.querySelectorAll('.t-lkk-baris').length) === 1);
+cek('Detail: Alat PO tetap memantau milik saya + baris "Termasuk teman"', /PO 6 · dikerjakan 1 · sisa 5/.test(teks) && /Termasuk teman: 2 dari 6 · sisa tim 4/.test(teks), teks.slice(0, 1200));
+cek('Papan Tim tanpa geser samping (390 px)', !(await geser(p)));
+if (keluar) await p.screenshot({ path: `${keluar}/papan-tim-390.png`, fullPage: true });
+// offline: papan tetap terbaca dari perangkat
+await atur(p, [J('j1')], 'offline');
+await p.evaluate(() => (window as any).pasang('beranda'));
+await p.evaluate(() => { (window as any).__params = { id: 'j1' }; (window as any).pasang('detail'); });
+cek('offline: Papan Tim tetap tampil dari salinan di perangkat', await tunggu(p, () => /095\.0003/.test(document.body.innerText) && /Alin/.test(document.body.innerText)));
+await p.context().close();
 
 await br.close();
 console.log(`\n${lulus}/${lulus + gagal} lulus`);

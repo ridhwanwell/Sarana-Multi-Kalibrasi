@@ -19,6 +19,7 @@ import { Link, useParams } from 'react-router-dom';
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Info, Loader2, Lock, Minus } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { useSinkron } from './SinkronKonteks';
+import { pemakaiNomor } from './data/timLokal';
 import { ChipSync, KeadaanKosong } from './TeraKerangka';
 import { BarisBacaan, SalinContext, type SalinKonteks } from './salinBacaan';
 import { ChipVonis, Dropdown, fmt2, Galat, HasilKoreksi, KotakAngka, KotakTeks, Segmen, tglPanjang } from './KotakIsian';
@@ -578,7 +579,7 @@ interface FormulirProps { lkk: LkkLokal; tpl: TemplateApa; kalibrator: Kalibrato
 type Simpan = { k: 'diam' } | { k: 'menyimpan' } | { k: 'tersimpan'; waktu: Date } | { k: 'galat'; pesan: string };
 
 const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, teknisi, onMuatUlang }) => {
-  const { dorong, daftar, jadwal } = useSinkron();
+  const { dorong, daftar, jadwal, tim } = useSinkron();
   const [selesaiLokal, setSelesaiLokal] = useState(false);
   const [status, setStatus] = useState<SyncState>(lkk.syncState);
   const [gantiNomor, setGantiNomor] = useState(false);
@@ -815,7 +816,7 @@ const Formulir: React.FC<FormulirProps> = ({ lkk, tpl, kalibrator, namaRs, tekni
         </div>
       )}
       {gantiNomor && jadwalLkk && (
-        <MulaiLkk jadwal={jadwalLkk} alat={null} templates={[tpl]} pemilik={lkk.pemilik} ganti={live ?? lkk}
+        <MulaiLkk jadwal={jadwalLkk} alat={null} templates={[tpl]} pemilik={lkk.pemilik} ganti={live ?? lkk} cekTeman={(n) => pemakaiNomor(tim, jadwalLkk.jadwalId, n)}
           onTutup={() => setGantiNomor(false)} onDibuat={() => { /* tidak dipakai pada mode ganti */ }}
           onGanti={() => { setGantiNomor(false); onMuatUlang(); }} />
       )}

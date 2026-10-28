@@ -209,4 +209,83 @@ export function registerTeraJadwalRoutes(app: Express, deps: { rateLimitKey: (re
       return res.status(503).json({ error: PESAN_SIBUK });
     }
   });
+
+  // --- Papan Tim (28 Okt 2026): LKK teman satu jadwal — hanya ringkasan, tanpa angka bacaan ---------
+  //  Hanya jadwal yang menugaskan akun ini. Yang dikirim: nomor label, jenis alat, status, nama teknisi.
+  //  Isi LKK (data/results/snapshot) TIDAK pernah dibaca di sini. Draft teman = cadangan draft di server.
+  app.get("/api/tera/tim", limiter, ...lapangan, async (req: AuthRequest, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const saya: string = req.user.id;
+    try {
+      const { data: jd, error: eJ } = await berbatas((s) =>
+        supabaseAdmin.from('tera_jadwal_push')
+          .select('jadwal_id, bo, label_awal, label_akhir, label_cadangan_awal, label_cadangan_akhir, teknisi_user_ids')
+          .contains('teknisi_user_ids', [saya]).is('dicabut_at', null).limit(200).abortSignal(s));
+      if (eJ) { console.error('[Tera] tim jadwal:', eJ.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+      const jadwal = (jd || []) as any[];
+      const waktuServer = new Date().toISOString();
+      if (jadwal.length === 0) return res.json({ waktuServer, tim: [] });
+
+      const anggota = Array.from(new Set(jadwal.flatMap((j) => (Array.isArray(j.teknisi_user_ids) ? j.teknisi_user_ids : []))))
+        .filter((x): x is string => typeof x === 'string' && x !== saya);
+      const ids = jadwal.map((j) => j.jadwal_id);
+      const bos = Array.from(new Set(jadwal.map((j) => j.bo)));
+
+      const [rL, rD, rT, rP] = await Promise.all([
+        anggota.length ? berbatas((s) => supabaseAdmin.from('tera_lkk')
+          .select('id, jadwal_id, no_label, template_kode, alat_tambahan, po_item_ref, status, teknisi_user_id, updated_at')
+          .in('jadwal_id', ids).in('teknisi_user_id', anggota).limit(5000).abortSignal(s)) : Promise.resolve({ data: [], error: null } as any),
+        anggota.length ? berbatas((s) => supabaseAdmin.from('tera_lkk_drafts')
+          .select('id, bo, no_label, template_kode, teknisi_user_id, dicadangkan_pada')
+          .in('bo', bos).in('teknisi_user_id', anggota).limit(5000).abortSignal(s)) : Promise.resolve({ data: [], error: null } as any),
+        anggota.length ? berbatas((s) => supabaseAdmin.from('teknisi').select('nama, user_id, deleted_at').in('user_id', anggota).abortSignal(s)) : Promise.resolve({ data: [], error: null } as any),
+        anggota.length ? berbatas((s) => supabaseAdmin.from('profiles').select('id, full_name, email').in('id', anggota).abortSignal(s)) : Promise.resolve({ data: [], error: null } as any),
+      ]);
+      if (rL.error || rD.error || rT.error || rP.error) {
+        console.error('[Tera] tim baca:', rL.error?.message || rD.error?.message || rT.error?.message || rP.error?.message);
+        return res.status(503).json({ error: PESAN_SIBUK });
+      }
+
+      // Draft yang sudah terkirim sebagai LKK tidak ditampilkan dua kali
+      const draft = (rD.data || []) as any[];
+      const sudahTerkirim = new Set<string>();
+      if (draft.length) {
+        const { data: t, error: eT } = await berbatas((s) => supabaseAdmin.from('tera_lkk').select('id').in('id', draft.map((d) => d.id)).abortSignal(s));
+        if (eT) { console.error('[Tera] tim cek draft:', eT.message); return res.status(503).json({ error: PESAN_SIBUK }); }
+        for (const r of (t || []) as any[]) sudahTerkirim.add(r.id);
+      }
+
+      const nama = new Map<string, string>();
+      for (const p of (rP.data || []) as any[]) {
+        const n = (typeof p.full_name === 'string' && p.full_name.trim()) || (typeof p.email === 'string' ? p.email.split('@')[0] : '');
+        if (n) nama.set(p.id, n);
+      }
+      for (const t of (rT.data || []) as any[]) if (!t.deleted_at && typeof t.nama === 'string' && t.nama.trim()) nama.set(t.user_id, t.nama.trim());
+
+      const dalam = (n: string, a?: string | null, b?: string | null) => !!a && !!b && n >= a && n <= b;
+      const tim = jadwal.map((j) => {
+        const ang = (Array.isArray(j.teknisi_user_ids) ? j.teknisi_user_ids : []).filter((u: string) => u !== saya);
+        const lkk = ((rL.data || []) as any[]).filter((r) => r.jadwal_id === j.jadwal_id).map((r) => ({
+          noLabel: r.no_label, templateKode: r.template_kode, alatTambahan: r.alat_tambahan === true,
+          poItemRef: r.po_item_ref ?? null, status: String(r.status || 'submitted'), teknisiUserId: r.teknisi_user_id, waktu: r.updated_at,
+        }));
+        const draftJ = draft
+          .filter((d) => !sudahTerkirim.has(d.id) && d.bo === j.bo && ang.includes(d.teknisi_user_id) && typeof d.no_label === 'string'
+            && (dalam(d.no_label, j.label_awal, j.label_akhir) || dalam(d.no_label, j.label_cadangan_awal, j.label_cadangan_akhir)))
+          .map((d) => ({
+            noLabel: d.no_label, templateKode: d.template_kode, alatTambahan: !dalam(d.no_label, j.label_awal, j.label_akhir),
+            poItemRef: null, status: 'draft', teknisiUserId: d.teknisi_user_id, waktu: d.dicadangkan_pada,
+          }));
+        return {
+          jadwalId: j.jadwal_id,
+          anggota: ang.map((u: string) => ({ userId: u, nama: nama.get(u) || 'Teknisi' })),
+          lkk: [...lkk, ...draftJ],
+        };
+      });
+      return res.json({ waktuServer, tim });
+    } catch (err: any) {
+      console.error('[Tera] GET /api/tera/tim:', err?.name === 'AbortError' ? 'batas waktu habis' : err?.message);
+      return res.status(503).json({ error: PESAN_SIBUK });
+    }
+  });
 }

@@ -15,7 +15,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle, Building2, Check, ChevronLeft, ChevronRight, ClipboardCheck, FileDown, Loader2, Plus, RefreshCw, Tag,
+  AlertCircle, Building2, Check, ChevronLeft, ChevronRight, ClipboardCheck, FileDown, Loader2, Plus, RefreshCw, Tag, Users,
 } from 'lucide-react';
 import { useSinkron } from './SinkronKonteks';
 import { BarisLkk, KeadaanKosong, Statistik } from './TeraKerangka';
@@ -26,6 +26,7 @@ import type { TemplateApa } from './data/masterLokal';
 import { templateUntukAlat } from './shared/nomorLabel';
 import { MulaiLkk } from './MulaiLkk';
 import { unduhBapBastp, type JenisDokumen } from './data/unduhBapBastp';
+import { pemakaiNomor, ringkasTim, statusTeman, type RingkasTim, type TimLokal } from './data/timLokal';
 
 /* ---------- Dokumen RS: unduh BAP & BASTP (Tahap 5.3) ---------- */
 
@@ -132,7 +133,7 @@ const BarisStatusJadwal: React.FC = () => {
 
 /* ---------- Beranda ---------- */
 
-const KartuRs: React.FC<{ j: JadwalLokal; t: Total; urut: number }> = React.memo(({ j, t, urut }) => (
+const KartuRs: React.FC<{ j: JadwalLokal; t: Total; urut: number; tim: number | null }> = React.memo(({ j, t, urut, tim }) => (
   <li className="t-item-masuk" style={{ animationDelay: `${Math.min(urut, 8) * 40}ms` }}>
     <Link to={`/tera/rs/${encodeURIComponent(j.jadwalId)}`} className="t-rs-kartu">
       <div className="t-rs-utama">
@@ -148,6 +149,9 @@ const KartuRs: React.FC<{ j: JadwalLokal; t: Total; urut: number }> = React.memo
           <p className="t-ket tabular">
             {t.po === 0 ? 'Belum ada alat PO' : `${t.dikerjakan} dari ${t.po} dikerjakan · sisa ${t.sisa}`}
           </p>
+          {tim !== null && t.po > 0 && (
+            <p className="t-ket tabular flex items-center gap-1"><Users size={14} aria-hidden="true" />Tim: {Math.min(tim, t.po)} dari {t.po} dikerjakan</p>
+          )}
         </div>
       </div>
       <ChevronRight size={20} aria-hidden="true" className="t-rs-panah" />
@@ -157,8 +161,11 @@ const KartuRs: React.FC<{ j: JadwalLokal; t: Total; urut: number }> = React.memo
 KartuRs.displayName = 'KartuRs';
 
 export const HalamanBeranda: React.FC = () => {
-  const { jadwal, daftar, siap } = useSinkron();
-  const baris = useMemo(() => jadwal.map((j) => ({ j, t: totalJadwal(j, daftar) })), [jadwal, daftar]);
+  const { jadwal, daftar, siap, tim } = useSinkron();
+  const baris = useMemo(() => jadwal.map((j) => {
+    const rt = ringkasTim(j, daftar, tim);
+    return { j, t: totalJadwal(j, daftar), tim: rt.teman.length > 0 ? rt.totalTim : null };
+  }), [jadwal, daftar, tim]);
   const jumlah = useMemo(() => baris.reduce((a, b) => ({ po: a.po + b.t.po, dikerjakan: a.dikerjakan + b.t.dikerjakan, sisa: a.sisa + b.t.sisa }), { po: 0, dikerjakan: 0, sisa: 0 }), [baris]);
 
   return (
@@ -182,7 +189,7 @@ export const HalamanBeranda: React.FC = () => {
               />
             ) : (
               <ul className="t-rs-daftar" aria-label={`${baris.length} rumah sakit aktif`}>
-                {baris.map(({ j, t }, i) => <KartuRs key={j.id} j={j} t={t} urut={i} />)}
+                {baris.map(({ j, t, tim: nt }, i) => <KartuRs key={j.id} j={j} t={t} tim={nt} urut={i} />)}
               </ul>
             )}
           </div>
@@ -207,12 +214,47 @@ export const HalamanBeranda: React.FC = () => {
   );
 };
 
+/* ---------- Papan Tim (28 Okt 2026): LKK teman satu jadwal, hanya dilihat ---------- */
+
+const PapanTim: React.FC<{ rt: RingkasTim | null; tim: TimLokal | null; namaAlat: (kode: string | null) => string }> = ({ rt, tim, namaAlat }) => (
+  <section className="mt-6" aria-labelledby="judul-tim">
+    <h2 id="judul-tim" className="t-judul-bagian flex items-center gap-2"><Users size={18} aria-hidden="true" />Dikerjakan teman satu tim</h2>
+    <p className="t-ket mt-1">
+      {tim ? `Diperbarui pukul ${jam(tim.diambilAt)} (otomatis saat ada sinyal).` : 'Belum pernah diperbarui — butuh sinyal sekali.'}
+      {' '}Hanya nomor stiker & status; isi LKK teman tidak bisa dibuka.
+    </p>
+    <div className="mt-3">
+      {!rt || rt.teman.length === 0 ? (
+        <p className="t-teks-2 text-[15px]">Belum ada LKK dari teman satu tim di rumah sakit ini.</p>
+      ) : (
+        <ul className="t-alat-daftar" aria-label={`${rt.teman.length} teman`}>
+          {rt.teman.map((g) => (
+            <li key={g.userId} className="t-alat-baris">
+              <div className="t-alat-atas">
+                <p className="t-alat-nama">{g.nama}</p>
+                <span className="t-chip-sync" data-jenis="tersimpan"><span className="tabular">{g.lkk.length} alat</span></span>
+              </div>
+              <ul className="mt-1" aria-label={`LKK ${g.nama}`}>
+                {g.lkk.map((l) => (
+                  <li key={l.noLabel} className="t-ket tabular">
+                    {l.noLabel} · {namaAlat(l.templateKode)}{l.alatTambahan ? ' · alat tambahan' : ''} · {statusTeman(l.status)}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+);
+
 /* ---------- Detail RS ---------- */
 
 export const HalamanDetailRs: React.FC = () => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const { jadwal, daftar, siap, dorong, statusJadwal } = useSinkron();
+  const { jadwal, daftar, siap, dorong, statusJadwal, tim } = useSinkron();
   const [templates, setTemplates] = useState<TemplateApa[]>([]);
   const [lembar, setLembar] = useState<{ alat: HitunganAlat | null } | null>(null);
   const [kabar, setKabar] = useState<{ jenis: 'ok' | 'info'; teks: string } | null>(null);
@@ -229,6 +271,9 @@ export const HalamanDetailRs: React.FC = () => {
   const alat = useMemo(() => (j ? hitungAlatPo(j, daftar) : []), [j, daftar]);
   const lkk = useMemo(() => (j ? daftar.filter((l) => l.jadwalId === j.jadwalId) : []), [j, daftar]);
   const t = useMemo(() => alat.reduce((a, b) => ({ po: a.po + b.jumlah, dikerjakan: a.dikerjakan + b.dikerjakan, sisa: a.sisa + b.sisa }), { po: 0, dikerjakan: 0, sisa: 0 }), [alat]);
+  const rt = useMemo(() => (j ? ringkasTim(j, daftar, tim) : null), [j, daftar, tim]);
+  const adaTeman = !!rt && rt.teman.length > 0;
+  const totalTim = rt ? Math.min(rt.totalTim, t.po) : 0;
 
   const kembali = (
     <Link to="/tera/" className="t-kembali">
@@ -275,9 +320,19 @@ export const HalamanDetailRs: React.FC = () => {
 
       <ul className="t-statistik mt-4" aria-label="Ringkasan PO rumah sakit ini">
         <li className="t-stat" data-jenis="send"><span className="t-stat-angka">{t.po}</span><span className="t-stat-label">Alat PO</span></li>
-        <li className="t-stat" data-jenis="wait"><span className="t-stat-angka">{t.dikerjakan}</span><span className="t-stat-label">Dikerjakan</span></li>
-        <li className="t-stat" data-jenis={t.po > 0 && t.sisa === 0 ? 'ok' : 'wait'}><span className="t-stat-angka">{t.sisa}</span><span className="t-stat-label">Sisa</span></li>
+        <li className="t-stat" data-jenis="wait"><span className="t-stat-angka">{t.dikerjakan}</span><span className="t-stat-label">{adaTeman ? 'Dikerjakan saya' : 'Dikerjakan'}</span></li>
+        {adaTeman ? (
+          <li className="t-stat" data-jenis={t.po > 0 && totalTim >= t.po ? 'ok' : 'wait'}><span className="t-stat-angka">{Math.max(0, t.po - totalTim)}</span><span className="t-stat-label">Sisa tim</span></li>
+        ) : (
+          <li className="t-stat" data-jenis={t.po > 0 && t.sisa === 0 ? 'ok' : 'wait'}><span className="t-stat-angka">{t.sisa}</span><span className="t-stat-label">Sisa</span></li>
+        )}
       </ul>
+      {adaTeman && t.po > 0 && (
+        <div className="t-rs-kemajuan mt-3">
+          <Bilah nilai={totalTim} maks={t.po} />
+          <p className="t-ket tabular">Progres tim: {totalTim} dari {t.po} PO dikerjakan (saya {t.dikerjakan} · teman {totalTim - t.dikerjakan})</p>
+        </div>
+      )}
 
       <section className="t-kartu mt-4" aria-label="Nomor stiker">
         <p className="text-[15px] font-semibold flex items-center gap-2"><Tag size={16} aria-hidden="true" />Nomor stiker</p>
@@ -316,6 +371,9 @@ export const HalamanDetailRs: React.FC = () => {
                 </div>
                 <Bilah nilai={a.dikerjakan} maks={a.jumlah} />
                 <p className="t-ket tabular">PO {a.jumlah} · dikerjakan {a.dikerjakan} · sisa {a.sisa}</p>
+                {adaTeman && (rt!.poTim.get(a.ref) || 0) > a.dikerjakan && (
+                  <p className="t-ket tabular">Termasuk teman: {Math.min(rt!.poTim.get(a.ref) || 0, a.jumlah)} dari {a.jumlah} · sisa tim {Math.max(0, a.jumlah - (rt!.poTim.get(a.ref) || 0))}</p>
+                )}
                 {a.sisa > 0 && (
                   <div className="t-alat-aksi">
                     <button
@@ -361,6 +419,8 @@ export const HalamanDetailRs: React.FC = () => {
         </div>
       </section>
 
+      <PapanTim rt={rt} tim={tim} namaAlat={(k) => (k ? templates.find((x) => x.kode_alat === k)?.nama || k.replace(/_/g, ' ') : '-')} />
+
       <section className="mt-6" aria-labelledby="judul-lkk-rs">
         <h2 id="judul-lkk-rs" className="t-judul-bagian">LKK di rumah sakit ini</h2>
         <div className="mt-3">
@@ -376,6 +436,7 @@ export const HalamanDetailRs: React.FC = () => {
       {lembar && (
         <MulaiLkk
           jadwal={j} alat={lembar.alat} templates={templates} pemilik={j.pemilik}
+          cekTeman={(n) => pemakaiNomor(tim, j.jadwalId, n)}
           onTutup={() => setLembar(null)}
           onDibuat={(l) => {
             setLembar(null);

@@ -34,6 +34,8 @@ export interface MulaiLkkProps {
   /** Mengganti nomor stiker LKK yang SUDAH ADA (mis. ditolak server karena nomor ganda). Tidak membuat LKK baru. */
   ganti?: LkkLokal;
   onGanti?: () => void;
+  /** Papan Tim (28 Okt 2026): nomor ini dipakai teman satu jadwal? Terkirim = ditolak; draft teman = peringatan. */
+  cekTeman?: (nomor: string) => { nama: string; status: string } | null;
 }
 
 /* ---------- Pemindai kamera ---------- */
@@ -107,13 +109,14 @@ const Pemindai: React.FC<{ onHasil: (teks: string) => void; onKetik: () => void 
 
 /* ---------- Lembar ---------- */
 
-export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pemilik, onTutup, onDibuat, ganti, onGanti }) => {
+export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pemilik, onTutup, onDibuat, ganti, onGanti, cekTeman }) => {
   const tambahan = ganti ? ganti.alatTambahan : alat === null;
   const templatePo = alat ? templateUntukAlat(alat.nama, templates) : null;
   const [langkah, setLangkah] = useState<Langkah>(tambahan && !ganti ? 'jenis' : 'nomor');
   const [template, setTemplate] = useState<TemplateApa | null>(ganti ? (templates.find((t) => t.kode_alat === ganti.templateKode) ?? null) : templatePo);
   const [ketikan, setKetikan] = useState('');
   const [galat, setGalat] = useState<string | null>(null);
+  const [peringatan, setPeringatan] = useState<string | null>(null);
   const [hasil, setHasil] = useState<Extract<HasilCekNomor, { ok: true }> | null>(null);
   const [menyimpan, setMenyimpan] = useState(false);
   const sibuk = useRef(false);
@@ -139,6 +142,13 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
       const dipakai = new Set(semua.map((l) => l.noLabel).filter((x): x is string => !!x));
       const h = cekNomorLabel({ nomor, bo: jadwal.bo, utama, cadangan, dipakai, mode: tambahan ? 'tambahan' : 'po' });
       if (!h.ok) { setGalat(h.pesan); setLangkah('nomor'); return; }
+      const teman = cekTeman?.(h.nomor) ?? null;
+      if (teman && teman.status !== 'draft') {
+        setGalat(`Nomor stiker ${h.nomor} sudah dipakai ${teman.nama} (LKK sudah terkirim). Periksa lagi stiker di alat.`);
+        setLangkah('nomor');
+        return;
+      }
+      setPeringatan(teman ? `Perhatian: nomor ${h.nomor} sedang dipakai ${teman.nama} (LKK masih diisi). Pastikan tidak dobel sebelum lanjut.` : null);
       setHasil(h);
       setLangkah('konfirmasi');
     } catch {
@@ -146,7 +156,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
       setLangkah('nomor');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pemilik, jadwal.bo, jadwal.labelAwal, jadwal.labelAkhir, jadwal.cadanganAwal, jadwal.cadanganAkhir, tambahan]);
+  }, [pemilik, jadwal.bo, jadwal.labelAwal, jadwal.labelAkhir, jadwal.cadanganAwal, jadwal.cadanganAkhir, tambahan, cekTeman]);
 
   const kirimKetikan = (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,6 +296,7 @@ export const MulaiLkk: React.FC<MulaiLkkProps> = ({ jadwal, alat, templates, pem
               )}
             </div>
             <p className="t-konfirmasi-tanya">Nomor stiker {hasil.nomor} — sudah sesuai dengan stiker di alat?</p>
+            {peringatan && <p className="t-pesan-error" role="status"><AlertCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" /><span>{peringatan}</span></p>}
             {galat && <p className="t-pesan-error" role="alert"><AlertCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" /><span>{galat}</span></p>}
             <button type="button" className="t-tombol t-tombol-utama mt-3" onClick={() => void simpan()} disabled={menyimpan}>
               {menyimpan ? <Loader2 size={20} aria-hidden="true" className="t-putar" /> : <Check size={20} aria-hidden="true" />}

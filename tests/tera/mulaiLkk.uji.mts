@@ -11,7 +11,7 @@ const akar = fileURLToPath(new URL('../../', import.meta.url));
 const ASAL = 'http://localhost:9995';
 const keluar = process.env.TERA_FOTO_DIR || '';
 
-const ikon = ['FileDown','AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','WifiOff','X'];
+const ikon = ['FileDown','AlertCircle','Building2','Camera','Check','ChevronLeft','ChevronRight','Circle','ClipboardCheck','Clock','Download','Eye','EyeOff','FlaskConical','Info','Keyboard','LayoutDashboard','Loader2','Lock','LogOut','Pencil','Plus','RefreshCw','Smartphone','Tag','Upload','User','Users','WifiOff','X'];
 const stubIkon = ikon.map((n) => `export const ${n} = (p) => React.createElement('svg', { 'data-ikon': '${n}', width: p.size || 24, height: p.size || 24, className: p.className, 'aria-hidden': 'true', viewBox: '0 0 24 24' }, React.createElement('circle', { cx: 12, cy: 12, r: 8 }));`).join('\n');
 const stubRouter = `
 import React from 'react';
@@ -91,21 +91,23 @@ const J = (extra: any = {}) => ({
   versi: 1, isTest: false, pushedAt: '2026-10-19T01:00:00Z', dicabut: false, ...extra,
 });
 
-async function halaman(lebar: number, tinggi: number, jadwal: any, gelap = false): Promise<Page> {
+async function halaman(lebar: number, tinggi: number, jadwal: any, gelap = false, tim: any[] | null = null): Promise<Page> {
   const ctx = await br.newContext({ viewport: { width: lebar, height: tinggi }, colorScheme: gelap ? 'dark' : 'light' });
   await ctx.route(`${ASAL}/**`, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: HTML }));
   const p = await ctx.newPage();
   p.on('pageerror', (e) => console.log('  [error]', e.message));
   await p.goto(ASAL + '/');
   await p.waitForFunction(() => (window as any).siap);
-  await p.evaluate((jd) => {
+  await p.evaluate(([jd, tim]) => {
     (window as any).__user = { id: 'u-t', fullName: 'Teknisi Uji', role: 'teknisi' };
     (window as any).__params = { id: 'j1' };
     (window as any).__api = async (u: string) => u.startsWith('/api/tera/jadwal')
       ? new Response(JSON.stringify({ jadwal: [jd] }), { status: 200, headers: { 'content-type': 'application/json' } })
-      : new Response('{}', { status: 503 });
+      : u.startsWith('/api/tera/tim') && tim
+        ? new Response(JSON.stringify({ tim }), { status: 200, headers: { 'content-type': 'application/json' } })
+        : new Response('{}', { status: 503 });
     (window as any).pasang();
-  }, jadwal);
+  }, [jadwal, tim] as const);
   await p.waitForFunction(() => /Alat PO/.test(document.body.innerText) && /Sphygmomanometer/.test(document.body.innerText), null, { timeout: 8000 });
   return p;
 }
@@ -274,6 +276,25 @@ await p.addStyleTag({ content: 'html{font-size:200% !important} .t-lembar{font-s
 await bukaMulai(p, 0);
 cek('huruf 200 %: lembar dapat digulir, tanpa geser samping', !(await geser(p)));
 await p.context().close();
+
+// ---------- 11. Papan Tim: nomor stiker yang dipakai teman (28 Okt 2026) ----------
+{
+  const jd = J();
+  const TIM = [{ jadwalId: jd.jadwalId, anggota: [{ userId: 'u-alin', nama: 'Alin' }], lkk: [
+    { noLabel: `${jd.bo}.0004`, templateKode: 'sphygmomanometer', alatTambahan: false, poItemRef: null, status: 'submitted', teknisiUserId: 'u-alin', waktu: null },
+    { noLabel: `${jd.bo}.0005`, templateKode: 'sphygmomanometer', alatTambahan: false, poItemRef: null, status: 'draft', teknisiUserId: 'u-alin', waktu: null },
+  ] }];
+  p = await halaman(390, 800, jd, false, TIM);
+  await tunggu(p, () => /Alin/.test(document.body.innerText), 8000);
+  await bukaMulai(p, 0);
+  await ketik(p, '0004');
+  const g = await p.evaluate(() => document.querySelector('#t-galat-nomor')?.textContent || '');
+  cek('nomor sudah dipakai teman (terkirim) → ditolak dengan nama teman', /sudah dipakai Alin/.test(g) && !(await p.evaluate(() => !!document.querySelector('.t-konfirmasi'))), g);
+  await ketik(p, '0005');
+  const k = await teksSheet(p);
+  cek('nomor sedang diisi teman (draft) → boleh lanjut dengan peringatan', /sedang dipakai Alin/.test(k) && await p.evaluate(() => !!document.querySelector('.t-konfirmasi')), k);
+  await p.context().close();
+}
 
 await br.close();
 console.log(`\n${lulus} lulus, ${gagal} gagal`);

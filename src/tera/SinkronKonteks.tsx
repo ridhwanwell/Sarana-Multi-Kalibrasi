@@ -19,6 +19,7 @@ import {
 import { mintaPenyimpananPermanen, mulaiMesinKirim, pengirimApi, type MesinKirim } from './data/mesinKirim';
 import { daftarJadwalAktif, tarikJadwal, type JadwalLokal } from './data/jadwalLokal';
 import { tarikMaster } from './data/masterLokal';
+import { bacaTim, tarikTim, type TimLokal } from './data/timLokal';
 
 const KOSONG: Ringkasan = {
   draft: 0, tersimpan: 0, mengirim: 0, diterima: 0, ditolak: 0, belumHijau: 0, draftBelumTercadang: 0
@@ -33,6 +34,8 @@ export interface KeadaanSinkron {
   daftar: LkkLokal[];
   /** Jadwal RS aktif di perangkat (yang dicabut kantor sudah disembunyikan). */
   jadwal: JadwalLokal[];
+  /** Papan Tim: LKK teman satu jadwal (salinan terakhir dari server; null = belum pernah ditarik). */
+  tim: TimLokal | null;
   /** Status tarik jadwal terakhir: 'belum' | 'ok' | 'gagal' (gagal = jadwal lama tetap dipakai). */
   statusJadwal: { keadaan: 'belum' | 'menarik' | 'ok' | 'gagal'; pesan: string | null; waktu: string | null };
   /** Pesan bila penyimpanan di perangkat tidak bisa dibuka (mis. mode privat). */
@@ -79,6 +82,7 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [ringkasan, setRingkasan] = useState<Ringkasan>(KOSONG);
   const [daftar, setDaftar] = useState<LkkLokal[]>([]);
   const [jadwal, setJadwal] = useState<JadwalLokal[]>([]);
+  const [tim, setTim] = useState<TimLokal | null>(null);
   const [statusJadwal, setStatusJadwal] = useState<KeadaanSinkron['statusJadwal']>({ keadaan: 'belum', pesan: null, waktu: null });
   const [gagalPenyimpanan, setGagalPenyimpanan] = useState<string | null>(null);
   const [izinPermanen, setIzinPermanen] = useState<boolean | null>(null);
@@ -125,6 +129,10 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const h = await tarikJadwal(pemilik, (signal) =>
         apiFetch('/api/tera/jadwal', { method: 'GET', retries: 0, timeoutMs: 15000, signal }));
+      // Papan Tim (28 Okt): gagal = papan lama tetap dipakai, tanpa pesan
+      const tb = await tarikTim(pemilik, (signal) => apiFetch('/api/tera/tim', { method: 'GET', retries: 0, timeoutMs: 15000, signal }))
+        .catch(() => null);
+      if (tb && hidup.current) setTim(tb);
       // Template & kalibrator ikut ditarik (4.3a). Gagal = pakai salinan lama / template bawaan, tanpa pesan.
       await tarikMaster((signal) => apiFetch('/api/tera/master', { method: 'GET', retries: 0, timeoutMs: 15000, signal }))
         .catch(() => undefined);
@@ -150,6 +158,8 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setRingkasan(KOSONG);
     setDaftar([]);
     setJadwal([]);
+    setTim(null);
+    void bacaTim(pemilik).then((t) => { if (hidup.current && t) setTim((lama) => lama ?? t); });
     setStatusJadwal({ keadaan: 'belum', pesan: null, waktu: null });
 
     const m = mulaiMesinKirim({
@@ -259,9 +269,9 @@ export const SinkronProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [daftar]);
 
   const nilai = useMemo<KeadaanSinkron>(() => ({
-    siap, ringkasan, daftar, jadwal, statusJadwal, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
+    siap, ringkasan, daftar, jadwal, tim, statusJadwal, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
     dorong, tarikJadwalSekarang, keluarAman, unduhCadangan, pasangKeLayarUtama
-  }), [siap, ringkasan, daftar, jadwal, statusJadwal, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
+  }), [siap, ringkasan, daftar, jadwal, tim, statusJadwal, gagalPenyimpanan, izinPermanen, terpasang, cadanganTerakhir,
        dorong, tarikJadwalSekarang, keluarAman, unduhCadangan, pasangKeLayarUtama]);
 
   return <Konteks.Provider value={nilai}>{children}</Konteks.Provider>;

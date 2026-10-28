@@ -30,6 +30,7 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 3. Master Excel Syringe L18:L22: disarankan `ABS(F18)+N(I18)<=T18` (pakai U95, bukan T/3). Opsional, di file Excel Ridhwan.
 4. Climatic Chamber: angka = datasheet pabrik (alat baru, belum ada sertifikat) — sah; ganti teks `sumber` bila diminta.
 5. (28 Okt) Climatic Chamber hanya muncul di LKK Thermohygrometer; pilihan Termohigrometer lain = HTC-1 saja. Selesai, menunggu uji Ridhwan di tablet.
+6. (28 Okt) Papan Tim di Beranda & Detail RS (LKK teman satu jadwal: nama · jumlah · nomor · status; nomor dipakai teman ditolak/diperingatkan). Menunggu uji Ridhwan + Alin.
 
 ### 🧭 GAYA JAWABAN (wajib di semua chat/sesi Project ini)
 

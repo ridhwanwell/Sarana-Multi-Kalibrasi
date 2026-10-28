@@ -48,6 +48,7 @@
     "test:tera:mulai-lkk": "tsx tests/tera/mulaiLkk.uji.mts",
     "test:tera:lingkungan": "tsx tests/tera/lingkungan.test.mts",
     "test:tera:isian": "tsx tests/tera/isian.test.mts",
+    "test:tera:tim": "tsx tests/tera/timLokal.test.mts",
     "test:tera:layar-lkk": "tsx tests/tera/layarLkk.uji.mts",
     "test:tera:layar-pompa": "tsx tests/tera/layarPompa.uji.mts",
     "test:tera:layar-syringe": "tsx tests/tera/layarSyringe.uji.mts",
