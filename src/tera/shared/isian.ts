@@ -123,11 +123,22 @@ const berlakuTerawal = (baris: { berlakuSampai: string | null }[]): string | nul
   return t[0] ?? null;
 };
 
+/**
+ * Kalibrator KHUSUS satu peran (Ridhwan 28 Okt 2026): hanya boleh ditawarkan di peran itu.
+ * Climatic Chamber (CAL-048) hanya untuk LKK Thermohygrometer (peran 'chamber'); di LKK lain & di pilihan
+ * "Termohigrometer" (kondisi ruang) tidak muncul, sehingga pilihan termohigrometer tinggal HTC-1.
+ */
+export const ASET_KHUSUS_PERAN: Record<string, PeranStandar> = { 'CAL-048': 'chamber' };
+
 /** Pilihan alat untuk satu peran, dari daftar kalibrator di perangkat. */
 export function susunPilihan<K extends KalibratorMin>(def: DefStandar, semua: K[]): PilihanStandar<K>[] {
   const per = new Map<string, K[]>();
   for (const k of semua) {
     if (!def.parameter.includes(k.parameter)) continue;
+    const khusus = ASET_KHUSUS_PERAN[k.asetId];
+    if (khusus && khusus !== def.peran) continue;
+    // Peran yang punya alat khusus hanya menawarkan alat khusus itu (peran "chamber" = Climatic Chamber saja)
+    if (!khusus && Object.values(ASET_KHUSUS_PERAN).includes(def.peran)) continue;
     const l = per.get(k.asetId) ?? [];
     l.push(k);
     per.set(k.asetId, l);

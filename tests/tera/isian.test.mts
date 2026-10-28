@@ -46,6 +46,15 @@ const kal = (o: any) => ({ asetId: 'A', parameter: 'tekanan_mmhg', nama: 'Alat A
   cek('stopwatch kosong → daftar kosong, tidak crash', susunPilihan(STANDAR_BAWAAN[1], semua).length === 0);
   cek('hanya suhu tanpa kelembaban → tidak lengkap', susunPilihan(termo, [kal({ asetId: 'T3', parameter: 'suhu_c' })])[0].lengkap === false);
   cek('peran bukan hanyaRekomendasi tidak disaring', susunPilihan(STANDAR_BAWAAN[0], [kal({ asetId: 'P1', rekomendasi: true }), kal({ asetId: 'P2' })]).length === 2);
+  // Climatic Chamber (CAL-048) khusus LKK Thermohygrometer (28 Okt 2026): tidak muncul di peran lain
+  const dgChamber = [
+    ...semua,
+    kal({ asetId: 'CAL-048', parameter: 'suhu_c', nama: 'Climatic Chamber' }), kal({ asetId: 'CAL-048', parameter: 'kelembaban_rh', nama: 'Climatic Chamber' }),
+  ];
+  const tanpaRek = dgChamber.map((k) => ({ ...k, rekomendasi: false }));
+  cek('Chamber TIDAK muncul di pilihan termohigrometer (walau tanpa rekomendasi)', !susunPilihan(termo, tanpaRek).some((x) => x.kunci === 'CAL-048'));
+  cek('Chamber muncul di peran chamber', susunPilihan({ peran: 'chamber', judul: 'Climatic Chamber', parameter: ['suhu_c', 'kelembaban_rh'], wajib: true }, dgChamber).map((x) => x.kunci).join() === 'CAL-048');
+  cek('peran chamber tidak menawarkan termohigrometer biasa', !susunPilihan({ peran: 'chamber', judul: 'Climatic Chamber', parameter: ['suhu_c', 'kelembaban_rh'], wajib: true }, dgChamber).some((x) => x.kunci === 'T1'));
   cek('berlaku sampai satu pilihan = yang paling awal dari barisnya', susunPilihan(termo, [kal({ asetId: 'T4', parameter: 'suhu_c', berlakuSampai: '2027-01-01' }), kal({ asetId: 'T4', parameter: 'kelembaban_rh', berlakuSampai: '2026-12-01' })])[0].berlakuSampai === '2026-12-01');
 
   // Snapshot

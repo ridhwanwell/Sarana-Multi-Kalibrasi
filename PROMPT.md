@@ -29,6 +29,7 @@ Cara kerja (diperbarui **22 Okt 2026**, PRD 11.48–11.50 · CLAUDE.md 2A): **Cl
 2. NIBP: LKK digital SUDAH benar (fisik semua Baik = 10, total = fisik + kinerja, maks 60, Laik ≥ 54). Excel perlu diperbaiki (AE2 COUNTIF "Baik"/6 selalu 0; AE3 listrik 40 gratis) — menunggu Ridhwan mengunggah Master_NIBP.xlsx.
 3. Master Excel Syringe L18:L22: disarankan `ABS(F18)+N(I18)<=T18` (pakai U95, bukan T/3). Opsional, di file Excel Ridhwan.
 4. Climatic Chamber: angka = datasheet pabrik (alat baru, belum ada sertifikat) — sah; ganti teks `sumber` bila diminta.
+5. (28 Okt) Climatic Chamber hanya muncul di LKK Thermohygrometer; pilihan Termohigrometer lain = HTC-1 saja. Selesai, menunggu uji Ridhwan di tablet.
 
 ### 🧭 GAYA JAWABAN (wajib di semua chat/sesi Project ini)
 
